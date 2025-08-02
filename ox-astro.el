@@ -49,7 +49,7 @@
 
 (require 'ox-astro-config)
 (require 'ox-astro-functions)
-
+(require 'ox-astro-handlers)
 
 
 ;;;###autoload
