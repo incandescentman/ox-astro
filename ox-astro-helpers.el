@@ -88,6 +88,24 @@ and finally defaults to 'Untitled Post'."
           (org-export-data (org-element-property :title headline) info)))
       "Untitled Post"))
 
+(defun org-astro--get-excerpt (tree info)
+  "Extract post excerpt from TREE, with fallbacks.
+It checks for #+ASTRO_EXCERPT or #+EXCERPT, then the first
+paragraph, and finally defaults to an empty string."
+  (or (let ((kw (org-element-map tree 'keyword
+                          (lambda (k)
+                            (when (or (string-equal "ASTRO_EXCERPT" (org-element-property :key k))
+                                      (string-equal "EXCERPT" (org-element-property :key k)))
+                              k))
+                          nil 'first-match)))
+        (when kw (replace-regexp-in-string "[*" "" (org-element-property :value kw))))
+      (let ((paragraph (org-element-map tree 'paragraph
+                                 'org-element-contents
+                                 nil 'first-match)))
+        (when paragraph
+          (replace-regexp-in-string "[*" "" (org-export-data paragraph info))))
+      ""))
+
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
   (let* (;; Get the posts-folder, needed for processing image paths.
@@ -96,22 +114,9 @@ and finally defaults to 'Untitled Post'."
          ;; --- Metadata with defaults (respecting narrowing) ---
          (title (org-astro--get-title tree info))
          (author (or (plist-get info :author) "Jay Dixit"))
-         (excerpt
-          (or (let ((kw (org-element-map tree 'keyword
-                          (lambda (k)
-                            (when (or (string-equal "ASTRO_EXCERPT" (org-element-property :key k))
-                                      (string-equal "EXCERPT" (org-element-property :key k)))
-                              k))
-                          nil 'first-match)))
-                (when kw (replace-regexp-in-string "[*]" "" (org-element-property :value kw))))
-              (let ((paragraph (org-element-map tree 'paragraph
-                                 'org-element-contents
-                                 nil 'first-match)))
-                (when paragraph
-                  (replace-regexp-in-string "[*]" "" (org-export-data paragraph info))))
-              ""))
+         (excerpt (org-astro--get-excerpt tree info))
          (tags-raw (or (plist-get info :astro-tags) (plist-get info :tags)))
-         (tags (when tags-raw (org-split-string tags-raw "[, \n]+")))
+         (tags (when tags-raw (org-split-string tags-raw "[, \n]+\n")))
          ;; --- Publish Date (with fallback to current time) ---
          (publish-date
           (let ((date-raw (or (plist-get info :astro-publish-date)
@@ -120,6 +125,7 @@ and finally defaults to 'Untitled Post'."
             (if date-raw
                 (org-astro--format-date date-raw info)
                 (format-time-string (plist-get info :astro-date-format) (current-time)))))
+
          ;; --- Author Image (with default and specific path) ---
          (author-image-raw (or (plist-get info :astro-author-image)
                                (plist-get info :author-image)
