@@ -71,17 +71,19 @@ under the key `:astro-body-images-imports`."
 - Converts indented example blocks to Markdown blockquotes.
 - Converts markdown image syntax with absolute paths to Image components."
   (let* ((s output)
-         ;; HTML entities
-         (s (replace-regexp-in-string "&#x2013;" "–" s t t))
-         (s (replace-regexp-in-string "&rsquo;" "'" s t t))
-         (s (replace-regexp-in-string "&lsquo;" "'" s t t))
-         (s (replace-regexp-in-string "&rdquo;" "\"" s t t))
-         (s (replace-regexp-in-string "&ldquo;" "\"" s t t))
-         ;; Convert markdown image syntax with absolute paths to Image components
-         (image-imports (plist-get info :astro-body-images-imports))
-         (s (if image-imports
-                (replace-regexp-in-string
-                 "!\\[\\([^]]*\\)\\](\\(/[^)]+\\.\\(?:png\\|jpe?g\\)\\))"
+         (entity-map '(("&#x2013;" . "–")
+                       ("&rsquo;" . "'")
+                       ("&lsquo;" . "'")
+                       ("&rdquo;" . \"\")
+                       ("&ldquo;" . \"\"))))
+    ;; Replace HTML entities
+    (dolist (pair entity-map)
+      (setq s (replace-regexp-in-string (car pair) (cdr pair) s t t)))
+    ;; Convert markdown image syntax with absolute paths to Image components
+    (let ((image-imports (plist-get info :astro-body-images-imports)))
+      (when image-imports
+        (setq s (replace-regexp-in-string
+                 "!\[\([^]]*\)\](\(/[^)]+\.\(?:png\|jpe?g\)\))"
                  (lambda (match)
                    (let* ((alt (match-string 1 match))
                           (path (match-string 2 match))
@@ -92,27 +94,26 @@ under the key `:astro-body-images-imports`."
                          (let ((var-name (plist-get image-data :var-name))
                                (alt-text (or (org-astro--filename-to-alt-text path) alt "Image")))
                            (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
-                         match)))
-                 s)
-                s))
-         ;; Convert markdown links that are raw URLs to LinkPeek components
-         (s (replace-regexp-in-string
-             "\\[\\(https?://[^]]+\\)\\](\\(\\1\\))"
+                       match)))
+                 s))))
+    ;; Convert markdown links that are raw URLs to LinkPeek components
+    (setq s (replace-regexp-in-string
+             "\^\[\(https?://[^]]+\)\](\(\1\))"
              (lambda (match)
                (let ((url (match-string 1 match)))
                  ;; Mark that we're using LinkPeek (for import)
                  (plist-put info :astro-uses-linkpeek t)
                  (format "<LinkPeek href=\"%s\"></LinkPeek>" url)))
              s))
-         ;; Indented blocks to blockquotes
-         (lines (split-string s "\n"))
-         (processed-lines
-          (mapcar (lambda (line)
-                    (if (string-prefix-p "    " line)
-                        (concat "> " (substring line 4))
+    ;; Indented blocks to blockquotes
+    (let* ((lines (split-string s "\n"))
+           (processed-lines
+            (mapcar (lambda (line)
+                      (if (string-prefix-p "    " line)
+                          (concat "> " (substring line 4))
                         line))
-                  lines))
-         (s (mapconcat 'identity processed-lines "\n")))
+                    lines)))
+      (setq s (mapconcat 'identity processed-lines "\n")))
     s))
 
 (provide 'ox-astro-handlers)
