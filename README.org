@@ -49,7 +49,7 @@ The exporter automatically generates YAML front matter based on keywords in your
 | ~#+COVER_IMAGE_ALT~ | ~imageAlt~    | Alt text for the cover image.               |
 | ~#+TAGS~            | ~tags~        | A comma- or space-separated list of tags.   |
 | ~#+AUTHOR_IMAGE~    | ~authorImage~ | Path to the author's image.                 |
-| ~#+POSTS_FOLDER~    | (none)      | Specifies the export destination folder.    |
+| ~#+DESTINATION_FOLDER~ | (none)      | Specifies the export destination folder.    |
 
 **Fallback Logic:**
 - If ~#+TITLE~ is not found, the exporter uses the first level-1 headline in the buffer (or the top-level headline if the buffer is narrowed).

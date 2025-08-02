@@ -37,7 +37,7 @@
 ;; # Workflow
 ;;
 ;; This exporter is designed for a one-post-per-file workflow.
-;; A single Org file exports to a single .mdx file. If #+POSTS_FOLDER is not
+;; A single Org file exports to a single .mdx file. If #+DESTINATION_FOLDER is not
 ;; set, files are exported to a subdirectory named "astro-posts". This can
 ;; be customized via `org-astro-default-posts-folder`.
 
@@ -117,7 +117,7 @@ generated and added to the Org source file."
 
         ;; --- Original export logic continues below ---
         (let* ((posts-folder-from-file (or (plist-get info :astro-posts-folder)
-                                           (plist-get info :posts-folder)))
+                                           (plist-get info :destination-folder)))
                (resolved-posts-folder (and posts-folder-from-file
                                            (cdr (assoc posts-folder-from-file org-astro-known-posts-folders))))
                (posts-folder
@@ -137,17 +137,17 @@ generated and added to the Org source file."
                          (selected-path (when selection
                                           (cdr (assoc selection org-astro-known-posts-folders)))))
                     (when selected-path
-                      ;; Add the POSTS_FOLDER keyword to the org file
+                      ;; Add the DESTINATION_FOLDER keyword to the org file
                       (save-excursion
                         (goto-char (point-min))
-                        (if (re-search-forward "^#\\+POSTS_FOLDER:" nil t)
-                            ;; Update existing POSTS_FOLDER keyword
+                        (if (re-search-forward "^#\\+DESTINATION_FOLDER:" nil t)
+                            ;; Update existing DESTINATION_FOLDER keyword
                             (progn
                               (beginning-of-line)
                               (kill-line)
-                              (insert (format "#+POSTS_FOLDER: %s" selection)))
-                            ;; Add new POSTS_FOLDER keyword
-                            (org-astro--insert-keyword-at-end-of-block "POSTS_FOLDER" selection)))
+                              (insert (format "#+DESTINATION_FOLDER: %s" selection)))
+                            ;; Add new DESTINATION_FOLDER keyword
+                            (org-astro--insert-keyword-at-end-of-block "DESTINATION_FOLDER" selection)))
                       (save-buffer))
                     selected-path))))
                (pub-dir (when posts-folder
@@ -207,7 +207,7 @@ generated and added to the Org source file."
     (:tags               "TAGS"                nil nil 'newline)
     (:cover-image        "COVER_IMAGE"         nil nil nil)
     (:cover-image-alt    "COVER_IMAGE_ALT"     nil nil nil)
-    (:posts-folder       "POSTS_FOLDER"        nil nil nil)
+    (:destination-folder "DESTINATION_FOLDER"  nil nil nil)
     (:astro-publish-date "ASTRO_PUBLISH_DATE"  nil nil nil)
     (:astro-excerpt      "ASTRO_EXCERPT"       nil nil nil)
     (:astro-image        "ASTRO_IMAGE"         nil nil nil)

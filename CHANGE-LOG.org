@@ -6,11 +6,11 @@
 
 ** Problem Statement
 
-The ox-astro exporter only supported posts folder selection through predefined nicknames in =org-astro-known-posts-folders=. Users could not specify arbitrary absolute paths directly in the =#+POSTS_FOLDER= keyword.
+The ox-astro exporter only supported posts folder selection through predefined nicknames in =org-astro-known-posts-folders=. Users could not specify arbitrary absolute paths directly in the =#+DESTINATION_FOLDER= keyword.
 
 For example, this would not work:
 #+begin_example
-#+POSTS_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/consequential-pages/
+#+DESTINATION_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/consequential-pages/
 #+end_example
 
 The exporter would fail to resolve the path since it wasn't in the known folders alist, forcing users to either:
@@ -41,7 +41,7 @@ Replaced simple =or= logic with a =cond= statement that:
 
 ** User Impact
 
-Users can now specify any valid absolute directory path in =#+POSTS_FOLDER= without needing to pre-configure it in their Emacs settings. This enables:
+Users can now specify any valid absolute directory path in =#+DESTINATION_FOLDER= without needing to pre-configure it in their Emacs settings. This enables:
 - Temporary exports to different locations
 - Project-specific folder structures
 - Dynamic folder paths without configuration changes
@@ -186,7 +186,7 @@ We needed to implement a feature that would:
 *** Auto-Save Posts Folder
 #+begin_src emacs-lisp
 ;; When user selects a posts folder, automatically save it to the Org file
-(insert (format "#+POSTS_FOLDER: %s" selection))
+(insert (format "#+DESTINATION_FOLDER: %s" selection))
 (save-buffer)
 #+end_src
 

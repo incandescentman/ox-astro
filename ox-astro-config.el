@@ -13,7 +13,7 @@
   :type 'string)
 
 (defcustom org-astro-default-posts-folder "astro-posts"
-  "Default subdirectory for exported posts if #+POSTS_FOLDER is not set."
+  "Default subdirectory for exported posts if #+DESTINATION_FOLDER is not set."
   :group 'org-export-astro
   :type 'string)
 

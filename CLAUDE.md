@@ -63,16 +63,16 @@ Based on CHANGE-LOG.org, recent work focused on raw image path processing - dete
 ## Usage Workflow
 1. User runs `M-x org-astro-export-to-mdx`
 2. System determines posts folder via:
-   - First: Check if `#+POSTS_FOLDER` matches a known folder nickname
-   - Second: Check if `#+POSTS_FOLDER` is a valid absolute path
+   - First: Check if `#+DESTINATION_FOLDER` matches a known folder nickname
+   - Second: Check if `#+DESTINATION_FOLDER` is a valid absolute path
    - Third: Prompt user to select from known folders
 3. Exporter processes content, copies assets, generates MDX with front matter
 4. Output ready for Astro build pipeline
 
 ## Posts Folder Resolution
-The `#+POSTS_FOLDER` keyword now supports three modes:
-1. **Nickname**: `#+POSTS_FOLDER: jaydocs` → looks up in `org-astro-known-posts-folders`
-2. **Absolute Path**: `#+POSTS_FOLDER: /full/path/to/posts/` → uses path directly if directory exists
+The `#+DESTINATION_FOLDER` keyword now supports three modes:
+1. **Nickname**: `#+DESTINATION_FOLDER: jaydocs` → looks up in `org-astro-known-posts-folders`
+2. **Absolute Path**: `#+DESTINATION_FOLDER: /full/path/to/posts/` → uses path directly if directory exists
 3. **Interactive**: If not specified or invalid, prompts user to select from known folders
 
 ## Project Structure Notes

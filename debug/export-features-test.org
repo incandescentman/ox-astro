@@ -7,7 +7,7 @@
 - Source ::
 
 * Edinburgh 2025
-#+POSTS_FOLDER: jaydocs
+#+DESTINATION_FOLDER: jaydocs
 #+EXCERPT: Jay's Fringe Directives
 #+AUTHOR: Jay Dixit
 #+COVER_IMAGE: ~/assets/images/posts/magic-edinburgh.png
