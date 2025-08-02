@@ -98,12 +98,12 @@ paragraph, and finally defaults to an empty string."
                                       (string-equal "EXCERPT" (org-element-property :key k)))
                               k))
                           nil 'first-match)))
-        (when kw (replace-regexp-in-string "[*" "" (org-element-property :value kw))))
+        (when kw (replace-regexp-in-string "[*_/]" "" (org-element-property :value kw))))
       (let ((paragraph (org-element-map tree 'paragraph
                                  'org-element-contents
                                  nil 'first-match)))
         (when paragraph
-          (replace-regexp-in-string "[*" "" (org-export-data paragraph info))))
+          (replace-regexp-in-string "[*_/]" "" (org-export-data paragraph info))))
       ""))
 
 (defun org-astro--get-publish-date (info)
