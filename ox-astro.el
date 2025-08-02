@@ -87,14 +87,7 @@ Each element is a cons cell of the form (NICKNAME . PATH)."
   :group 'org-export-astro
   :type '(alist :key-type (string :tag "Nickname")
                 :value-type (directory :tag "Path")))
-;;; ------------------------------------------------------------------
-;;; END CUT FOR ox-astro-config.el
-;;; ------------------------------------------------------------------
 
-
-;;; ------------------------------------------------------------------
-;;; CUT HERE FOR ox-astro-functions.el
-;;; ------------------------------------------------------------------
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal Helper Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -102,8 +95,8 @@ Each element is a cons cell of the form (NICKNAME . PATH)."
 (defun org-astro--slugify (s)
   "Convert string S to a slug."
   (when (stringp s)
-    (let ((s (downcase s))
-      (replace-regexp-in-string "[^a-z0-9]+" "-" (org-trim s) nil)))))
+    (let ((s (downcase s)))
+      (replace-regexp-in-string "[^a-z0-9]+" "-" (org-trim s) nil))))
 
 (defun org-astro--format-date (date-raw info)
   "Format DATE-RAW into a string suitable for Astro front matter."
@@ -192,9 +185,9 @@ Each element is a cons cell of the form (NICKNAME . PATH)."
                           (lambda (k)
                             (when (or (string-equal "ASTRO_EXCERPT" (org-element-property :key k))
                                       (string-equal "EXCERPT" (org-element-property :key k)))
-                              k)))
+                              k))
                           nil 'first-match)))
-                (when kw (replace-regexp-in-in-string "[*]" "" (org-element-property :value kw))))
+                (when kw (replace-regexp-in-string "[*]" "" (org-element-property :value kw))))
               (let ((paragraph (org-element-map tree 'paragraph
                                  'org-element-contents
                                  nil 'first-match)))
@@ -303,7 +296,7 @@ If it has a TODO keyword, convert it to a Markdown task list item."
         (let* ((title (org-export-data (org-element-property :title heading)
                                        (cons :with-smart-quotes (cons nil info))))
                (level (+ (org-element-property :level heading)
-                         (or (plist-get info :headline-offset) 0))))
+                         (or (plist-get info :headline-offset) 0)))
                (header (format "%s %s" (make-string level ?#) title)))
           (format "%s\n\n%s" header (or contents ""))))))
 
@@ -432,7 +425,7 @@ under the key `:astro-body-images-imports`."
                                "import { Image } from 'astro:assets';"))
          ;; 4. LinkPeek component import (if raw URLs are used - check body for raw URL patterns)
          (linkpeek-import (when (or (plist-get info :astro-uses-linkpeek)
-                                    (string-match-p "\\[\\(https?://[^]]+\\\\)\\](\\1)" body))
+                                    (string-match-p "\\[\\(https?://[^]]+\\)\\](\\1)" body))
                             "import LinkPeek from '../../components/ui/LinkPeek.astro';"))
          ;; 5. Combine all imports, filtering out nil/empty values
          (all-imports (mapconcat #'identity
@@ -460,7 +453,7 @@ under the key `:astro-body-images-imports`."
          (image-imports (plist-get info :astro-body-images-imports))
          (s (if image-imports
                 (replace-regexp-in-string
-                 "!\\[\\([^]]*\\)\\](\\(/[^)]+\\.\\(?:png\\|jpe?g\\)\\\\))"
+                 "!\\[\\([^]]*\\)\\](\\(/[^)]+\\.\\(?:png\\|jpe?g\\)\\))"
                  (lambda (match)
                    (let* ((alt (match-string 1 match))
                           (path (match-string 2 match))
@@ -476,7 +469,7 @@ under the key `:astro-body-images-imports`."
                 s))
          ;; Convert markdown links that are raw URLs to LinkPeek components
          (s (replace-regexp-in-string
-             "\\[\\(https?://[^]]+\\\\)\\](\\(\\1\\))"
+             "\\[\\(https?://[^]]+\\)\\](\\(\\1\\))"
              (lambda (match)
                (let ((url (match-string 1 match)))
                  ;; Mark that we're using LinkPeek (for import)
@@ -552,7 +545,7 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
             (make-directory assets-folder t)
             (unless (file-exists-p dest-path)
               (message "Copying %s to %s" expanded-path dest-path)
-              (copy-file expanded-path dest-path t)))
+              (copy-file expanded-path dest-path t))
             ;; Return the path for Astro's import syntax
             (format "~/assets/images/%s%s" sub-dir filename))
           image-path))))
@@ -685,7 +678,6 @@ generated and added to the Org source file."
               (progn
                 (message "Astro export cancelled: No posts folder selected.")
                 nil))))))
-;;;;;;;;;;;;;;;;;;I have added comments to the file to indicate where you should cut the code.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
