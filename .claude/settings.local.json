@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(ls:*)",
-      "Bash(emacs:*)"
+      "Bash(emacs:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

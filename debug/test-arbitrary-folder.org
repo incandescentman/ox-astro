@@ -1,0 +1,11 @@
+#+TITLE: Test Arbitrary Posts Folder
+#+AUTHOR: Jay Dixit
+#+DATE: 2025-08-02
+#+EXCERPT: Testing arbitrary posts folder functionality
+#+POSTS_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/consequential-pages/
+
+* Test Content
+
+This is a test to verify that arbitrary posts folder paths work correctly.
+
+The posts folder should be set to the consequential-pages directory.

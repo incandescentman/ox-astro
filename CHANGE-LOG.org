@@ -1,6 +1,50 @@
 #+TITLE: ox-astro Change Log
 #+AUTHOR: Jay Dixit & Claude
-#+DATE: 2025-07-31
+#+DATE: 2025-08-02
+
+* Arbitrary Posts Folder Path Support
+
+** Problem Statement
+
+The ox-astro exporter only supported posts folder selection through predefined nicknames in =org-astro-known-posts-folders=. Users could not specify arbitrary absolute paths directly in the =#+POSTS_FOLDER= keyword.
+
+For example, this would not work:
+#+begin_example
+#+POSTS_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/consequential-pages/
+#+end_example
+
+The exporter would fail to resolve the path since it wasn't in the known folders alist, forcing users to either:
+1. Add every possible path to their configuration
+2. Use the interactive folder selection every time
+
+** Solution Implementation
+
+Modified the posts folder resolution logic in =ox-astro-export-to-mdx= (lines 123-152) to support three resolution modes:
+
+1. **Nickname Resolution**: Check if the value matches a key in =org-astro-known-posts-folders=
+2. **Absolute Path Resolution**: If the value is an absolute path and the directory exists, use it directly
+3. **Interactive Fallback**: Prompt user to select from known folders if neither works
+
+** Technical Changes
+
+*** ox-astro.el:123-152
+Replaced simple =or= logic with a =cond= statement that:
+- Uses =file-name-absolute-p= to detect absolute paths
+- Uses =file-directory-p= to validate directory existence
+- Preserves existing behavior for known folder nicknames
+- Maintains interactive selection as fallback
+
+*** Key Functions Used
+- =file-name-absolute-p=: Detects if path starts with / (Unix) or drive letter (Windows)
+- =file-directory-p=: Validates that the directory actually exists
+- =expand-file-name=: Resolves any relative components in the path
+
+** User Impact
+
+Users can now specify any valid absolute directory path in =#+POSTS_FOLDER= without needing to pre-configure it in their Emacs settings. This enables:
+- Temporary exports to different locations
+- Project-specific folder structures
+- Dynamic folder paths without configuration changes
 
 * Raw Image Path Processing Feature
 

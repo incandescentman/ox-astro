@@ -121,26 +121,35 @@ generated and added to the Org source file."
                (resolved-posts-folder (and posts-folder-from-file
                                            (cdr (assoc posts-folder-from-file org-astro-known-posts-folders))))
                (posts-folder
-                (or resolved-posts-folder
-                    (let* ((selection (completing-read "Select a posts folder: "
-                                                       org-astro-known-posts-folders
-                                                       nil t posts-folder-from-file))
-                           (selected-path (when selection
-                                            (cdr (assoc selection org-astro-known-posts-folders)))))
-                      (when selected-path
-                        ;; Add the POSTS_FOLDER keyword to the org file
-                        (save-excursion
-                          (goto-char (point-min))
-                          (if (re-search-forward "^#\\+POSTS_FOLDER:" nil t)
-                              ;; Update existing POSTS_FOLDER keyword
-                              (progn
-                                (beginning-of-line)
-                                (kill-line)
-                                (insert (format "#+POSTS_FOLDER: %s" selection)))
-                              ;; Add new POSTS_FOLDER keyword
-                              (org-astro--insert-keyword-at-end-of-block "POSTS_FOLDER" selection)))
-                        (save-buffer))
-                      selected-path)))
+                (cond
+                 ;; If we found it in known folders, use that path
+                 (resolved-posts-folder resolved-posts-folder)
+                 ;; If posts-folder-from-file exists and looks like an absolute path, use it directly
+                 ((and posts-folder-from-file 
+                       (file-name-absolute-p posts-folder-from-file)
+                       (file-directory-p (expand-file-name posts-folder-from-file)))
+                  posts-folder-from-file)
+                 ;; Otherwise, prompt the user for selection
+                 (t
+                  (let* ((selection (completing-read "Select a posts folder: "
+                                                     org-astro-known-posts-folders
+                                                     nil t posts-folder-from-file))
+                         (selected-path (when selection
+                                          (cdr (assoc selection org-astro-known-posts-folders)))))
+                    (when selected-path
+                      ;; Add the POSTS_FOLDER keyword to the org file
+                      (save-excursion
+                        (goto-char (point-min))
+                        (if (re-search-forward "^#\\+POSTS_FOLDER:" nil t)
+                            ;; Update existing POSTS_FOLDER keyword
+                            (progn
+                              (beginning-of-line)
+                              (kill-line)
+                              (insert (format "#+POSTS_FOLDER: %s" selection)))
+                            ;; Add new POSTS_FOLDER keyword
+                            (org-astro--insert-keyword-at-end-of-block "POSTS_FOLDER" selection)))
+                      (save-buffer))
+                    selected-path))))
                (pub-dir (when posts-folder
                           (file-name-as-directory
                            (expand-file-name (org-trim posts-folder)))))
