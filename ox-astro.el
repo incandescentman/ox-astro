@@ -50,7 +50,6 @@
 (require 'ox-astro-config)
 (require 'ox-astro-helpers)
 (require 'ox-astro-handlers)
-(require 'ox-astro-handlers)
 
 
 ;;;###autoload

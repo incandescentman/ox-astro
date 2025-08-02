@@ -75,21 +75,26 @@
                                             val)))))))))
         (concat yaml-str "---\n"))))
 
+(defun org-astro--get-title (tree info)
+  "Extract post title from TREE, with fallbacks.
+It checks for a #+TITLE keyword, then the first headline,
+and finally defaults to 'Untitled Post'."
+  (or (let ((kw (org-element-map tree 'keyword
+                  (lambda (k) (when (string-equal "TITLE" (org-element-property :key k)) k))
+                  nil 'first-match)))
+        (when kw (org-element-property :value kw)))
+      (let ((headline (org-element-map tree 'headline 'identity nil 'first-match)))
+        (when headline
+          (org-export-data (org-element-property :title headline) info)))
+      "Untitled Post"))
+
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
   (let* (;; Get the posts-folder, needed for processing image paths.
          (posts-folder (or (plist-get info :posts-folder)
                            (plist-get info :astro-posts-folder)))
          ;; --- Metadata with defaults (respecting narrowing) ---
-         (title
-          (or (let ((kw (org-element-map tree 'keyword
-                          (lambda (k) (when (string-equal "TITLE" (org-element-property :key k)) k))
-                          nil 'first-match)))
-                (when kw (org-element-property :value kw)))
-              (let ((headline (org-element-map tree 'headline 'identity nil 'first-match)))
-                (when headline
-                  (org-export-data (org-element-property :title headline) info)))
-              "Untitled Post"))
+         (title (org-astro--get-title tree info))
          (author (or (plist-get info :author) "Jay Dixit"))
          (excerpt
           (or (let ((kw (org-element-map tree 'keyword
