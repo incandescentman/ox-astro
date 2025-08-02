@@ -43,12 +43,14 @@ org-astro-known-posts-folders
 ```
 
 ### Front Matter Mapping
-- `#+TITLE` � `title`
-- `#+AUTHOR` � `author` (defaults to "Jay Dixit")  
-- `#+DATE` � `publishDate`
-- `#+EXCERPT` � `excerpt`
-- `#+COVER_IMAGE` � `image`
-- `#+TAGS` � `tags`
+- `#+TITLE` → `title`
+- `#+AUTHOR` → `author` (defaults to "Jay Dixit")  
+- `#+DATE` → `publishDate`
+- `#+EXCERPT` → `excerpt`
+- `#+COVER_IMAGE` → `image`
+- `#+TAGS` → `tags`
+- `#+VISIBILITY: hidden` → `hidden: true` (only if specified)
+- `#+STATUS: draft` → `draft: true` (only if specified)
 
 ### Fallback Logic
 - Title: First level-1 headline if no `#+TITLE`

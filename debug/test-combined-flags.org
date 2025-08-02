@@ -1,0 +1,13 @@
+#+TITLE: Test Combined Flags
+#+AUTHOR: Jay Dixit
+#+DATE: 2025-08-02
+#+EXCERPT: Testing both visibility and status flags together
+#+VISIBILITY: hidden
+#+STATUS: draft
+#+DESTINATION_FOLDER: jaydocs
+
+* Combined Hidden Draft
+
+This post should have both `hidden: true` AND `draft: true` in its front matter when exported to MDX.
+
+This tests that both flags can be used together.

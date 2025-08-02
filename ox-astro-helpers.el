@@ -119,11 +119,10 @@ Falls back to the current time if no date is specified."
 (defun org-astro--get-author-image (info posts-folder)
   "Get the author image path from INFO, with defaults."
   (let ((author-image-raw (or (plist-get info :astro-author-image)
-                             (plist-get info :author-image)
-                             org-astro-default-author-image)))
-    (and author-image-raw posts-folder
-         (org-astro--process-image-path
-          author-image-raw posts-folder "authors/"))))
+                             (plist-get info :author-image))))
+    (or (and author-image-raw posts-folder
+             (org-astro--process-image-path author-image-raw posts-folder "authors/"))
+        org-astro-default-author-image)))
 
 (defun org-astro--get-cover-image (info posts-folder)
   "Get the cover image path and alt text from INFO."
@@ -139,7 +138,7 @@ Falls back to the current time if no date is specified."
 
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
-  (let* ((posts-folder (or (plist-get info :posts-folder)
+  (let* ((posts-folder (or (plist-get info :destination-folder)
                            (plist-get info :astro-posts-folder)))
          (title (org-astro--get-title tree info))
          (author (or (plist-get info :author) "Jay Dixit"))
@@ -150,8 +149,12 @@ Falls back to the current time if no date is specified."
          (author-image (org-astro--get-author-image info posts-folder))
          (cover-image-data (org-astro--get-cover-image info posts-folder))
          (image (car cover-image-data))
-         (image-alt (cadr cover-image-data)))
-    ;; Return the alist of final data
+         (image-alt (cadr cover-image-data))
+         (visibility (plist-get info :visibility))
+         (hidden (when (and visibility (string= (downcase (org-trim visibility)) "hidden")) t))
+         (status (plist-get info :status))
+         (draft (when (and status (string= (downcase (org-trim status)) "draft")) t)))
+    ;; Return the alist of final data - only include hidden/draft if they're true
     `((title . ,title)
       (author . ,author)
       (authorImage . ,author-image)
@@ -159,7 +162,9 @@ Falls back to the current time if no date is specified."
       (excerpt . ,excerpt)
       (image . ,image)
       (imageAlt . ,image-alt)
-      (tags . ,tags))))
+      (tags . ,tags)
+      ,@(when hidden `((hidden . ,hidden)))
+      ,@(when draft `((draft . ,draft))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transcode Functions

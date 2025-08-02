@@ -1,0 +1,11 @@
+#+TITLE: Test Author Image Default
+#+AUTHOR: Jay Dixit
+#+DATE: 2025-08-02
+#+EXCERPT: Testing default author image functionality
+#+DESTINATION_FOLDER: jaydocs
+
+* Test Content
+
+This post should include the default author image in the front matter.
+
+No #+AUTHOR_IMAGE is specified, so it should use the default from org-astro-default-author-image.

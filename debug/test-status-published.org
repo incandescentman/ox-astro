@@ -1,0 +1,12 @@
+#+TITLE: Test Published Post
+#+AUTHOR: Jay Dixit
+#+DATE: 2025-08-02
+#+EXCERPT: Testing normal status (no draft flag)
+#+STATUS: published
+#+DESTINATION_FOLDER: jaydocs
+
+* Published Content
+
+This post should NOT have any `draft` field in its front matter when exported to MDX.
+
+The status field is set to "published", so it should not add a draft flag.

@@ -9,7 +9,7 @@ all local image links, copies them to the Astro assets
 directory, and prepares a list of import statements to be added
 to the final MDX file. The data is stored in the INFO plist
 under the key `:astro-body-images-imports`."
-  (let* ((posts-folder (or (plist-get info :posts-folder)
+  (let* ((posts-folder (or (plist-get info :destination-folder)
                            (plist-get info :astro-posts-folder)))
          ;; Collect all image links from the document body.
          (image-paths (org-astro--collect-images-from-tree tree))

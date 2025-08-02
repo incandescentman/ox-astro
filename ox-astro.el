@@ -207,6 +207,8 @@ generated and added to the Org source file."
     (:tags               "TAGS"                nil nil 'newline)
     (:cover-image        "COVER_IMAGE"         nil nil nil)
     (:cover-image-alt    "COVER_IMAGE_ALT"     nil nil nil)
+    (:visibility         "VISIBILITY"          nil nil nil)
+    (:status             "STATUS"              nil nil nil)
     (:destination-folder "DESTINATION_FOLDER"  nil nil nil)
     (:astro-publish-date "ASTRO_PUBLISH_DATE"  nil nil nil)
     (:astro-excerpt      "ASTRO_EXCERPT"       nil nil nil)

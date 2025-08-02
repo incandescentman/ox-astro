@@ -1,0 +1,12 @@
+#+TITLE: Test Draft Post
+#+AUTHOR: Jay Dixit
+#+DATE: 2025-08-02
+#+EXCERPT: Testing the status draft functionality
+#+STATUS: draft
+#+DESTINATION_FOLDER: jaydocs
+
+* Draft Content
+
+This post should have `draft: true` in its front matter when exported to MDX.
+
+The status field is set to "draft" which should add the draft flag to the YAML front matter.

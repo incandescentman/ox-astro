@@ -1,0 +1,11 @@
+#+TITLE: Test Normal Post
+#+AUTHOR: Jay Dixit
+#+DATE: 2025-08-02
+#+EXCERPT: Testing normal visibility (no hidden flag)
+#+DESTINATION_FOLDER: jaydocs
+
+* Normal Content
+
+This post should NOT have any `hidden` field in its front matter when exported to MDX.
+
+The visibility field is not specified, so it should remain visible by default.

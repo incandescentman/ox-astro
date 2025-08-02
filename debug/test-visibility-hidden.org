@@ -1,0 +1,12 @@
+#+TITLE: Test Hidden Post
+#+AUTHOR: Jay Dixit
+#+DATE: 2025-08-02
+#+EXCERPT: Testing the visibility hidden functionality
+#+VISIBILITY: hidden
+#+DESTINATION_FOLDER: jaydocs
+
+* Hidden Content
+
+This post should have `hidden: true` in its front matter when exported to MDX.
+
+The visibility field is set to "hidden" which should add the hidden flag to the YAML front matter.
