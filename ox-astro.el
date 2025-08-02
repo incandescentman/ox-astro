@@ -47,7 +47,6 @@
 (require 'org)
 (require 'cl-lib)
 
-;; In the main ox-astro.el, you will need to require the new files like this:
 (require 'ox-astro-config)
 (require 'ox-astro-functions)
 

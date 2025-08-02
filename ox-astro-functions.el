@@ -1,6 +1,3 @@
-;;; ------------------------------------------------------------------
-;;; CUT HERE FOR ox-astro-functions.el
-;;;
 ;;; This file should contain all helper functions (defun).
 ;;; ------------------------------------------------------------------
 
@@ -483,8 +480,3 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
 
 
 (provide 'ox-astro-functions)
-
-;;; ------------------------------------------------------------------
-;;; END CUT FOR ox-astro-functions.el
-;;;
-;;; ------------------------------------------------------------------
