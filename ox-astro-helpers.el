@@ -1,9 +1,7 @@
-;;; This file should contain all helper functions (defun).
-;;; ------------------------------------------------------------------
+;;; ox-astro-helpers.el --- Helper functions for ox-astro  -*- lexical-binding: t -*-
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Internal Helper Functions
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Code:
+
 
 (defun org-astro--slugify (s)
   "Convert string S to a slug."
@@ -363,4 +361,7 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
       (insert (format "\n#+%s: %s" (upcase key) value)))))
 
 
-(provide 'ox-astro-functions)
+
+(provide 'ox-astro-helpers)
+
+;;; ox-astro-helpers.el ends here

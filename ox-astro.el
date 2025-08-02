@@ -48,7 +48,8 @@
 (require 'cl-lib)
 
 (require 'ox-astro-config)
-(require 'ox-astro-functions)
+(require 'ox-astro-helpers)
+(require 'ox-astro-handlers)
 (require 'ox-astro-handlers)
 
 
