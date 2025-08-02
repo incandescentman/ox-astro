@@ -106,35 +106,28 @@ paragraph, and finally defaults to an empty string."
           (replace-regexp-in-string "[*" "" (org-export-data paragraph info))))
       ""))
 
-(defun org-astro--get-front-matter-data (tree info)
-  "Build an alist of final front-matter data, applying defaults."
-  (let* (;; Get the posts-folder, needed for processing image paths.
-         (posts-folder (or (plist-get info :posts-folder)
-                           (plist-get info :astro-posts-folder)))
-         ;; --- Metadata with defaults (respecting narrowing) ---
-         (title (org-astro--get-title tree info))
-         (author (or (plist-get info :author) "Jay Dixit"))
-         (excerpt (org-astro--get-excerpt tree info))
-         (tags-raw (or (plist-get info :astro-tags) (plist-get info :tags)))
-         (tags (when tags-raw (org-split-string tags-raw "[, \n]+\n")))
-         ;; --- Publish Date (with fallback to current time) ---
-         (publish-date
-          (let ((date-raw (or (plist-get info :astro-publish-date)
-                              (plist-get info :publish-date)
-                              (plist-get info :date))))
-            (if date-raw
-                (org-astro--format-date date-raw info)
-                (format-time-string (plist-get info :astro-date-format) (current-time)))))
+(defun org-astro--get-publish-date (info)
+  "Extract and format the publish date from INFO.
+Falls back to the current time if no date is specified."
+  (let ((date-raw (or (plist-get info :astro-publish-date)
+                      (plist-get info :publish-date)
+                      (plist-get info :date))))
+    (if date-raw
+        (org-astro--format-date date-raw info)
+      (format-time-string (plist-get info :astro-date-format) (current-time)))))
 
-         ;; --- Author Image (with default and specific path) ---
-         (author-image-raw (or (plist-get info :astro-author-image)
-                               (plist-get info :author-image)
-                               org-astro-default-author-image))
-         (author-image (and author-image-raw posts-folder
-                            (org-astro--process-image-path
-                             author-image-raw posts-folder "authors/")))
-         ;; --- Cover Image & Alt Text (with generated alt text) ---
-         (image-raw (or (plist-get info :astro-image)
+(defun org-astro--get-author-image (info posts-folder)
+  "Get the author image path from INFO, with defaults."
+  (let ((author-image-raw (or (plist-get info :astro-author-image)
+                             (plist-get info :author-image)
+                             org-astro-default-author-image)))
+    (and author-image-raw posts-folder
+         (org-astro--process-image-path
+          author-image-raw posts-folder "authors/"))))
+
+(defun org-astro--get-cover-image (info posts-folder)
+  "Get the cover image path and alt text from INFO."
+  (let* ((image-raw (or (plist-get info :astro-image)
                         (plist-get info :cover-image)))
          (image (and image-raw posts-folder
                      (org-astro--process-image-path
@@ -142,6 +135,22 @@ paragraph, and finally defaults to an empty string."
          (image-alt (or (plist-get info :astro-image-alt)
                         (plist-get info :cover-image-alt)
                         (and image (org-astro--filename-to-alt-text image)))))
+    (list image image-alt)))
+
+(defun org-astro--get-front-matter-data (tree info)
+  "Build an alist of final front-matter data, applying defaults."
+  (let* ((posts-folder (or (plist-get info :posts-folder)
+                           (plist-get info :astro-posts-folder)))
+         (title (org-astro--get-title tree info))
+         (author (or (plist-get info :author) "Jay Dixit"))
+         (excerpt (org-astro--get-excerpt tree info))
+         (tags-raw (or (plist-get info :astro-tags) (plist-get info :tags)))
+         (tags (when tags-raw (org-split-string tags-raw "[, \n]+\n")))
+         (publish-date (org-astro--get-publish-date info))
+         (author-image (org-astro--get-author-image info posts-folder))
+         (cover-image-data (org-astro--get-cover-image info posts-folder))
+         (image (car cover-image-data))
+         (image-alt (cadr cover-image-data)))
     ;; Return the alist of final data
     `((title . ,title)
       (author . ,author)
