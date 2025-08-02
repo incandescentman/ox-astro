@@ -6,7 +6,13 @@ The exporter automates many of the tedious parts of content creation, including 
 
 * Installation and Setup
 
-To use this exporter, save the ~ox-astro.el~ file to your Emacs load path and add the following to your configuration (~init.el~):
+To use this exporter, save the following files to your Emacs load path:
+- ~ox-astro.el~ (the main file)
+- ~ox-astro-config.el~ (configuration options)
+- ~ox-astro-helpers.el~ (internal helper functions)
+- ~ox-astro-handlers.el~ (export and filter handlers)
+
+Then, add the following to your Emacs configuration (~init.el~):
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'ox
@@ -59,9 +65,9 @@ The exporter simplifies image management by automatically processing and importi
 
 For the cover image specified by ~#+COVER_IMAGE~, the exporter automatically:
 1.  Copies the image file to your Astro project's ~src/assets/images/posts/~ directory.
-2.  Adds an import statement to the top of the ~.mdx~ file, making it available to your Astro layouts as the `hero` variable.
+2.  Adds an import statement to the top of the ~.mdx~ file. The variable name is derived from the image's filename (e.g., ~my-pic.png~ becomes ~myPic~).
    #+begin_src javascript
-   import hero from '~/assets/images/posts/my-pic.png';
+   import myPic from '~/assets/images/posts/my-pic.png';
    #+end_src
 
 **Body Images**
@@ -122,8 +128,9 @@ becomes:
 > This is an example.
 
 **Raw URLs**
-Bare URLs in your Org file are automatically converted to clickable Markdown links.
-~https://gemini.google.com~ becomes ~[https://gemini.google.com](https://gemini.google.com)~.
+** Raw URLs
+Bare URLs in your Org file are automatically converted into a custom ~<LinkPeek>~ component, which can be styled to provide rich link previews.
+~https://gemini.google.com~ becomes ~<LinkPeek href="https://gemini.google.com"></LinkPeek>~.
 
 **Literal Characters**
 The exporter ensures that apostrophes, quotation marks, and en dashes are exported as literal characters instead of HTML entities (~&rsquo;~, ~&#x2013;~, etc.), keeping the Markdown source clean.
