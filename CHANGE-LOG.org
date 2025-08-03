@@ -303,3 +303,102 @@ This feature successfully bridges the gap between Org mode's plain text nature a
 4. **Systematic debugging** for complex integrations
 
 The solution transforms a simple raw image path into a fully optimized Astro image component with minimal user intervention, making the org-to-astro workflow significantly more powerful and user-friendly.
+
+* Bug Fixes: Hash Table and YAML Escaping Errors
+
+** Problem Statement
+
+Export failed for documents with complex content (like embedded JSON data) due to two critical errors:
+
+1. **Hash Table Error**: =gethash= called with =nil= instead of hash table
+2. **YAML Escaping Error**: Invalid backslash use in regex replacement for quote escaping
+
+** Root Cause Analysis
+
+*** Hash Table Error
+*Location*: =ox-astro-helpers.el:258= and =ox-astro-helpers.el:287=
+*Cause*: =cl-find= function called with =nil= when =:astro-body-images-imports= was empty
+*Symptom*: =(wrong-type-argument hash-table-p nil)=
+
+The =cl-find= function internally uses hash table operations when passed =nil=, expecting a list.
+
+*** YAML Escaping Error  
+*Location*: =ox-astro-helpers.el:74=
+*Cause*: Incorrect backslash escaping in =replace-regexp-in-string=
+*Pattern*: ="\\"= should be ="\\\\"= for literal backslash in replacement text
+
+** Solution Implementation
+
+*** Hash Table Fix
+Added defensive nil checks before =cl-find= calls:
+
+#+begin_src emacs-lisp
+;; Before (problematic)
+(cl-find path image-imports
+         :key (lambda (item) (plist-get item :path))
+         :test #'string-equal)
+
+;; After (safe)
+(when image-imports
+  (cl-find path image-imports
+           :key (lambda (item) (plist-get item :path))
+           :test #'string-equal))
+#+end_src
+
+*** YAML Escaping Fix
+Corrected backslash escaping for quote replacement:
+
+#+begin_src emacs-lisp
+;; Before (invalid)
+(replace-regexp-in-string "\"" "\\\"" val)
+
+;; After (correct)  
+(replace-regexp-in-string "\"" "\\\\\"" val)
+#+end_src
+
+** Files Modified
+
+- =ox-astro-helpers.el:258= - Added nil check in =org-astro-paragraph=
+- =ox-astro-helpers.el:287= - Added nil check in =org-astro-plain-text=  
+- =ox-astro-helpers.el:74= - Fixed backslash escaping in =org-astro--gen-yaml-front-matter=
+
+** Testing
+
+Verified fix with problematic file =20250731235900-fringe_global_south.org= that contains:
+- Complex embedded JSON data with quotes
+- Long paragraphs with analysis text
+- No image imports (causing nil image-imports list)
+
+Export now succeeds and generates valid MDX output.
+
+** Architecture Improvements
+
+*** Defensive Programming Pattern
+Adopted consistent pattern for custom logic:
+- Always validate data structures before processing
+- Use =when= guards for optional data
+- Provide fallback behavior for missing data
+
+*** Error Prevention Strategy
+- Check for nil before using =cl-find= and similar functions
+- Validate regex patterns and escape sequences
+- Test with complex real-world content, not just simple cases
+
+** Lessons Learned
+
+*** Custom Logic Requires Defensive Programming
+While ox-astro leverages the proven ox-md backend, our custom Astro-specific features need careful null checking and validation.
+
+*** Complex Content Reveals Edge Cases
+Simple test files don't expose these issues. Complex documents with embedded data, special characters, and edge cases are essential for thorough testing.
+
+*** Emacs Lisp String Escaping Subtleties
+Backslash escaping in =replace-regexp-in-string= requires careful attention to literal vs. interpreted backslashes.
+
+** Quality Assurance
+
+Added the problematic file =20250731235900-fringe_global_south.org= as a regression test case for future development. This file effectively tests:
+- Nil data structure handling
+- Complex string content processing  
+- YAML front matter generation with special characters
+- Export pipeline robustness

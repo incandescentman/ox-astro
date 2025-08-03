@@ -77,7 +77,50 @@ The `#+DESTINATION_FOLDER` keyword now supports three modes:
 2. **Absolute Path**: `#+DESTINATION_FOLDER: /full/path/to/posts/` → uses path directly if directory exists
 3. **Interactive**: If not specified or invalid, prompts user to select from known folders
 
+## Development Reference Guide
+
+### What Files to Look At When
+
+#### Adding New Export Functionality
+- **Primary**: `ox-astro-helpers.el` - Add new transcoding functions (e.g., `org-astro-new-element`)
+- **Registration**: `ox-astro.el` - Add to `:translate-alist` to override specific Org elements
+- **Reference**: `org-reference-backends/ox-md.el` - Check how standard markdown handles the element first
+
+#### Modifying Content Processing Pipeline
+- **Pre-processing**: `ox-astro-handlers.el` → `org-astro-prepare-images-filter` (parse tree modifications)
+- **Post-processing**: `ox-astro-handlers.el` → `org-astro-final-output-filter` (string transformations)
+- **Body Assembly**: `ox-astro-handlers.el` → `org-astro-body-filter` (front matter + imports + content)
+
+#### Image/Asset Handling Issues
+- **Path Processing**: `ox-astro-helpers.el` → `org-astro--process-image-path`, `org-astro--collect-images-from-tree`
+- **Import Generation**: `ox-astro-handlers.el` → `org-astro-prepare-images-filter`
+- **Component Output**: `ox-astro-helpers.el` → `org-astro-paragraph`, `org-astro-plain-text`
+
+#### Front Matter Problems
+- **Data Collection**: `ox-astro-helpers.el` → `org-astro--get-front-matter-data`
+- **YAML Generation**: `ox-astro-helpers.el` → `org-astro--gen-yaml-front-matter`
+- **Keyword Mapping**: `ox-astro.el` → `:options-alist`
+
+#### Configuration Issues
+- **User Settings**: `ox-astro-config.el` - Default values, folder mappings
+- **Export Options**: `ox-astro.el` → `:options-alist` - Keyword to plist mappings
+
+#### Debugging Export Errors
+1. **Check parse tree**: `ox-astro-handlers.el` → `org-astro-prepare-images-filter` (runs first)
+2. **Check transcoding**: `ox-astro-helpers.el` → specific `org-astro-*` functions
+3. **Check final output**: `ox-astro-handlers.el` → `org-astro-final-output-filter` (runs last)
+
+#### Understanding Design Decisions
+- **Architecture**: `docs/design-approach.org` - Why we override certain elements, design rationale
+- **Change History**: `CHANGE-LOG.org` - Recent development and feature additions
+
+### Testing Your Changes
+Always test with problematic files like:
+- `20250731235900-fringe_global_south.org` (complex content with embedded data)
+- Files in `debug/` folder (edge cases and test scenarios)
+
 ## Project Structure Notes
 - `debug/` - Test files and debugging content (e.g., test-arbitrary-folder.org)
-- `docs/` - Documentation
+- `docs/` - Documentation and architecture decisions
+- `org-reference-backends/` - Reference implementations from standard Org exporters
 - `future/` - Planned features and roadmap

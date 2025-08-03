@@ -1,0 +1,168 @@
+#+TITLE: ox-astro Design Approach and Architecture Decisions
+#+DATE: 2025-08-03
+
+* Architecture Overview
+
+** Core Philosophy: Extend, Don't Replace
+ox-astro is built as a *derived backend* from ox-md.el, following Org's extensible export architecture. This means we inherit all standard markdown functionality and only override specific elements that need Astro-specific behavior.
+
+#+BEGIN_SRC elisp
+(org-export-define-derived-backend 'astro 'md
+  :translate-alist
+  '((src-block . org-astro-src-block)
+    (link . org-astro-link)
+    (headline . org-astro-heading)
+    (paragraph . org-astro-paragraph)
+    (plain-text . org-astro-plain-text)))
+#+END_SRC
+
+** What We Inherit vs. What We Override
+
+*** Inherited from ox-md.el (Standard Markdown):
+- Basic text formatting (bold, italic, code)
+- Tables
+- Lists (except TODO items)
+- Quotes
+- Most link types
+- Basic paragraph handling
+
+*** Custom Astro-Specific Overrides:
+- =src-block=: Handle special code block types (user/prompt/quote)
+- =link=: Raw URL formatting for LinkPeek components
+- =headline=: TODO items → GitHub-style task lists (ox-md only adds TODO prefix to headlines)
+- =paragraph=: Raw image path detection → Astro Image components
+- =plain-text=: Image and URL processing within text
+
+* Key Design Decisions
+
+** Decision 1: Derived Backend vs. Standalone
+*Rationale*: Instead of building from scratch, derive from ox-md to get proven markdown export for free.
+*Benefits*: 
+- Reduces code complexity
+- Inherits bug fixes from ox-md
+- Standard markdown elements "just work"
+- Focus development on Astro-specific features
+
+*Trade-offs*: 
+- Tied to ox-md's behavior and limitations
+- Need to understand Org export internals
+
+** Decision 2: Three-Phase Processing Pipeline
+1. *Parse-tree filter*: Collect and process images before transcoding
+2. *Element transcoding*: Convert individual elements to markdown/MDX
+3. *Final output filter*: Post-process entire document
+
+*Rationale*: Separates concerns and allows for complex asset management while keeping transcoding functions focused.
+
+** Decision 3: Custom Image Processing Pipeline
+Instead of relying only on standard =[[file:]]= links, we detect:
+- Standard Org image links: =[[file:/path/image.jpg]]=
+- Raw image paths in text: =/path/to/image.jpg= on its own line
+- Generate Astro import statements and =<Image>= components
+
+*Rationale*: Provides flexibility for users while handling Astro's asset system requirements.
+
+** Decision 4: Custom TODO → Task List Conversion
+*Problem*: ox-md handles TODO items by prepending the keyword to headlines:
+#+BEGIN_EXAMPLE
+## TODO Fix the bug
+## DONE Complete the feature  
+#+END_EXAMPLE
+
+*Our Approach*: Convert TODO items to GitHub-style interactive task lists:
+#+BEGIN_EXAMPLE
+- [ ] Fix the bug
+- [x] Complete the feature
+#+END_EXAMPLE
+
+*Rationale*:
+- *Interactive*: Task lists provide clickable checkboxes in GitHub, GitLab, and modern MDX viewers
+- *Semantic correctness*: TODO items are tasks, not section headings
+- *Modern conventions*: GitHub-style task lists are widely supported and expected
+- *Blog-friendly*: Better suited for Astro blog content than headlines with TODO prefixes
+- *Visual hierarchy*: Doesn't disrupt document structure with artificial heading levels
+
+*Implementation*: Override =org-astro-heading= to detect TODO keywords and format as list items with appropriate checkbox state based on =org-done-keywords=.
+
+** Decision 5: Defensive Programming for Custom Logic
+After encountering bugs with nil hash tables and regex escaping, adopted pattern of:
+- Always check for nil before using =cl-find=
+- Validate data structures before processing
+- Use proper escape sequences in regex replacements
+
+* Bug Analysis: August 2025
+
+** Hash Table Error in Image Processing
+*Problem*: =cl-find= called with =nil= instead of list when =:astro-body-images-imports= was empty.
+*Root Cause*: Assumed image imports would always be available.
+*Fix*: Added null checks before =cl-find= calls.
+*Lesson*: Custom logic needs defensive programming, especially for optional data.
+
+** YAML Front Matter Escaping
+*Problem*: Invalid backslash escaping in =replace-regexp-in-string=.
+*Root Cause*: Incorrect escape sequence for literal quotes in YAML.
+*Fix*: Updated regex replacement pattern.
+*Lesson*: String escaping in Emacs Lisp requires careful attention to backslash doubling.
+
+* Architectural Strengths
+
+** Leverages Org Export Engine
+- Uses proven, battle-tested export infrastructure
+- Inherits performance optimizations
+- Benefits from community maintenance
+
+** Modular Design
+- Clean separation between config, helpers, handlers, and main export
+- Easy to extend with new transcoding functions
+- Filter system allows for complex pre/post-processing
+
+** Astro Integration
+- Handles asset copying automatically
+- Generates proper import statements
+- Creates valid MDX with front matter
+
+* Areas for Future Improvement
+
+** Simplify Image Processing
+Consider removing raw image path detection to reduce complexity:
+- Users could use standard =[[file:]]= links exclusively
+- Reduces custom parsing logic
+- Fewer edge cases to handle
+
+** Enhanced Error Handling
+- Add validation for user inputs (image paths, folder configurations)
+- Provide clearer error messages for common issues
+- Graceful degradation when assets can't be processed
+
+** Performance Optimization
+- Cache asset processing results
+- Optimize tree traversal for large documents
+- Consider lazy loading of imports
+
+* Decision Log
+
+| Date | Decision | Rationale |
+|------+----------+-----------|
+| 2025-08-03 | Keep derived backend approach | Leverages ox-md strengths, focus on Astro-specific features |
+| 2025-08-03 | Override TODO handling with task lists | Interactive checkboxes > headline prefixes for modern web content |
+| 2025-08-03 | Add defensive programming to image processing | Prevent runtime errors with nil data structures |
+| 2025-08-03 | Maintain raw image path detection | Provides user flexibility despite complexity |
+
+* References
+
+- [[file:../ox-astro.el][ox-astro.el]] - Main backend definition
+- [[file:../ox-astro-helpers.el][ox-astro-helpers.el]] - Transcoding functions and utilities  
+- [[file:../ox-astro-handlers.el][ox-astro-handlers.el]] - Filter functions and processing pipeline
+- [[file:../org-reference-backends/ox-md.el][ox-md.el]] - Reference implementation for markdown export (consult when extending standard markdown functionality)
+- [[https://orgmode.org/worg/dev/org-export-reference.html][Org Export Reference]] - Official documentation
+
+** Development Guidelines
+
+*** When to Consult ox-md.el
+Before implementing custom transcoding functions, check =org-reference-backends/ox-md.el= to understand:
+- How standard markdown export handles the element
+- What the default behavior provides
+- Whether we need to override or can build upon existing functionality
+- Pattern examples for similar transcoding functions
+
+This helps avoid reinventing functionality and ensures our overrides are truly necessary.
