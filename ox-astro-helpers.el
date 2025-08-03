@@ -71,7 +71,7 @@
                                         (if (and (stringp val)
                                                  (string-match-p ":" val)
                                                  (not (eq key 'publishDate)))
-                                            (format "\"%s\"" (replace-regexp-in-string "\"" "\\\"" val))
+                                            (format "\"%s\"" (replace-regexp-in-string "\"" "\\\\\"" val))
                                             val)))))))))
         (concat yaml-str "---\n"))))
 
@@ -255,9 +255,10 @@ Otherwise, use the default Markdown paragraph transcoding."
 
     (if is-image-path
         (let* ((image-imports (plist-get info :astro-body-images-imports))
-               (image-data (cl-find path image-imports
-                                    :key (lambda (item) (plist-get item :path))
-                                    :test #'string-equal)))
+               (image-data (when image-imports
+                             (cl-find path image-imports
+                                      :key (lambda (item) (plist-get item :path))
+                                      :test #'string-equal))))
           (if image-data
               (let ((var-name (plist-get image-data :var-name))
                     (alt-text (or (org-astro--filename-to-alt-text path) "Image")))
@@ -283,9 +284,10 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                 ((and trimmed-line
                       (string-match-p "^/.*\\.\\(png\\|jpe?g\\)$" trimmed-line)
                       (file-exists-p trimmed-line))
-                 (let ((image-data (cl-find trimmed-line image-imports
-                                            :key (lambda (item) (plist-get item :path))
-                                            :test #'string-equal)))
+                 (let ((image-data (when image-imports
+                                     (cl-find trimmed-line image-imports
+                                              :key (lambda (item) (plist-get item :path))
+                                              :test #'string-equal))))
                    (if image-data
                        (let ((var-name (plist-get image-data :var-name))
                              (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
