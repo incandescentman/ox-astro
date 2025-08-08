@@ -2,6 +2,33 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-02
 
+* Refactor: Simplified and Corrected Link Handling
+
+** Problem Statement
+
+The logic for handling links, especially raw URLs, was fragmented and incorrect.
+- `org-astro-link` would pass raw URLs to the default markdown backend, which incorrectly rendered them as `<url>` instead of using the desired `<LinkPeek>` component.
+- `org-astro-plain-text` was intended to handle these URLs, but Org mode's parser correctly identifies them as `link` elements, so the `plain-text` transcoder was never called for them.
+- `org-astro-final-output-filter` and `org-astro-body-filter` contained brittle, redundant regex-based workarounds to fix this, making the codebase hard to maintain.
+
+** Solution Implementation
+
+The link handling logic was consolidated and corrected by making `org-astro-link` the single source of truth for all link elements.
+
+1.  **`org-astro-link` Corrected**: The function was modified to properly detect raw URLs (i.e., link elements with no description). It now directly transcodes them into the correct `<LinkPeek>` component syntax.
+2.  **`plist-put` for Imports**: It now correctly sets the `:astro-uses-linkpeek` property in the `info` plist, ensuring the `LinkPeek` component is imported when needed.
+3.  **Redundant Logic Removed**: The previous, incorrect refactoring was reverted, and the brittle regex workarounds in `org-astro-final-output-filter` and `org-astro-body-filter` were removed in a prior step.
+4.  **`org-astro-plain-text` Role**: The logic in `org-astro-plain-text` is preserved to handle cases where a URL is not automatically recognized as a link by Org mode but exists on its own line.
+
+** Files Modified
+
+- `ox-astro-helpers.el`
+
+** User Impact
+
+- Raw URLs are now consistently and correctly converted to `<LinkPeek>` components as intended.
+- The code is now cleaner, more robust, and easier to maintain.
+
 * Arbitrary Posts Folder Path Support
 
 ** Problem Statement
@@ -81,7 +108,8 @@ We needed to implement a feature that would:
 - Debug showed: "Storing 1 image imports" during parse-tree phase
 - But later phases showed: "image-imports: nil"
 
-*Root Cause:* The =info= plist may be copied or reset between export phases, losing custom data.
+*Root Cause:*
+The =info= plist may be copied or reset between export phases, losing custom data.
 
 *Solution:* Implemented a dual-storage approach:
 #+begin_src emacs-lisp
@@ -121,8 +149,8 @@ We needed to implement a feature that would:
 *Problem:* Initial regex patterns were too broad, matching unintended text or failing to match absolute paths.
 
 *Evolution:*
-- Started with: =\\.\\(png\\|jpe\\?g\\)$= (matched any path ending in extensions)
-- Refined to: =^/.*\\.\\(png\\|jpe?g\\)$= (only absolute paths)
+- Started with: =\.\(png\|jpe\?g\)$= (matched any path ending in extensions)
+- Refined to: =^/.*\.\(png\|jpe?g\)$= (only absolute paths)
 
 *Lesson:* Start with specific regex patterns for well-defined use cases. Absolute paths are more predictable than relative ones.
 
@@ -137,7 +165,7 @@ We needed to implement a feature that would:
     (lambda (text-element)
       ;; Process each line in the text element
       (dolist (line (split-string raw-text "\n"))
-        (when (and (string-match-p "^/.*\\.\\(png\\|jpe?g\\)$" text)
+        (when (and (string-match-p "^/.*\.\(png\|jpe?g\)$" text)
                    (file-exists-p text))
           ;; Copy image and store import data
           ))))
@@ -178,7 +206,7 @@ We needed to implement a feature that would:
 
 *** Storage Location Strategy
 - **Posts**: =src/assets/images/posts/=
-- **Authors**: =src/assets/images/authors/=  
+- **Authors**: =src/assets/images/authors/=
 - **Rationale**: Organize by content type for better asset management
 
 ** User Experience Improvements
@@ -353,7 +381,7 @@ Corrected backslash escaping for quote replacement:
 (replace-regexp-in-string "\"" "\\\"" val)
 
 ;; After (correct)  
-(replace-regexp-in-string "\"" "\\\\\"" val)
+(replace-regexp-in-string "\"" "\\\\\\\"" val)
 #+end_src
 
 ** Files Modified

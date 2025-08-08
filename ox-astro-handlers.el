@@ -52,8 +52,7 @@ under the key `:astro-body-images-imports`."
          (astro-image-import (when body-images-imports
                                "import { Image } from 'astro:assets';"))
          ;; 4. LinkPeek component import (if raw URLs are used - check body for raw URL patterns)
-         (linkpeek-import (when (or (plist-get info :astro-uses-linkpeek)
-                                    (string-match-p "\\[\\(https?://[^]]+\\)\\](\\1)" body))
+         (linkpeek-import (when (plist-get info :astro-uses-linkpeek)
                             "import LinkPeek from '../../components/ui/LinkPeek.astro';"))
          ;; 5. Combine all imports, filtering out nil/empty values
          (all-imports (mapconcat #'identity
@@ -96,15 +95,6 @@ under the key `:astro-body-images-imports`."
                            (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
                        match)))
                  s))))
-    ;; Convert markdown links that are raw URLs to LinkPeek components
-    (setq s (replace-regexp-in-string
-             "\^\[\(https?://[^]]+\)\](\(\1\))"
-             (lambda (match)
-               (let ((url (match-string 1 match)))
-                 ;; Mark that we're using LinkPeek (for import)
-                 (plist-put info :astro-uses-linkpeek t)
-                 (format "<LinkPeek href=\"%s\"></LinkPeek>" url)))
-             s))
     ;; Indented blocks to blockquotes
     (let* ((lines (split-string s "\n"))
            (processed-lines

@@ -172,11 +172,9 @@ Falls back to the current time if no date is specified."
 
 (defun org-astro-link (link desc info)
   "Transcode a LINK object for Astro MDX.
-This handles raw URLs specially to format them as [url](url)
-instead of <url>."
+This handles raw URLs specially to format them as <LinkPeek> components."
   (let ((type (org-element-property :type link))
-        (path (org-element-property :path link))
-        (raw-link (org-element-property :raw-link link)))
+        (path (org-element-property :path link)))
     (cond
      ;; Fuzzy links for internal headings
      ((and (string= type "fuzzy") (not (string-match-p "://" path)))
@@ -184,12 +182,16 @@ instead of <url>."
              (title (org-element-property :raw-value target))
              (slug (org-astro--slugify title)))
         (concat "[" (or desc title) "](" (string ?#) slug ")")))
+
      ;; Raw URLs (no description)
      ((and (not desc) (member type '("http" "https" "ftp" "mailto")))
-      (format "[%s](%s)" raw-link raw-link))
+      (plist-put info :astro-uses-linkpeek t)
+      (format "<LinkPeek href=\"%s\"></LinkPeek>" path))
+
      ;; Defer to default markdown for all other links
      (t
       (org-md-link link desc info)))))
+
 
 (defun org-astro-src-block (src-block contents info)
   "Transcode a SRC-BLOCK element into fenced Markdown format."
