@@ -30,9 +30,10 @@ Then, add the following to your Emacs configuration (~init.el~):
 * How to Use
 
 1.  Open the Org file you want to export.
-2.  Run the command ~M-x org-astro-export-to-mdx~.
-3.  If the destination folder is not specified in the file, you will be prompted to select one from your pre-configured list.
-4.  The ~.mdx~ file will be generated in the selected destination.
+2.  Set the destination folder using the `#+DESTINATION_FOLDER` keyword. You can use a nickname from your `org-astro-known-posts-folders` list or provide a full, absolute path to any directory.
+3.  Run the command ~M-x org-astro-export-to-mdx~.
+4.  If the destination is not specified in the file, you will be prompted to select one from your pre-configured list.
+5.  The ~.mdx~ file will be generated in the specified destination.
 
 * Front Matter Generation
 
@@ -61,7 +62,7 @@ The exporter automatically generates YAML front matter based on keywords in your
 
 * Image Handling
 
-The exporter simplifies image management by automatically processing and importing them.
+The exporter simplifies image management by automatically processing and importing them. It uses Astro's built-in `<Image>` component to ensure all images are optimized.
 
 **Cover Image**
 
@@ -77,13 +78,14 @@ For the cover image specified by ~#+COVER_IMAGE~, the exporter automatically:
 When you link to a local image in the body of your Org file (e.g., `[[file:./images/post-image.png]]`), the exporter performs several actions automatically:
 
 1.  *Copying*: The image is copied to the `src/assets/images/posts/` directory in your Astro project.
-2.  *Import Generation*: An import statement is added to the top of the MDX file. The variable name is derived from the image's filename (e.g., `post-image.png` becomes `postImage`).
+2.  *Import Generation*: An import statement for the `<Image>` component and the specific image is added to the top of the MDX file. The variable name is derived from the image's filename (e.g., `post-image.png` becomes `postImage`).
     #+begin_src javascript
+    import { Image } from 'astro:assets';
     import postImage from '~/assets/images/posts/post-image.png';
     #+end_src
-3.  *Link Conversion*: The Org link is converted into an `<img>` tag that uses the imported image variable, making it ready for Astro's image processing pipeline.
+3.  *Link Conversion*: The Org link is converted into an `<Image>` component that uses the imported image variable, making it ready for Astro's image processing pipeline.
     #+begin_src html
-    <img src={postImage} alt="Post image" />
+    <Image src={postImage} alt="Post image" />
     #+end_src
 
 This process applies to all local images found in the document body, streamlining the use of illustrations, diagrams, and other graphics in your posts.
@@ -105,7 +107,23 @@ The exporter will automatically:
 1.  Detect that `/Users/jay/Pictures/my-diagram.png` is an image.
 2.  Copy it to the `src/assets/images/posts/` directory.
 3.  Generate an import for it (e.g., `import myDiagram from '...'`).
-4.  Replace the path with the proper `<img src={myDiagram} ... />` tag.
+4.  Replace the path with the proper `<Image src={myDiagram} ... />` component.
+
+* Link Handling
+
+The exporter distinguishes between standard links with descriptions and raw, bare URLs.
+
+**Standard Links**
+A standard Org link with a description is converted directly to its Markdown equivalent.
+- *Org*: ~[[https://google.com][Search with Google]]~
+- *MDX*: ~[Search with Google](https://google.com)~
+
+**Raw URLs (LinkPeek)**
+A bare URL without a description is automatically converted into a custom ~<LinkPeek>~ component, which can be styled to provide rich link previews.
+- *Org*: ~https://google.com~
+- *MDX*: ~<LinkPeek href="https://google.com"></LinkPeek>~
+
+This ensures that you have fine-grained control over how links appear on your site.
 
 * Special Formatting Rules
 
@@ -130,9 +148,11 @@ becomes:
 > This is an example.
 
 **Raw URLs**
-** Raw URLs
-Bare URLs in your Org file are automatically converted into a custom ~<LinkPeek>~ component, which can be styled to provide rich link previews.
-~https://gemini.google.com~ becomes ~<LinkPeek href="https://gemini.google.com"></LinkPeek>~.
+Bare URLs in your Org file are automatically converted into a custom ~<LinkPeek>~ component, which can be styled to provide rich link previews. If a URL is detected without a description (e.g., just `https://google.com`), it will be transcoded into:
+#+begin_src html
+<LinkPeek href="https://google.com"></LinkPeek>
+#+end_src
+This ensures that even plain links get special treatment, and the necessary component import is added automatically.
 
 **Literal Characters**
 The exporter ensures that apostrophes, quotation marks, and en dashes are exported as literal characters instead of HTML entities (~&rsquo;~, ~&#x2013;~, etc.), keeping the Markdown source clean.
