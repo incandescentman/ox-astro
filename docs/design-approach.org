@@ -90,6 +90,10 @@ After encountering bugs with nil hash tables and regex escaping, adopted pattern
 - Validate data structures before processing
 - Use proper escape sequences in regex replacements
 
+** Decision 6: Graceful Handling of Missing Information
+*Principle*: If there is missing information in the Org source file, ox-astro must either use sensible defaults (like the default author image) or prompt the user to supply the information (e.g., destination folder), rather than failing with an error.
+*Rationale*: Provides a smoother user experience and prevents export failures for common omissions. It makes the exporter more robust and user-friendly.
+
 * Bug Analysis: August 2025
 
 ** Hash Table Error in Image Processing

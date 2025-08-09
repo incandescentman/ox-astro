@@ -87,7 +87,7 @@ generated and added to the Org source file."
             ;; 2. Handle Excerpt
             (unless excerpt-present
               (let* ((paragraph (org-element-map tree 'paragraph 'identity nil 'first-match))
-                     (excerpt-text
+                                          (excerpt-text
                       (when paragraph
                         (let* ((raw-text (org-export-data (org-element-contents paragraph) info))
                                ;; Remove markdown formatting and newlines

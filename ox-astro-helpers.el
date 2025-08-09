@@ -214,7 +214,7 @@ If it has a TODO keyword, convert it to a Markdown task list item."
     (if todo-keyword
         ;; It's a TODO item, format as a task list.
         (let* ((title (org-export-data (org-element-property :title heading)
-                                       (cons :with-smart-quotes (cons nil info))))
+                                       (list* :with-smart-quotes nil info)))
                (nesting-level (org-astro--get-task-nesting-level heading))
                (indent (make-string (* 2 nesting-level) ? ))
                (donep (member todo-keyword org-done-keywords))
@@ -232,7 +232,7 @@ If it has a TODO keyword, convert it to a Markdown task list item."
           (format "%s- %s %s%s\n" indent checkbox title indented-contents))
         ;; It's a regular heading.
         (let* ((title (org-export-data (org-element-property :title heading)
-                                       (cons :with-smart-quotes (cons nil info))))
+                                       (list* :with-smart-quotes nil info)))
                (level (+ (org-element-property :level heading)
                          (or (plist-get info :headline-offset) 0)))
                (header (format "%s %s" (make-string level ?#) title)))

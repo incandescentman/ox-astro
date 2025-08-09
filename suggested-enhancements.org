@@ -1,0 +1,23 @@
+#+TITLE: Suggested Enhancements for ox-astro
+#+AUTHOR: Gemini
+
+This file contains a list of potential new features for the ox-astro exporter, grouped by category.
+
+* Content and Syntax Enhancements
+1.  *Advanced Table Support*: Convert Org mode tables into styled HTML `<table>` elements with specific CSS classes, rather than just basic Markdown tables. This would allow for better visual presentation in Astro.
+2.  *Footnote Handling*: Automatically convert Org-style footnotes (`[fn:1]`) into the standard Markdown footnote syntax (`[^1]`), which Astro can then process.
+3.  *LaTeX and Math Support*: Detect LaTeX fragments (e.g., `$\sin(x)$`) and automatically include the necessary KaTeX or MathJax imports and configuration in the MDX output, making it easy to render mathematical equations.
+4.  *Internal Link Resolution*: Create a system to resolve links between different Org files within the project (e.g., `[[file:another-post.org]]`). The exporter would convert these to valid relative URLs for the final Astro site, which is great for creating a personal wiki or a series of connected posts.
+
+* Deeper Astro Integration
+1.  *Custom Component Shortcodes*: Allow users to embed their own Astro components directly from Org mode. For example, a special block syntax could be used to invoke a component and pass it properties (e.g., `#+BEGIN_ASTRO card, title="My Card" ...`).
+2.  *Content Collections Schema Awareness*: If the Astro project uses Content Collections, the exporter could be configured to read the collection's schema and validate the Org file's front matter during export, ensuring type safety and preventing errors.
+
+* Workflow and User Experience
+1.  *Batch Export Command*: Add a command to export all Org files in a specified directory (e.g., `org-astro-export-directory`), which would be useful for regenerating an entire site at once.
+2.  *Auto-Export on Save*: Implement a minor mode that automatically triggers the export process whenever an Org file is saved, providing a live-preview-like experience.
+3.  *Enhanced Error Reporting*: If an export fails (e.g., a linked image is missing), provide more descriptive errors in the `*Messages*` buffer that point directly to the problematic line in the Org file.
+
+* Asset Management
+1.  *Generic Asset Handling*: Extend the asset-copying logic to handle non-image files like PDFs, ZIP archives, or videos. These could be copied to the `public/` directory and linked with a standard `<a>` tag.
+2.  *Remote Image Caching*: Add an option to download remote images, save them locally to the assets folder, and process them with Astro's `<Image>` component. This would improve performance and prevent broken images if the remote source goes down.
