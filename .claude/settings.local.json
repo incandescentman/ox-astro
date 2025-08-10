@@ -4,7 +4,8 @@
       "Bash(ls:*)",
       "Bash(emacs:*)",
       "Bash(mv:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

@@ -9,13 +9,11 @@
     (error
      (let* ((s (org-no-properties (org-element-interpret-data data))))
        ;; [[url][desc]] -> desc, [[url]] -> url
-       (setq s (replace-regexp-in-string "\[\[\([^]]+\)\]\[\([^]]+\)\]\]" "\2" s))
-       (setq s (replace-regexp-in-string "\[\[\([^]]+\)\]\]" "\1" s))
-       ;; Remove any remaining markdown formatting
-       (setq s (replace-regexp-in-string "[*_]" "" s))
-       ;; Remove any remaining Org-specific formatting
-       (setq s (replace-regexp-in-string "\\\(\|\\\[\|\\\\\]\)" "" s))
-       (org-trim s)))))
+       (setq s (replace-regexp-in-string "\\[\\[\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]" "\\2" s))
+       (setq s (replace-regexp-in-string "\\[\\[\\([^]]+\\)\\]\\]" "\\1" s))
+       ;; Drop common inline markup and collapse whitespace/newlines
+       (setq s (replace-regexp-in-string "[*_~/=]" "" s))
+       (string-trim (replace-regexp-in-string "\n+" " " s))))))
 
 (defun org-astro--slugify (s)
   "Convert string S to a slug."
@@ -67,9 +65,9 @@
   (if (null data)
       ""
       (let ((yaml-str "---\n"))
-        (dolist (pair data))
+        (dolist (pair data)
           (let ((key (car pair))
-                (val (cdr pair))))
+                (val (cdr pair)))
             (when val
               (setq yaml-str
                     (concat yaml-str
@@ -90,35 +88,54 @@
         (concat yaml-str "---\n"))))
 
 (defun org-astro--get-title (tree info)
-  "Extract post title from TREE, with fallbacks.
-It checks for a #+TITLE keyword, then the first headline,
-and finally defaults to 'Untitled Post'."
-  (or (let ((kw (org-element-map tree 'keyword
-                  (lambda (k) (when (string-equal "TITLE" (org-element-property :key k)) k))
-                  nil 'first-match)))
-        (when kw (org-element-property :value kw)))
-      (let ((headline (org-element-map tree 'headline 'identity nil 'first-match)))
-        (when headline
-          (org-export-data (org-element-property :title headline) info)))
-      "Untitled Post"))
+  "Return a title string from TREE/INFO, never nil."
+  (or
+   ;; Explicit #+TITLE first
+   (let ((kw (org-element-map tree 'keyword
+               (lambda (k)
+                 (when (string-equal "TITLE" (org-element-property :key k)) k))
+               nil 'first-match)))
+     (when kw (org-element-property :value kw)))
+   ;; Else first headline, safely exported
+   (let ((hl (org-element-map tree 'headline 'identity nil 'first-match)))
+     (when hl
+       (org-astro--safe-export (org-element-property :title hl) info)))
+   ;; Fallback
+   "Untitled Post"))
 
 (defun org-astro--get-excerpt (tree info)
-  "Extract post excerpt from TREE, with fallbacks.
-It checks for #+ASTRO_EXCERPT or #+EXCERPT, then the first
-paragraph, and finally defaults to an empty string."
-  (or (let ((kw (org-element-map tree 'keyword
-                          (lambda (k)
-                            (when (or (string-equal "ASTRO_EXCERPT" (org-element-property :key k))
-                                      (string-equal "EXCERPT" (org-element-property :key k)))
-                              k))
-                          nil 'first-match)))
-        (when kw (replace-regexp-in-string "[*_/]" "" (org-element-property :value kw))))
-      (let ((paragraph (org-element-map tree 'paragraph
-                                 'org-element-contents
-                                 nil 'first-match)))
-        (when paragraph
-          (replace-regexp-in-string "[*_/]" "" (org-export-data paragraph info))))
-      ""))
+  "Return an excerpt string from TREE/INFO, possibly empty but never nil."
+  (or
+   ;; Prefer explicit #+ASTRO_EXCERPT or #+EXCERPT
+   (let ((kw (org-element-map tree 'keyword
+               (lambda (k)
+                 (when (member (org-element-property :key k)
+                               '("ASTRO_EXCERPT" "EXCERPT"))
+                   k))
+               nil 'first-match)))
+     (when kw
+       (let* ((v (org-element-property :value kw)))
+         (string-trim (replace-regexp-in-string "[*_/]" "" v)))))
+   ;; Else first paragraph, safely exported and cleaned
+   (let ((p (org-element-map tree 'paragraph 'identity nil 'first-match)))
+     (when p
+       (let* ((raw (org-astro--safe-export (org-element-contents p) info))
+              (clean (replace-regexp-in-string "[*_/]" "" raw))
+              (one   (replace-regexp-in-string "\n" " " clean)))
+         ;; take first sentence up to ~300 chars, else truncate with ellipsis
+         (if (string-match "\\`\\(.\\{1,300\\}?[.?!]\\)" one)
+             (org-trim (match-string 1 one))
+           (truncate-string-to-width (org-trim one) 300 nil nil "…")))))
+  ;; If all else fails:
+  ""))
+
+(defun org-astro--parse-tags (info)
+  "Return a list of tags from INFO, splitting on commas/whitespace/newlines."
+  (let* ((tags-raw (or (plist-get info :astro-tags)
+                       (plist-get info :tags)))
+         (tags (when (and tags-raw (stringp tags-raw))
+                 (org-split-string tags-raw "[, \t\n]+"))))
+    (delq nil (mapcar #'string-trim tags))))
 
 (defun org-astro--get-publish-date (info)
   "Extract and format the publish date from INFO.
@@ -157,8 +174,7 @@ Falls back to the current time if no date is specified."
          (title (org-astro--get-title tree info))
          (author (or (plist-get info :author) "Jay Dixit"))
          (excerpt (org-astro--get-excerpt tree info))
-         (tags-raw (or (plist-get info :astro-tags) (plist-get info :tags)))
-         (tags (when tags-raw (org-split-string tags-raw "[, \n]+\n")))
+         (tags (org-astro--parse-tags info))
          (publish-date (org-astro--get-publish-date info))
          (author-image (org-astro--get-author-image info posts-folder))
          (cover-image-data (org-astro--get-cover-image info posts-folder))
@@ -185,12 +201,11 @@ Falls back to the current time if no date is specified."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun org-astro-link (link desc info)
-  "Transcode a LINK object for Astro MDX.
-This handles raw URLs specially to format them as <LinkPeek> components."
-  (let ((type (org-element-property :type link))
-        (path (org-element-property :path link)))
+  "Transcode a LINK object for Astro MDX, robust to partial INFO during preflight."
+  (let* ((type (org-element-property :type link))
+         (path (org-element-property :path link)))
     (cond
-     ;; Fuzzy links for internal headings (be resilient if INFO is incomplete)
+     ;; Internal target (fuzzy) → local anchor; degrade gracefully if INFO is partial
      ((and (string= type "fuzzy") (not (string-match-p "://" path)))
       (let* ((resolved-title
               (condition-case _
@@ -198,32 +213,43 @@ This handles raw URLs specially to format them as <LinkPeek> components."
                                       (org-export-resolve-fuzzy-link link info))))
                     (and target (org-element-property :raw-value target)))
                 (error nil)))
-             (title (or desc resolved-title path))
-             (slug  (org-astro--slugify title)))
-        (format "[[#%s][%s]]" (or desc title) slug)))
+             (text (or desc resolved-title path))
+             (slug (org-astro--slugify text)))
+        (format "[%s](#%s)" text slug)))
 
-     ;; Raw URLs (no description) - note: plist-put return value is ignored, so this was a no-op.
-     ;; Optional improvement (not required for the crash): detect <LinkPeek> later in the body filter.
+     ;; Bare URLs with no description → LinkPeek + set import flag
      ((and (null desc) (member type '("http" "https" "ftp" "mailto")))
-      (format "<LinkPeek href=\"%s\"></LinkPeek>" path))
+      ;; Use SETF so the plist is actually mutated even if the key is new
+      (setf (plist-get info :astro-uses-linkpeek) t)
+      (format "<LinkPeek href=\"%s\"></LinkPeek>"
+              (or (org-element-property :raw-link link)
+                  (concat type ":" path))))
 
-     ;; Everything else → default Markdown
+     ;; Everything else → prefer org's MD translator; fall back to plain Markdown
      (t
-      (org-md-link link desc info)))))
-
+      (let ((md (when (fboundp 'org-md-link)
+                  (ignore-errors (org-md-link link desc info)))))
+        (or md
+            (let* ((raw (or (org-element-property :raw-link link)
+                            (concat type ":" path)))
+                   (text (or desc raw)))
+              (format "[%s](%s)" text raw))))))))
 
 (defun org-astro-src-block (src-block contents info)
   "Transcode a SRC-BLOCK element into fenced Markdown format."
-  (if (not (org-export-read-attribute :attr_md src-block :textarea)))
+  (if (not (org-export-read-attribute :attr_md src-block :textarea))
       (let* ((lang (org-element-property :language src-block))
              ;; Use :value to get raw content, preserving internal newlines.
              (code (org-element-property :value src-block)))
-        (when (and (member lang '("user" "prompt" "quote")) (string-match-p "---" code)))
+        (when (and (member lang '("user" "prompt" "quote")) (string-match-p "---" code))
           (setq code (replace-regexp-in-string "---" "—" code)))
         ;; Remove any trailing newlines to prevent extra space at the end.
         (setq code (replace-regexp-in-string "\\`\n+\|\s-+\'" "" code))
         (format "```%s\n%s\n```" (or lang "") code))
-      (org-html-textarea-block src-block contents info)))
+    ;; Fallback to simple fenced code block
+    (let* ((lang (org-element-property :language src-block))
+           (code (org-element-property :value src-block)))
+      (format "```%s\n%s\n```" (or lang "") (org-trim code)))))
 
 (defun org-astro-heading (heading contents info)
   (let ((todo-keyword (org-element-property :todo-keyword heading)))
@@ -251,8 +277,9 @@ This handles raw URLs specially to format them as <LinkPeek> components."
                                             (plist-put (copy-plist info) :with-smart-quotes nil)))
              (level (+ (org-element-property :level heading)
                        (or (plist-get info :headline-offset) 0)))
-             (header (format "%s %s" (make-string level ?#) title)))
-        (format "%s\n\n%s" header (or contents ""))))))
+             (level (min (max level 1) 6))
+             (header (concat (make-string level ?#) " " title)))
+        (concat header "\n\n" (or contents ""))))))
 
 (defun org-astro-paragraph (paragraph contents info)
   "Transcode a PARAGRAPH element.
@@ -267,7 +294,7 @@ Otherwise, use the default Markdown paragraph transcoding."
              (text (when (stringp raw-text) (org-trim raw-text))))
         (when (and text
                    (string-match-p "^/.*\\.\(png\|jpe?g\)$" text)
-                   (file-exists-p text)))
+                   (file-exists-p text))
           (setq is-image-path t)
           (setq path text))))
 
@@ -296,16 +323,16 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
          (processed-lines
           (mapcar
            (lambda (line)
-             (let ((trimmed-line (org-trim line))))
+             (let ((trimmed-line (org-trim line)))
                (cond
                 ;; Raw image path
                 ((and trimmed-line
                       (string-match-p "^/.*\\.\(png\|jpe?g\)$" trimmed-line)
-                      (file-exists-p trimmed-line)))
+                      (file-exists-p trimmed-line))
                  (let ((image-data (when image-imports
                                      (cl-find trimmed-line image-imports
                                               :key (lambda (item) (plist-get item :path))
-                                              :test #'string-equal)))))
+                                              :test #'string-equal))))
                    (if image-data
                        (let ((var-name (plist-get image-data :var-name))
                              (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
@@ -314,7 +341,7 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                        "")))
                 ;; Raw URL
                 ((and trimmed-line
-                      (string-match-p "^https?://[^[:space:]]+$" trimmed-line)))
+                      (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
                  (setq has-linkpeek t)
                  (format "<LinkPeek href=\"%s\"></LinkPeek>" trimmed-line))
                 ;; Regular line
@@ -324,8 +351,6 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
     (when has-linkpeek
       (plist-put info :astro-uses-linkpeek t))
     (mapconcat 'identity processed-lines "\n"))) 
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Main Export Functions
@@ -337,22 +362,22 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
   (let (images)
     ;; 1. Collect from `link` elements
     (org-element-map tree 'link
-      (lambda (link))
+      (lambda (link)
         (let ((type (org-element-property :type link))
-              (path (org-element-property :path link))))
+              (path (org-element-property :path link)))
           (when (and (string= type "file")
-                     (string-match-p "\\(png\|jpg\|jpeg\|gif\|svg\|webp\)$" path)))
+                     (string-match-p "\\(png\|jpg\|jpeg\|gif\|svg\|webp\)$" path))
             (push path images)))))
     ;; 2. Collect from raw paths in all plain-text elements
     (org-element-map tree 'plain-text
-      (lambda (text-element))
+      (lambda (text-element)
         (let* ((raw-text (org-element-property :value text-element))
-               (lines (when (stringp raw-text) (split-string raw-text "\n")))))
-          (dolist (line lines))
-            (let ((text (org-trim line))))
+               (lines (when (stringp raw-text) (split-string raw-text "\n"))))
+          (dolist (line lines)
+            (let ((text (org-trim line)))
               (when (and text
                          (string-match-p "^/.*\\.\(png\|jpe?g\)$" text)
-                         (file-exists-p text)))
+                         (file-exists-p text))
                 (push text images)))))))
     ;; Return a list with no duplicates
     (delete-dups (nreverse images))))
@@ -369,7 +394,27 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
            (src-dir (file-name-directory
                      (directory-file-name
                       (file-name-directory
-                       (directory-file-name posts-dir)))))))
+                       (directory-file-name posts-dir))))))
       (expand-file-name (concat "assets/images/" sub-dir) src-dir))))
 
-(defun org-astro--process-image-path (image-path posts-.el ends here
+(defun org-astro--process-image-path (image-path posts-folder sub-dir)
+  "Process IMAGE-PATH for POSTS-FOLDER, copying to SUB-DIR if needed.
+Returns the processed path suitable for Astro imports."
+  (when (and image-path posts-folder)
+    (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+           (filename (file-name-nondirectory image-path))
+           (target-path (when assets-folder (expand-file-name filename assets-folder))))
+      (when (and target-path (file-exists-p image-path))
+        ;; Create assets directory if it doesn't exist
+        (when assets-folder
+          (make-directory assets-folder t))
+        ;; Copy the file
+        (condition-case err
+            (copy-file image-path target-path t)
+          (error (message "Failed to copy image %s: %s" image-path err)))
+        ;; Return the relative path for imports
+        (when (file-exists-p target-path)
+          (concat "../../assets/images/" sub-dir filename))))))
+
+(provide 'ox-astro-helpers)
+;;; ox-astro-helpers.el ends here
