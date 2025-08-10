@@ -1,3 +1,10 @@
+#+TITLE: Edinburgh late night
+
+#+EXCERPT: Bar Prince (in the hotel we were at)
+
+#+PUBLISH_DATE: [2025-08-10 Sun 03:20]
+
+#+DESTINATION_FOLDER: jaydocs
 ** Edinburgh late night
 [[https://www.google.com/maps/place/Bar+Prince/@55.9528595,-3.1895948,17z/data=!4m6!3m5!1s0x4887c7d342ec9ad9:0xb773e9a22b6c9732!8m2!3d55.9528595!4d-3.1895948!16s%2Fg%2F11s1v17hfq!5m1!1e1?authuser=0&hl=en&entry=ttu&g_ep=EgoyMDI1MDgwNi4wIKXMDSoASAFQAw%3D%3D][Bar Prince]]
 (in the hotel we were at)

@@ -2,6 +2,43 @@
 
 ;;; Code:
 
+;; Insert or replace a #+KEY: VALUE line in the top keyword block.
+(defun org-astro--upsert-keyword (key value)
+  "Upsert #+KEY: VALUE near the top of the buffer.
+If KEY exists before the first headline, replace its line.
+Otherwise insert after the existing keyword/comment block."
+  (let* ((ukey (upcase (format "%s" key)))
+         (re (format "^#\\+%s:\\s-*\\(.*\\)$" (regexp-quote ukey))))
+    (save-excursion
+      (save-restriction
+        (widen)
+        (goto-char (point-min))
+        (let ((limit (save-excursion
+                       (or (re-search-forward "^\\*" nil t) (point-max)))))
+          (if (re-search-forward re limit t)
+              ;; Replace existing line
+              (progn
+                (beginning-of-line)
+                (kill-line)
+                (insert (format "#+%s: %s" ukey (or value ""))))
+            ;; Insert at end of keyword/comment block
+            (goto-char (point-min))
+            (while (and (< (point) limit)
+                        (or (looking-at-p "^#\\+")
+                            (looking-at-p "^#\\s-")
+                            (looking-at-p "^\\s-*$")))
+              (forward-line 1))
+            ;; Keep one blank line before insert unless at BOF or already blank
+            (unless (or (bobp) (looking-at-p "^\\s-*$"))
+              (insert "\n"))
+            (insert (format "#+%s: %s\n" ukey (or value "")))))))))
+
+;; Back-compat alias for existing calls
+(defun org-astro--insert-keyword-at-end-of-block (key value)
+  "Alias for `org-astro--upsert-keyword'."
+  (org-astro--upsert-keyword key value))
+
+
 (defun org-astro--safe-export (data info)
   "Like `org-export-data' but never throws. Falls back to readable plain text."
   (condition-case _
@@ -256,8 +293,9 @@ Falls back to the current time if no date is specified."
   (let ((todo-keyword (org-element-property :todo-keyword heading)))
     (if todo-keyword
         ;; task style
-        (let* ((title (org-astro--safe-export (org-element-property :title heading)
-                                              (plist-put (copy-plist info) :with-smart-quotes nil)))
+        (let* ((info-copy (copy-sequence info))
+               (_ (plist-put info-copy :with-smart-quotes nil))
+               (title (org-astro--safe-export (org-element-property :title heading) info-copy))
                (nesting-level (org-astro--get-task-nesting-level heading))
                (indent (make-string (* 2 nesting-level) ? ))
                (donep (member todo-keyword org-done-keywords))
@@ -274,8 +312,9 @@ Falls back to the current time if no date is specified."
                   "")))
           (format "%s- %s %s%s\n" indent checkbox title indented-contents))
       ;; regular heading
-      (let* ((title (org-astro--safe-export (org-element-property :title heading)
-                                            (plist-put (copy-plist info) :with-smart-quotes nil)))
+      (let* ((info-copy (copy-sequence info))
+             (_ (plist-put info-copy :with-smart-quotes nil))
+             (title (org-astro--safe-export (org-element-property :title heading) info-copy))
              (level (+ (org-element-property :level heading)
                        (or (plist-get info :headline-offset) 0)))
              (level (min (max level 1) 6))
