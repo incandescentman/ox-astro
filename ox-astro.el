@@ -94,7 +94,7 @@ generated and added to the Org source file."
                             (let* ((raw (org-astro--safe-export (org-element-contents paragraph) info))
                                    (clean (replace-regexp-in-string "[*_/]" "" raw))
                                    (one   (replace-regexp-in-string "\n" " " clean))
-                                   (first (if (string-match "\\`\(.\{1,300\}?[.?!]\)" one)
+                                   (first (if (string-match "\\`\\(.\\{1,300\\}?[.?!]\\)" one)
                                               (match-string 1 one)
                                             (truncate-string-to-width one 300 nil nil "..."))))
                               (org-trim first)))))
@@ -163,12 +163,12 @@ generated and added to the Org source file."
 
           (if pub-dir
               (progn
-                (make-directory pub-dir :parents)
+                (make-directory pub-dir t)
                 (org-export-to-file 'astro outfile async subtreep visible-only body-only)
                 outfile)  ; Return the output file path
               (progn
                 (message "Astro export cancelled: No posts folder selected.")
-                nil))))
+                nil))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
