@@ -34,10 +34,10 @@
     (let* ((filename (file-name-sans-extension (file-name-nondirectory path)))
            ;; Replace hyphens and underscores with spaces
            (human-readable (replace-regexp-in-string "[-_]" " " filename))
-           ;; Remove YYYY MM DD and long number runs
-           (cleaned (replace-regexp-in-string " [0-9][0-9][0-9][0-9] [0-9][0-9] [0-9][0-9] " " " human-readable)))
-      (setq cleaned (replace-regexp-in-string " [0-9][0-9][0-9][0-9][0-9]+ " " " cleaned))
-      (setq cleaned (org-trim cleaned))
+           ;; Remove excessive numbers/dates and clean up
+           (cleaned (replace-regexp-in-string " [0-9][0-9][0-9][0-9] [0-9][0-9] [0-9][0-9] " " " human-readable))
+           (cleaned (replace-regexp-in-string " [0-9][0-9][0-9][0-9][0-9]+ " " " cleaned))
+           (cleaned (org-trim cleaned)))
       (capitalize cleaned))))
 
 (defun org-astro--path-to-var-name (path)
@@ -47,8 +47,8 @@
            (parts (split-string filename "[-_]")))
       (if (null parts)
           ""
-        (concat (car parts)
-                (mapconcat #'capitalize (cdr parts) ""))))))
+          (concat (car parts)
+                  (mapconcat #'capitalize (cdr parts) ""))))))
 
 (defun org-astro--get-task-nesting-level (heading)
   "Calculate nesting level for a TODO task by counting TODO ancestors."
@@ -64,30 +64,28 @@
   "Generate a YAML front-matter string from an alist DATA."
   (if (null data)
       ""
-    (let ((yaml-str "---\n"))
-      (dolist (pair data)
-        (let ((key (car pair))
-              (val (cdr pair)))
-          (when val
-            (setq yaml-str
-                  (concat yaml-str
-                          (format "%s: " (symbol-name key))
-                          (if (listp val)
+      (let ((yaml-str "---\n"))
+        (dolist (pair data)
+          (let ((key (car pair))
+                (val (cdr pair)))
+            (when val
+              (setq yaml-str
+                    (concat yaml-str
+                            (format "%s: " (symbol-name key))
+                            (cond
+                             ((listp val)
                               (concat "\n"
-                                      (mapconcat (lambda (item)
-                                                   (format "- %s" item))
-                                                 val "\n")
-                                      "\n")
-                            (format "%s\n"
-                                    (if (and (stringp val)
-                                             (string-match-p ":" val)
-                                             (not (eq key 'publishDate)))
-                                        ;; Quote strings that contain ':' (avoid YAML parse issues)
-                                        (format "\"%s\""
-                                                (replace-regexp-in-string
-                                                 "\"" "\\\"" val))
-                                      val))))))))
-      (concat yaml-str "---\n"))))
+                                      (mapconcat
+                                       (lambda (item) (format "- %s" item))
+                                       val "\n")
+                                      "\n"))
+                             (t (format "%s\n"
+                                        (if (and (stringp val)
+                                                 (string-match-p ":" val)
+                                                 (not (eq key 'publishDate)))
+                                            (format "\"%s\"" (replace-regexp-in-string "\"" "\\\"" val))
+                                            val)))))))))
+        (concat yaml-str "---\n"))))
 
 (defun org-astro--get-title (tree info)
   "Return a title string from TREE/INFO, never nil."
@@ -125,11 +123,11 @@
               (clean (replace-regexp-in-string "[*_/]" "" raw))
               (one   (replace-regexp-in-string "\n" " " clean)))
          ;; take first sentence up to ~300 chars, else truncate with ellipsis
-         (if (string-match "\`\(.\{1,300\}?[.?!]\)" one)
+         (if (string-match "\\`\\(.\\{1,300\\}?[.?!]\\)" one)
              (org-trim (match-string 1 one))
            (truncate-string-to-width (org-trim one) 300 nil nil "…")))))
-   ;; If all else fails:
-   ""))
+  ;; If all else fails:
+  ""))
 
 (defun org-astro--parse-tags (info)
   "Return a list of tags from INFO, splitting on commas/whitespace/newlines."
@@ -152,7 +150,7 @@ Falls back to the current time if no date is specified."
 (defun org-astro--get-author-image (info posts-folder)
   "Get the author image path from INFO, with defaults."
   (let ((author-image-raw (or (plist-get info :astro-author-image)
-                              (plist-get info :author-image))))
+                             (plist-get info :author-image))))
     (or (and author-image-raw posts-folder
              (org-astro--process-image-path author-image-raw posts-folder "authors/"))
         org-astro-default-author-image)))
@@ -162,7 +160,8 @@ Falls back to the current time if no date is specified."
   (let* ((image-raw (or (plist-get info :astro-image)
                         (plist-get info :cover-image)))
          (image (and image-raw posts-folder
-                     (org-astro--process-image-path image-raw posts-folder "posts/")))
+                     (org-astro--process-image-path
+                      image-raw posts-folder "posts/")))
          (image-alt (or (plist-get info :astro-image-alt)
                         (plist-get info :cover-image-alt)
                         (and image (org-astro--filename-to-alt-text image)))))
@@ -244,8 +243,8 @@ Falls back to the current time if no date is specified."
              (code (org-element-property :value src-block)))
         (when (and (member lang '("user" "prompt" "quote")) (string-match-p "---" code))
           (setq code (replace-regexp-in-string "---" "—" code)))
-        ;; Trim trailing newlines/whitespace to prevent extra space at the end.
-        (setq code (string-trim-right code))
+        ;; Remove any trailing newlines to prevent extra space at the end.
+        (setq code (replace-regexp-in-string "\\`\n+\|\s-+\'" "" code))
         (format "```%s\n%s\n```" (or lang "") code))
     ;; Fallback to simple fenced code block
     (let* ((lang (org-element-property :language src-block))
@@ -271,7 +270,7 @@ Falls back to the current time if no date is specified."
                                "\n"
                                (concat "\n" content-indent)
                                trimmed-contents)))
-                  "")))
+                    "")))
           (format "%s- %s %s%s\n" indent checkbox title indented-contents))
       ;; regular heading
       (let* ((title (org-astro--safe-export (org-element-property :title heading)
@@ -294,10 +293,11 @@ Otherwise, use the default Markdown paragraph transcoding."
       (let* ((raw-text (org-element-property :value child))
              (text (when (stringp raw-text) (org-trim raw-text))))
         (when (and text
-                   (string-match-p "^/.*\\.\(png\\|jpe?g\)$" text)
+                   (string-match-p "^/.*\\.\(png\|jpe?g\)$" text)
                    (file-exists-p text))
           (setq is-image-path t)
           (setq path text))))
+
     (if is-image-path
         (let* ((image-imports (plist-get info :astro-body-images-imports))
                (image-data (when image-imports
@@ -308,10 +308,10 @@ Otherwise, use the default Markdown paragraph transcoding."
               (let ((var-name (plist-get image-data :var-name))
                     (alt-text (or (org-astro--filename-to-alt-text path) "Image")))
                 (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
-            ;; Fallback: if image wasn't processed by the filter, just output the original contents.
-            contents))
-      ;; Not an image path, use default paragraph handling
-      (org-md-paragraph paragraph contents info))))
+              ;; Fallback: if image wasn't processed by the filter, just output the path as text.
+              contents))
+        ;; Not an image path, use default paragraph handling
+        (org-md-paragraph paragraph contents info))))
 
 (defun org-astro-plain-text (text info)
   "Transcode a plain-text element.
@@ -327,7 +327,7 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                (cond
                 ;; Raw image path
                 ((and trimmed-line
-                      (string-match-p "^/.*\\.\(png\\|jpe?g\)$" trimmed-line)
+                      (string-match-p "^/.*\\.\(png\|jpe?g\)$" trimmed-line)
                       (file-exists-p trimmed-line))
                  (let ((image-data (when image-imports
                                      (cl-find trimmed-line image-imports
@@ -337,8 +337,8 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                        (let ((var-name (plist-get image-data :var-name))
                              (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
                          (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
-                     ;; Fallback: if image wasn't processed, return empty string to remove the raw path
-                     "")))
+                       ;; Fallback: if image wasn't processed, return empty string to remove the raw path
+                       "")))
                 ;; Raw URL
                 ((and trimmed-line
                       (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
@@ -350,8 +350,7 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
     ;; Store LinkPeek usage in info for import generation
     (when has-linkpeek
       (plist-put info :astro-uses-linkpeek t))
-    (mapconcat 'identity processed-lines "\n")))
-
+    (mapconcat 'identity processed-lines "\n"))) 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Main Export Functions
@@ -367,7 +366,7 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
         (let ((type (org-element-property :type link))
               (path (org-element-property :path link)))
           (when (and (string= type "file")
-                     (string-match-p "\\(png\\|jpg\\|jpeg\\|gif\\|svg\\|webp\\)$" path))
+                     (string-match-p "\\(png\|jpg\|jpeg\|gif\|svg\|webp\)$" path))
             (push path images)))))
     ;; 2. Collect from raw paths in all plain-text elements
     (org-element-map tree 'plain-text
@@ -377,7 +376,7 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
           (dolist (line lines)
             (let ((text (org-trim line)))
               (when (and text
-                         (string-match-p "^/.*\\.\(png\\|jpe?g\)$" text)
+                         (string-match-p "^/.*\\.\(png\|jpe?g\)$" text)
                          (file-exists-p text))
                 (push text images)))))))
     ;; Return a list with no duplicates
