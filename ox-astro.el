@@ -71,44 +71,43 @@ generated and added to the Org source file."
             (buffer-modified-p nil))
         ;; --- Ensure essential front-matter exists, writing back if not ---
         (save-excursion
-          (let* ((tree (org-element-parse-buffer))
-                 (title-present (plist-get info :title))
-                 (excerpt-present (or (plist-get info :astro-excerpt) (plist-get info :excerpt)))
-                 (date-present (or (plist-get info :astro-publish-date) (plist-get info :publish-date) (plist-get info :date))))
+          (condition-case err
+              (let* ((tree (org-element-parse-buffer))
+                     (title-present (plist-get info :title))
+                     (excerpt-present (or (plist-get info :astro-excerpt) (plist-get info :excerpt)))
+                     (date-present (or (plist-get info :astro-publish-date) (plist-get info :publish-date) (plist-get info :date))))
 
-            ;; 1. Handle Title
-            (unless title-present
-              (let* ((headline (org-element-map tree 'headline 'identity nil 'first-match))
-                     (title (when headline (org-export-data (org-element-property :title headline) info))))
-                (when (and title (not (string-blank-p title)))
-                  (org-astro--insert-keyword-at-end-of-block "TITLE" title)
-                  (setq buffer-modified-p t))))
+                ;; 1. Handle Title
+                (unless title-present
+                  (let* ((headline (org-element-map tree 'headline 'identity nil 'first-match))
+                         (title    (when headline
+                                     (org-astro--safe-export (org-element-property :title headline) info))))
+                    (when (and title (not (string-blank-p title)))
+                      (org-astro--insert-keyword-at-end-of-block "TITLE" title)
+                      (setq buffer-modified-p t))))
 
-            ;; 2. Handle Excerpt
-            (unless excerpt-present
-              (let* ((paragraph (org-element-map tree 'paragraph 'identity nil 'first-match))
-                     (excerpt-text
-                      (when paragraph
-                        (let* ((raw-text (org-export-data (org-element-contents paragraph) info))
-                               ;; Remove markdown formatting and newlines
-                               (clean-text (replace-regexp-in-string "[*_/]" "" raw-text))
-                               (single-line-text (replace-regexp-in-string "\n" " " clean-text))
-                               ;; Find the first sentence
-                               (first-sentence
-                                (if (string-match "\\(.+?[.?!]\\)" single-line-text)
-                                    (match-string 1 single-line-text)
-                                    ;; Fallback for short texts without punctuation
-                                    single-line-text))))
-                          (org-trim first-sentence))))) 
-                (when (and excerpt-text (not (string-blank-p excerpt-text)))
-                  (org-astro--insert-keyword-at-end-of-block "EXCERPT" excerpt-text)
-                  (setq buffer-modified-p t))))
+                ;; 2. Handle Excerpt
+                (unless excerpt-present
+                  (let* ((paragraph (org-element-map tree 'paragraph 'identity nil 'first-match))
+                         (excerpt-text
+                          (when paragraph
+                            (let* ((raw (org-astro--safe-export (org-element-contents paragraph) info))
+                                   (clean (replace-regexp-in-string "[*_/]" "" raw))
+                                   (one   (replace-regexp-in-string "\n" " " clean))
+                                   (first (if (string-match "\\`\(.\{1,300\}?[.?!]\)" one)
+                                              (match-string 1 one)
+                                            (truncate-string-to-width one 300 nil nil "..."))))
+                              (org-trim first)))))
+                    (when (and excerpt-text (not (string-blank-p excerpt-text)))
+                      (org-astro--insert-keyword-at-end-of-block "EXCERPT" excerpt-text)
+                      (setq buffer-modified-p t))))
 
-            ;; 3. Handle Date
-            (unless date-present
-              (let ((date-str (format-time-string (org-time-stamp-format 'long 'inactive) (current-time))))
-                (org-astro--insert-keyword-at-end-of-block "PUBLISH_DATE" date-str)
-                (setq buffer-modified-p t))))))
+                ;; 3. Handle Date
+                (unless date-present
+                  (let ((date-str (format-time-string (org-time-stamp-format 'long 'inactive) (current-time))))
+                    (org-astro--insert-keyword-at-end-of-block "PUBLISH_DATE" date-str)
+                    (setq buffer-modified-p t))))
+            (error (message "[ox-astro] Preflight skipped due to: %S" err))))
 
         ;; If we modified the buffer, save it and refresh the export environment
         (when buffer-modified-p

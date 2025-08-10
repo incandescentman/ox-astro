@@ -1,0 +1,140 @@
+Good catch---and agreed: an exporter should never bomb just because a bit of metadata is missing. The crash you're seeing:
+
+: `(wrong-type-argument hash-table-p nil)` on `gethash ...`
+
+is happening when our link translator tries to resolve a *fuzzy link* (or otherwise asks Org's export machinery for an internal reference) *without a fully-initialized `info` environment*. In your preflight step (where you auto-fill `TITLE`, `EXCERPT`, `PUBLISH_DATE` before the real export), we call `org-export-data` on snippets. That invokes our translators (e.g., `org-astro-link`, `org-astro-heading`) with a *partial* `info`. When Org then tries to resolve a reference, it hits a nil hash-table and throws.
+
+*** Fix (robust + minimal changes)
+
+*Goal:* Never crash. If `info` isn't fully populated, fall back to sensible text. Keep prompts for DESTINATION\_FOLDER, and keep defaults for missing fields.
+
+Apply these three changes:
+
+1. *Make link resolution resilient in preflight*
+   Wrap fuzzy-link resolution in `org-astro-link` with a safe fallback (use the link text/path to build a `#slug`), so it works even when `info` lacks internal reference state.
+
+#+begin_src elisp
+;; In ox-astro-helpers.el
+
+(defun org-astro-link (link desc info)
+  "Transcode a LINK object for Astro MDX.
+This handles raw URLs specially to format them as <LinkPeek> components."
+  (let ((type (org-element-property :type link))
+        (path (org-element-property :path link)))
+    (cond
+     ;; Fuzzy links for internal headings (be resilient if INFO is incomplete)
+     ((and (string= type "fuzzy") (not (string-match-p "://" path)))
+      (let* ((resolved-title
+              (condition-case _
+                  (let* ((target (and (plist-get info :parse-tree)
+                                      (org-export-resolve-fuzzy-link link info))))
+                    (and target (org-element-property :raw-value target)))
+                (error nil)))
+             (title (or desc resolved-title path))
+             (slug  (org-astro--slugify title)))
+        (format "[[#%s][%s]]" (or desc title) slug)))
+
+     ;; Raw URLs (no description) - note: plist-put return value is ignored, so this was a no-op.
+     ;; Optional improvement (not required for the crash): detect <LinkPeek> later in the body filter.
+     ((and (null desc) (member type '("http" "https" "ftp" "mailto")))
+      (format "<LinkPeek href=\"%s\"></LinkPeek>" path))
+
+     ;; Everything else → default Markdown
+     (t
+      (org-md-link link desc info)))))
+#+end_src
+
+2. *Add a safe exporter for snippets*
+   Anywhere we're exporting *pieces* (title/excerpt) during preflight, use a wrapper that never throws and degrades to plain text if `org-export-data` isn't safe yet.
+
+#+begin_src elisp
+;; In ox-astro-helpers.el, near the top
+(defun org-astro--safe-export (data info)
+  "Like `org-export-data' but never throws. Falls back to readable plain text."
+  (condition-case _
+      (org-trim (org-export-data data info))
+    (error
+     (let* ((s (org-no-properties (org-element-interpret-data data))))
+       ;; [[url][desc]] -> desc, [[url]] -> url
+       (setq s (replace-regexp-in-string "\\[\\[\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]" "\\2" s))
+       (setq s (replace-regexp-in-string "\\[\\[\\([^]]+\\)\\]\\]" "\\1" s))
+       ;; Drop common inline markup and collapse newlines
+       (setq s (replace-regexp-in-string "[*_~/=]+" "" s))
+       (string-trim (replace-regexp-in-string "\n+" " " s))))))
+#+end_src
+
+3. *Use the safe exporter in preflight and heading translator*
+   Swap the risky calls to `org-export_data` for `org-astro--safe-export`.
+
+#+begin_src elisp
+;; In ox-astro.el (preflight TITLE)
+(let* ((headline (org-element-map tree 'headline 'identity nil 'first-match))
+       (title    (when headline
+                   (org-astro--safe-export (org-element-property :title headline) info))))
+  (when (and title (not (string-blank-p title)))
+    (org-astro--insert-keyword-at-end-of-block "TITLE" title)
+    (setq buffer-modified-p t)))
+
+;; In ox-astro.el (preflight EXCERPT)
+(let* ((paragraph (org-element-map tree 'paragraph 'identity nil 'first-match))
+       (excerpt-text
+        (when paragraph
+          (let* ((raw (org-astro--safe-export (org-element-contents paragraph) info))
+                 (clean (replace-regexp-in-string "[*_/]" "" raw))
+                 (one   (replace-regexp-in-string "\n" " " clean))
+                 (first (if (string-match "\\`\\(.\\{1,300\\}?[.?!]\\)" one)
+                            (match-string 1 one)
+                          (truncate-string-to-width one 300 nil nil "..."))))
+            (org-trim first)))))
+  (when (and excerpt-text (not (string-blank-p excerpt-text)))
+    (org-astro--insert-keyword-at-end-of-block "EXCERPT" excerpt-text)
+    (setq buffer-modified-p t)))
+#+end_src
+
+#+begin_src elisp
+;; In ox-astro-helpers.el (heading translator)
+(defun org-astro-heading (heading contents info)
+  (let ((todo-keyword (org-element-property :todo-keyword heading)))
+    (if todo-keyword
+        ;; task style
+        (let* ((title (org-astro--safe-export (org-element-property :title heading)
+                                              (plist-put (copy-plist info) :with-smart-quotes nil)))
+               ;; ... unchanged ...
+               )
+          ;; ... unchanged ...)
+      ;; regular heading
+      (let* ((title (org-astro--safe-export (org-element-property :title heading)
+                                            (plist-put (copy-plist info) :with-smart-quotes nil)))
+             (level (+ (org-element-property :level heading)
+                       (or (plist-get info :headline-offset) 0)))
+             (header (format "%s %s" (make-string level ?#) title)))
+        (format "%s\n\n%s" header (or contents ""))))))
+#+end_src
+
+4. *(Optional belt-and-suspenders)* Guard the entire preflight block so *any* unexpected exception logs a message and the export still proceeds:
+
+#+begin_src elisp
+(save-excursion
+  (condition-case err
+      (progn
+        ;; existing preflight code (title/excerpt/date insertion)...
+        )
+    (error (message "[ox-astro] Preflight skipped due to: %S" err))))
+#+end_src
+
+*** Why this works
+
+- Fuzzy-link resolution (and some reference generation) depends on hash tables built during the *full* export pipeline. During preflight we don't have that state. The guard + fallback avoids ever calling `gethash` on a nil table.
+- `org-astro--safe-export` lets us reuse Org's exporters when they're available, but never crashes if they aren't---so missing metadata → defaults, not errors.
+
+*** Sanity check with your `test.org`
+
+Your sample file has only a heading and external links. With the changes above:
+
+- Preflight computes a safe `TITLE` from the heading.
+- Preflight computes an `EXCERPT` from the first paragraph (it will ignore markup and collapse whitespace).
+- No crash---even if `info` were partial---because fuzzy-link resolution and snippet exports are now wrapped.
+
+If you want, I can also patch the `LinkPeek` import so it's auto-inserted by scanning the final body (more reliable than trying to mutate `info` from the link translator). But that's independent of this crash.
+
+Want me to bundle these into a single patch you can drop in, or would you prefer I open a PR-style diff against your current files?
