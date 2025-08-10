@@ -207,14 +207,13 @@ This handles raw URLs specially to format them as <LinkPeek> components."
       (org-html-textarea-block src-block contents info)))
 
 (defun org-astro-heading (heading contents info)
-
   "Transcode a HEADING element.
 If it has a TODO keyword, convert it to a Markdown task list item."
   (let ((todo-keyword (org-element-property :todo-keyword heading)))
     (if todo-keyword
         ;; It's a TODO item, format as a task list.
         (let* ((title (org-export-data (org-element-property :title heading)
-                                       (list* :with-smart-quotes nil info)))
+                                       (plist-put (copy-plist info) :with-smart-quotes nil)))
                (nesting-level (org-astro--get-task-nesting-level heading))
                (indent (make-string (* 2 nesting-level) ? ))
                (donep (member todo-keyword org-done-keywords))
@@ -232,7 +231,7 @@ If it has a TODO keyword, convert it to a Markdown task list item."
           (format "%s- %s %s%s\n" indent checkbox title indented-contents))
         ;; It's a regular heading.
         (let* ((title (org-export-data (org-element-property :title heading)
-                                       (list* :with-smart-quotes nil info)))
+                                       (plist-put (copy-plist info) :with-smart-quotes nil)))
                (level (+ (org-element-property :level heading)
                          (or (plist-get info :headline-offset) 0)))
                (header (format "%s %s" (make-string level ?#) title)))

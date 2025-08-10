@@ -30,12 +30,12 @@
 ;; for component imports, which are essential for MDX.
 
 ;; To start using this exporter, add the below to your Emacs config:
-;;
+;; 
 ;;   (with-eval-after-load 'ox
 ;;     (require 'ox-astro))
-;;
+;; 
 ;; # Workflow
-;;
+;; 
 ;; This exporter is designed for a one-post-per-file workflow.
 ;; A single Org file exports to a single .mdx file. If #+DESTINATION_FOLDER is not
 ;; set, files are exported to a subdirectory named "astro-posts". This can
@@ -87,7 +87,7 @@ generated and added to the Org source file."
             ;; 2. Handle Excerpt
             (unless excerpt-present
               (let* ((paragraph (org-element-map tree 'paragraph 'identity nil 'first-match))
-                                          (excerpt-text
+                     (excerpt-text
                       (when paragraph
                         (let* ((raw-text (org-export-data (org-element-contents paragraph) info))
                                ;; Remove markdown formatting and newlines
@@ -98,8 +98,8 @@ generated and added to the Org source file."
                                 (if (string-match "\\(.+?[.?!]\\)" single-line-text)
                                     (match-string 1 single-line-text)
                                     ;; Fallback for short texts without punctuation
-                                    single-line-text)))
-                          (org-trim first-sentence)))))
+                                    single-line-text))))
+                          (org-trim first-sentence))))) 
                 (when (and excerpt-text (not (string-blank-p excerpt-text)))
                   (org-astro--insert-keyword-at-end-of-block "EXCERPT" excerpt-text)
                   (setq buffer-modified-p t))))
@@ -108,7 +108,7 @@ generated and added to the Org source file."
             (unless date-present
               (let ((date-str (format-time-string (org-time-stamp-format 'long 'inactive) (current-time))))
                 (org-astro--insert-keyword-at-end-of-block "PUBLISH_DATE" date-str)
-                (setq buffer-modified-p t)))))
+                (setq buffer-modified-p t))))))
 
         ;; If we modified the buffer, save it and refresh the export environment
         (when buffer-modified-p
@@ -169,7 +169,7 @@ generated and added to the Org source file."
                 outfile)  ; Return the output file path
               (progn
                 (message "Astro export cancelled: No posts folder selected.")
-                nil))))))
+                nil))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
