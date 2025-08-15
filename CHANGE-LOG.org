@@ -27,7 +27,30 @@ The link handling logic was consolidated and corrected by making `org-astro-link
 ** User Impact
 
 - Raw URLs are now consistently and correctly converted to `<LinkPeek>` components as intended.
-- The code is now cleaner, more robust, and easier to maintain.
+  - The code is now cleaner, more robust, and easier to maintain.
+
+* Feature: Preserve Markdown Links Unchanged
+
+** Summary
+
+Some Org source files contain links already written in Markdown format (e.g.,
+`[Tripadvisor][1]` or `[Label](https://example.com)`). These should be exported
+unchanged.
+
+** Implementation
+
+- Added `org-astro--contains-markdown-link-p` to conservatively detect Markdown
+  link syntax in plain text.
+- Updated `org-astro-plain-text` to pass through any line containing Markdown
+  link syntax without further processing (e.g., no LinkPeek or image handling
+  on those lines).
+- Updated `org-astro-link` to return the description unchanged if it is already
+  a Markdown link string.
+
+** Impact
+
+- Inline and reference-style Markdown links written directly in the Org source
+  are preserved exactly in the exported MDX.
 
 * Arbitrary Posts Folder Path Support
 

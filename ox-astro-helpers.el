@@ -66,6 +66,18 @@ Respects narrowing - works within the current narrowed region."
     (let ((s (downcase s)))
       (replace-regexp-in-string "[^a-z0-9]+" "-" (org-trim s) nil))))
 
+;; Detect whether TEXT contains Markdown link syntax that should be preserved
+;; as-is. We check for inline links [text](url) and reference-style links
+;; [text][ref]. This is intentionally conservative to avoid false positives.
+(defun org-astro--contains-markdown-link-p (text)
+  "Return non-nil if TEXT contains Markdown link syntax.
+Matches inline links like [label](https://example.com) and
+reference-style links like [label][ref]."
+  (when (and text (stringp text))
+    (or (string-match-p "\\[[^]]+\\](\\([^)]\\|\\n\\)+)" text) ; inline [..](..)
+        (string-match-p "\\[[^]]+\\]\\[[^]]+\\]" text)))   ; reference [..][..]
+)
+
 (defun org-astro--format-date (date-raw info)
   "Format DATE-RAW into a string suitable for Astro front matter."
   (let ((date-fmt (plist-get info :astro-date-format)))
@@ -251,6 +263,9 @@ Falls back to the current time if no date is specified."
   (let* ((type (org-element-property :type link))
          (path (org-element-property :path link)))
     (cond
+     ;; If the description is already a Markdown link, preserve it unchanged.
+     ((and desc (org-astro--contains-markdown-link-p desc))
+      desc)
      ;; Internal target (fuzzy) → local anchor; degrade gracefully if INFO is partial
      ((and (string= type "fuzzy") (not (string-match-p "://" path)))
       (let* ((resolved-title
@@ -273,13 +288,13 @@ Falls back to the current time if no date is specified."
 
      ;; Everything else → prefer org's MD translator; fall back to plain Markdown
      (t
-      (let ((md (when (fboundp 'org-md-link)
-                  (ignore-errors (org-md-link link desc info)))))
-        (or md
-            (let* ((raw (or (org-element-property :raw-link link)
-                            (concat type ":" path)))
-                   (text (or desc raw)))
-              (format "[%s](%s)" text raw))))))))
+     (let ((md (when (fboundp 'org-md-link)
+                 (ignore-errors (org-md-link link desc info)))))
+       (or md
+           (let* ((raw (or (org-element-property :raw-link link)
+                           (concat type ":" path)))
+                  (text (or desc raw)))
+             (format "[%s](%s)" text raw))))))))
 
 (defun org-astro-src-block (src-block contents info)
   "Transcode a SRC-BLOCK element into fenced Markdown format."
@@ -367,33 +382,36 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
   (let* ((lines (split-string text "\n"))
          (image-imports (plist-get info :astro-body-images-imports))
          (has-linkpeek nil)
-         (processed-lines
-          (mapcar
-           (lambda (line)
-             (let ((trimmed-line (org-trim line)))
-               (cond
-                ;; Raw image path
-                ((and trimmed-line
-                      (string-match-p "^/.*\\.\(png\\|jpe?g\)$" trimmed-line)
-                      (file-exists-p trimmed-line))
-                 (let ((image-data (when image-imports
-                                     (cl-find trimmed-line image-imports
-                                              :key (lambda (item) (plist-get item :path))
-                                              :test #'string-equal))))
-                   (if image-data
-                       (let ((var-name (plist-get image-data :var-name))
-                             (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
-                         (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
-                     ;; Fallback: if image wasn't processed, return empty string to remove the raw path
-                     "")))
-                ;; Raw URL
-                ((and trimmed-line
-                      (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
-                 (setq has-linkpeek t)
-                 (format "<LinkPeek href=\"%s\"></LinkPeek>" trimmed-line))
-                ;; Regular line
-                (t line))))
-           lines)))
+          (processed-lines
+           (mapcar
+            (lambda (line)
+              (let ((trimmed-line (org-trim line)))
+                (if (org-astro--contains-markdown-link-p line)
+                    ;; Preserve Markdown link formatting unchanged
+                    line
+                  (cond
+                   ;; Raw image path
+                   ((and trimmed-line
+                         (string-match-p "^/.*\\.\(png\\|jpe?g\)$" trimmed-line)
+                         (file-exists-p trimmed-line))
+                    (let ((image-data (when image-imports
+                                        (cl-find trimmed-line image-imports
+                                                 :key (lambda (item) (plist-get item :path))
+                                                 :test #'string-equal))))
+                      (if image-data
+                          (let ((var-name (plist-get image-data :var-name))
+                                (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
+                            (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
+                        ;; Fallback: if image wasn't processed, return empty string to remove the raw path
+                        "")))
+                   ;; Raw URL
+                   ((and trimmed-line
+                         (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
+                    (setq has-linkpeek t)
+                    (format "<LinkPeek href=\"%s\"></LinkPeek>" trimmed-line))
+                   ;; Regular line
+                   (t line)))))
+            lines)))
     ;; Store LinkPeek usage in info for import generation
     (when has-linkpeek
       (plist-put info :astro-uses-linkpeek t))
