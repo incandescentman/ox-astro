@@ -2,6 +2,8 @@
 
 ;;; Code:
 
+(require 'subr-x) ; for string-trim, string-trim-right
+
 ;; Insert or replace a #+KEY: VALUE line in the top keyword block.
 (defun org-astro--upsert-keyword (key value)
   "Upsert #+KEY: VALUE near the top of the buffer or narrowed region.
@@ -77,6 +79,22 @@ reference-style links like [label][ref]."
     (or (string-match-p "\\[[^]]+\\](\\([^)]\\|\\n\\)+)" text) ; inline [..](..)
         (string-match-p "\\[[^]]+\\]\\[[^]]+\\]" text)))   ; reference [..][..]
 )
+
+;; Detect Markdown reference-style link definitions lines like:
+;;   [1]: https://example.com "Title"
+;;   [label]: http://example.com
+(defun org-astro--markdown-link-definition-line-p (text)
+  "Return non-nil if TEXT looks like a Markdown reference link definition."
+  (when (and text (stringp text))
+    (string-match-p "^[\t ]*\\[[^]]+\\]:[\t ]+https?://[^\t ]+.*$" (string-trim-right text))))
+
+(defun org-astro--markdown-link-definition-paragraph-p (paragraph)
+  "Return non-nil if PARAGRAPH in the buffer looks like a Markdown link definition."
+  (when (and paragraph (eq (org-element-type paragraph) 'paragraph))
+    (let* ((beg (org-element-property :begin paragraph))
+           (end (org-element-property :end paragraph))
+           (raw (and beg end (buffer-substring-no-properties beg end))))
+      (and raw (org-astro--markdown-link-definition-line-p raw)))))
 
 (defun org-astro--format-date (date-raw info)
   "Format DATE-RAW into a string suitable for Astro front matter."
@@ -280,11 +298,19 @@ Falls back to the current time if no date is specified."
 
      ;; Bare URLs with no description → LinkPeek + set import flag
      ((and (null desc) (member type '("http" "https" "ftp" "mailto")))
-      ;; Use SETF so the plist is actually mutated even if the key is new
-      (setf (plist-get info :astro-uses-linkpeek) t)
-      (format "<LinkPeek href=\"%s\"></LinkPeek>"
-              (or (org-element-property :raw-link link)
-                  (concat type ":" path))))
+      ;; If this bare URL is part of a Markdown reference link definition
+      ;; like "[1]: https://example.com", preserve it literally.
+      (let* ((parent (org-element-parent link)))
+        (if (org-astro--markdown-link-definition-paragraph-p parent)
+            ;; Return the raw URL so the whole line exports as "[x]: url"
+            (or (org-element-property :raw-link link)
+                (concat type ":" path))
+          ;; Otherwise, emit LinkPeek + mark for import
+          (progn
+            (setf (plist-get info :astro-uses-linkpeek) t)
+            (format "<LinkPeek href=\"%s\"></LinkPeek>"
+                    (or (org-element-property :raw-link link)
+                        (concat type ":" path)))))))
 
      ;; Everything else → prefer org's MD translator; fall back to plain Markdown
      (t
