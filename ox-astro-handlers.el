@@ -39,7 +39,7 @@ under the key `:astro-body-images-imports`."
          (source-path (or (plist-get info :input-file)
                           (and (buffer-file-name) (expand-file-name (buffer-file-name)))))
          (source-comment (when source-path
-                           (format "<!-- Source org: %s -->\n" source-path)))
+                           (format "{/* Source org: %s */}\n" source-path)))
          ;; --- Handle All Imports ---
          ;; 1. Body image imports (collected by our filter)
          (body-images-imports (plist-get info :astro-body-images-imports))
