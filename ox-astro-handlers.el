@@ -30,10 +30,16 @@ under the key `:astro-body-images-imports`."
   tree)
 
 (defun org-astro-body-filter (body _backend info)
-  "Add front-matter and imports to the BODY of the document."
+  "Add front-matter, source comment, and imports to BODY."
   (let* ((tree (plist-get info :parse-tree))  ; Use the already-parsed tree from export
          (front-matter-data (org-astro--get-front-matter-data tree info))
          (front-matter-string (org-astro--gen-yaml-front-matter front-matter-data))
+         ;; Add an HTML comment noting the source .org file path, placed
+         ;; after the frontmatter (frontmatter should remain at top-of-file).
+         (source-path (or (plist-get info :input-file)
+                          (and (buffer-file-name) (expand-file-name (buffer-file-name)))))
+         (source-comment (when source-path
+                           (format "<!-- Source org: %s -->\n" source-path)))
          ;; --- Handle All Imports ---
          ;; 1. Body image imports (collected by our filter)
          (body-images-imports (plist-get info :astro-body-images-imports))
@@ -59,6 +65,7 @@ under the key `:astro-body-images-imports`."
                                  (delq nil (list astro-image-import linkpeek-import body-imports-string manual-imports))
                                  "\n")))
     (concat front-matter-string
+            (or source-comment "")
             (if (and all-imports (not (string-blank-p all-imports)))
                 (concat all-imports "\n\n")
                 "")
