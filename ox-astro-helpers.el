@@ -4,15 +4,14 @@
 
 ;; Insert or replace a #+KEY: VALUE line in the top keyword block.
 (defun org-astro--upsert-keyword (key value)
-  "Upsert #+KEY: VALUE near the top of the buffer.
+  "Upsert #+KEY: VALUE near the top of the buffer or narrowed region.
 If KEY exists before the first headline, replace its line.
-Otherwise insert after the existing keyword/comment block."
+Otherwise insert after the existing keyword/comment block.
+Respects narrowing - works within the current narrowed region."
   (let* ((ukey (upcase (format "%s" key)))
          (re (format "^#\\+%s:\\s-*\\(.*\\)$" (regexp-quote ukey))))
     (save-excursion
-      (save-restriction
-        (widen)
-        (goto-char (point-min))
+      (goto-char (point-min))
         (let ((limit (save-excursion
                        (or (re-search-forward "^\\*" nil t) (point-max)))))
           (if (re-search-forward re limit t)
@@ -21,8 +20,17 @@ Otherwise insert after the existing keyword/comment block."
                 (beginning-of-line)
                 (kill-line)
                 (insert (format "#+%s: %s" ukey (or value ""))))
-            ;; Insert at end of keyword/comment block
+            ;; Insert at end of keyword/comment/properties block
             (goto-char (point-min))
+            ;; First, skip over any org-roam properties block
+            (when (looking-at-p "^:PROPERTIES:")
+              (forward-line 1)
+              (while (and (< (point) limit)
+                          (not (looking-at-p "^:END:")))
+                (forward-line 1))
+              (when (looking-at-p "^:END:")
+                (forward-line 1)))
+            ;; Then skip over keywords, comments, and blank lines
             (while (and (< (point) limit)
                         (or (looking-at-p "^#\\+")
                             (looking-at-p "^#\\s-")
@@ -31,7 +39,7 @@ Otherwise insert after the existing keyword/comment block."
             ;; Keep one blank line before insert unless at BOF or already blank
             (unless (or (bobp) (looking-at-p "^\\s-*$"))
               (insert "\n"))
-            (insert (format "#+%s: %s\n" ukey (or value "")))))))))
+            (insert (format "#+%s: %s\n" ukey (or value ""))))))))
 
 ;; Back-compat alias for existing calls
 (defun org-astro--insert-keyword-at-end-of-block (key value)
