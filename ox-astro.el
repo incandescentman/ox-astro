@@ -188,7 +188,10 @@ generated and added to the Org source file."
     (link . org-astro-link)
     (headline . org-astro-heading)
     (paragraph . org-astro-paragraph)
-    (plain-text . org-astro-plain-text))
+    (plain-text . org-astro-plain-text)
+    (table . org-astro-table)
+    (table-row . org-astro-table-row)
+    (table-cell . org-astro-table-cell))
 
   :filters-alist
   '((:filter-parse-tree . org-astro-prepare-images-filter)

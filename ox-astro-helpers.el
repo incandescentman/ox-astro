@@ -456,5 +456,56 @@ Returns the processed path suitable for Astro imports."
         (when (file-exists-p target-path)
           (concat "../../assets/images/" sub-dir filename))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TABLE HANDLING
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun org-astro-table (table contents info)
+  "Transcode a TABLE element from Org to Markdown.
+CONTENTS holds the contents of the table.  INFO is a plist
+holding contextual information."
+  (let* ((rows (org-element-map table 'table-row
+                 (lambda (row)
+                   (when (eq (org-element-property :type row) 'standard)
+                     row))))
+         (table-rows (mapcar (lambda (row)
+                               (org-astro-table-row row nil info))
+                             rows)))
+    (when table-rows
+      (let ((first-row (car table-rows))
+            (remaining-rows (cdr table-rows)))
+        (concat
+         first-row "\n"
+         (org-astro--table-separator-row (car rows) info) "\n"
+         (when remaining-rows
+           (concat (mapconcat #'identity remaining-rows "\n") "\n")))))))
+
+(defun org-astro-table-row (table-row _contents info)
+  "Transcode a TABLE-ROW element from Org to Markdown.
+CONTENTS is the contents of the row.  INFO is a plist used as a
+communication channel."
+  (when (eq (org-element-property :type table-row) 'standard)
+    (let* ((cells (org-element-map table-row 'table-cell
+                    (lambda (cell)
+                      (org-astro-table-cell cell nil info))))
+           (row-content (mapconcat #'identity cells " | ")))
+      (concat "| " row-content " |"))))
+
+(defun org-astro-table-cell (table-cell _contents info)
+  "Transcode a TABLE-CELL element from Org to Markdown.
+CONTENTS is the cell contents.  INFO is a plist used as a
+communication channel."
+  (let ((cell-contents (org-element-contents table-cell)))
+    (if cell-contents
+        (org-trim (org-export-data cell-contents info))
+        "")))
+
+(defun org-astro--table-separator-row (header-row info)
+  "Generate a Markdown table separator row based on HEADER-ROW.
+INFO is a plist used as a communication channel."
+  (let* ((cells (org-element-map header-row 'table-cell #'identity))
+         (separators (mapcar (lambda (_cell) "---") cells)))
+    (concat "| " (mapconcat #'identity separators " | ") " |")))
+
 (provide 'ox-astro-helpers)
 ;;; ox-astro-helpers.el ends here
