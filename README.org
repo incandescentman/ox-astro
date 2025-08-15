@@ -118,12 +118,26 @@ A standard Org link with a description is converted directly to its Markdown equ
 - *Org*: ~[[https://google.com][Search with Google]]~
 - *MDX*: ~[Search with Google](https://google.com)~
 
+**Preserve Existing Markdown Links**
+If your Org text already includes Markdown-formatted links, they are preserved verbatim:
+- Inline: ~[Label](https://example.com)~
+- Reference: ~[Label][1]~ (with definitions at the bottom)
+This allows pasting Markdown prose directly into Org without reformatting.
+
+**Markdown Reference Definitions**
+Lines like ~[1]: https://example.com "Optional Title"~ are exported literally. They are not treated as raw URLs, so no ~LinkPeek~ transformation occurs.
+
 **Raw URLs (LinkPeek)**
 A bare URL without a description is automatically converted into a custom ~<LinkPeek>~ component, which can be styled to provide rich link previews.
 - *Org*: ~https://google.com~
 - *MDX*: ~<LinkPeek href="https://google.com"></LinkPeek>~
 
-This ensures that you have fine-grained control over how links appear on your site.
+When any ~<LinkPeek>~ is emitted, ox-astro automatically adds the import at the top of the MDX file:
+#+begin_src javascript
+import LinkPeek from '../../components/ui/LinkPeek.astro';
+#+end_src
+
+This ensures that you have fine-grained control over how links appear on your site and that required imports are included automatically.
 
 * Special Formatting Rules
 

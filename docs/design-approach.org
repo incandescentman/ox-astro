@@ -28,7 +28,7 @@ ox-astro is built as a *derived backend* from ox-md.el, following Org's extensib
 
 *** Custom Astro-Specific Overrides:
 - =src-block=: Handle special code block types (user/prompt/quote)
-- =link=: Raw URL formatting for LinkPeek components
+- =link=: Raw URL formatting for LinkPeek components; preserve Markdown links; handle reference definitions
 - =headline=: TODO items → GitHub-style task lists (ox-md only adds TODO prefix to headlines)
 - =paragraph=: Raw image path detection → Astro Image components
 - =plain-text=: Image and URL processing within text
@@ -93,6 +93,25 @@ After encountering bugs with nil hash tables and regex escaping, adopted pattern
 ** Decision 6: Graceful Handling of Missing Information
 *Principle*: If there is missing information in the Org source file, ox-astro must either use sensible defaults (like the default author image) or prompt the user to supply the information (e.g., destination folder), rather than failing with an error.
 *Rationale*: Provides a smoother user experience and prevents export failures for common omissions. It makes the exporter more robust and user-friendly.
+
+** Decision 7: Comprehensive Link Handling
+
+We standardize all link behavior within our transcoding functions to avoid post-hoc regex fixes.
+
+Behavior matrix:
+- *Org links with description* → Markdown link (~[text](url)~)
+- *Already-Markdown links in text* (~[text](url)~, ~[text][ref]~) → preserved verbatim
+- *Markdown reference definitions* (~[ref]: url "Title"~) → exported literally
+- *Bare raw URLs* (not part of reference definitions) → ~<LinkPeek href="…"></LinkPeek>~ and mark ~:astro-uses-linkpeek~ in ~info~ so the import is injected
+
+Import injection:
+- When ~:astro-uses-linkpeek~ is set, ~org-astro-body-filter~ includes
+  ~import LinkPeek from '../../components/ui/LinkPeek.astro';~ at the top of the MDX.
+
+Rationale:
+- Preserves author intent when pasting Markdown prose into Org
+- Keeps reference-style link workflows intact
+- Provides rich previews for plain URLs without cluttering normal links
 
 * Bug Analysis: August 2025
 
