@@ -24,20 +24,41 @@ Respects narrowing - works within the current narrowed region."
                 (insert (format "#+%s: %s" ukey (or value ""))))
             ;; Insert at end of keyword/comment/properties block
             (goto-char (point-min))
-            ;; First, skip over any org-roam properties block
-            (when (looking-at-p "^:PROPERTIES:")
-              (forward-line 1)
-              (while (and (< (point) limit)
-                          (not (looking-at-p "^:END:")))
-                (forward-line 1))
-              (when (looking-at-p "^:END:")
-                (forward-line 1)))
-            ;; Then skip over keywords, comments, and blank lines
-            (while (and (< (point) limit)
-                        (or (looking-at-p "^#\\+")
-                            (looking-at-p "^#\\s-")
-                            (looking-at-p "^\\s-*$")))
-              (forward-line 1))
+            ;; Check if we're in a narrowed subtree (starts with heading)
+            (if (looking-at-p "^\\*+ ")
+                ;; In narrowed subtree: place keywords after the heading and any properties
+                (progn
+                  (forward-line 1)  ; Skip the heading line
+                  ;; Skip over any properties block
+                  (when (looking-at-p "^:PROPERTIES:")
+                    (forward-line 1)
+                    (while (and (< (point) limit)
+                                (not (looking-at-p "^:END:")))
+                      (forward-line 1))
+                    (when (looking-at-p "^:END:")
+                      (forward-line 1)))
+                  ;; Skip existing keywords and blank lines
+                  (while (and (< (point) limit)
+                              (or (looking-at-p "^#\\+")
+                                  (looking-at-p "^#\\s-")
+                                  (looking-at-p "^\\s-*$")))
+                    (forward-line 1)))
+              ;; In full file: place at top after properties/keywords
+              (progn
+                ;; First, skip over any org-roam properties block
+                (when (looking-at-p "^:PROPERTIES:")
+                  (forward-line 1)
+                  (while (and (< (point) limit)
+                              (not (looking-at-p "^:END:")))
+                    (forward-line 1))
+                  (when (looking-at-p "^:END:")
+                    (forward-line 1)))
+                ;; Then skip over keywords, comments, and blank lines
+                (while (and (< (point) limit)
+                            (or (looking-at-p "^#\\+")
+                                (looking-at-p "^#\\s-")
+                                (looking-at-p "^\\s-*$")))
+                  (forward-line 1))))
             ;; Keep one blank line before insert unless at BOF or already blank
             (unless (or (bobp) (looking-at-p "^\\s-*$"))
               (insert "\n"))
@@ -300,8 +321,10 @@ Falls back to the current time if no date is specified."
      ((and (null desc) (member type '("http" "https" "ftp" "mailto")))
       ;; If this bare URL is part of a Markdown reference link definition
       ;; like "[1]: https://example.com", preserve it literally.
-      (let* ((parent (org-element-parent link)))
-        (if (org-astro--markdown-link-definition-paragraph-p parent)
+      (let* ((parent (condition-case _ 
+                         (org-element-property :parent link)
+                       (error nil))))
+        (if (and parent (org-astro--markdown-link-definition-paragraph-p parent))
             ;; Return the raw URL so the whole line exports as "[x]: url"
             (or (org-element-property :raw-link link)
                 (concat type ":" path))

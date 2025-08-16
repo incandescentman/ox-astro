@@ -13,14 +13,16 @@ ox-astro is built as a *derived backend* from ox-md.el, following Org's extensib
     (link . org-astro-link)
     (headline . org-astro-heading)
     (paragraph . org-astro-paragraph)
-    (plain-text . org-astro-plain-text)))
+    (plain-text . org-astro-plain-text)
+    (table . org-astro-table)
+    (table-row . org-astro-table-row)
+    (table-cell . org-astro-table-cell)))
 #+END_SRC
 
 ** What We Inherit vs. What We Override
 
 *** Inherited from ox-md.el (Standard Markdown):
 - Basic text formatting (bold, italic, code)
-- Tables
 - Lists (except TODO items)
 - Quotes
 - Most link types
@@ -32,6 +34,7 @@ ox-astro is built as a *derived backend* from ox-md.el, following Org's extensib
 - =headline=: TODO items → GitHub-style task lists (ox-md only adds TODO prefix to headlines)
 - =paragraph=: Raw image path detection → Astro Image components
 - =plain-text=: Image and URL processing within text
+- =table=, =table-row=, =table-cell=: Convert tables to Markdown format instead of HTML
 
 * Key Design Decisions
 
@@ -113,6 +116,75 @@ Rationale:
 - Keeps reference-style link workflows intact
 - Provides rich previews for plain URLs without cluttering normal links
 
+** Decision 8: org-roam Integration and Keyword Placement
+
+*Problem*: Many users use org-roam, which places a :PROPERTIES: block at the beginning of files. Previous keyword insertion logic would skip these and place export metadata before them, disrupting the expected file structure.
+
+*Solution*: Enhanced =org-astro--upsert-keyword= to recognize and respect org-roam structure:
+#+BEGIN_EXAMPLE
+:PROPERTIES:
+:ID: 20250815T145942.876996  
+:END:
+#+TITLE: Existing Title
+#+FILETAGS: :journal:
+
+#+EXCERPT: Generated excerpt  ; <- Keywords inserted here
+#+PUBLISH_DATE: [2025-08-15 Fri]
+#+END_EXAMPLE
+
+*Implementation*: 
+- Detect :PROPERTIES: blocks at buffer start
+- Skip to :END: before processing keywords
+- Insert new keywords after existing file structure
+
+*Rationale*: Preserves org-roam file integrity while supporting export metadata generation.
+
+** Decision 9: Narrowed Subtree Export Support
+
+*Problem*: When exporting from a narrowed subtree (using =org-narrow-to-subtree=), keywords were being inserted at the file level rather than within the subtree being exported.
+
+*Enhanced Behavior*:
+- *Full file export*: Keywords inserted after properties/keyword block at top
+- *Narrowed subtree export*: Keywords inserted below the subtree heading, after any properties
+
+#+BEGIN_EXAMPLE
+* Blog Post Heading
+:PROPERTIES:
+:ID: 20250815T150000.123456
+:END:
+#+DESTINATION_FOLDER: /tmp
+#+EXCERPT: Generated from paragraph  ; <- Keywords here in narrowed export
+#+PUBLISH_DATE: [2025-08-15 Fri]
+
+Content of the blog post...
+#+END_EXAMPLE
+
+*Implementation*:
+- Remove =widen= call from keyword insertion logic  
+- Detect narrowed context by checking if buffer starts with heading
+- Use different insertion logic based on context
+
+*Rationale*: Supports org-roam workflows where multiple blog posts exist as subtrees in a single file, allowing each subtree to be exported independently with proper metadata.
+
+** Decision 10: Table Export to Markdown
+
+*Problem*: ox-md exports tables as HTML by default, which doesn't fit well with MDX/Astro content that expects Markdown tables.
+
+*Solution*: Override table transcoding to generate proper Markdown table syntax:
+#+BEGIN_EXAMPLE
+| Name | Age | City |
+| --- | --- | --- |
+| Alice | 30 | New York |
+| Bob | 25 | London |
+#+END_EXAMPLE
+
+*Implementation*: Custom =org-astro-table=, =org-astro-table-row=, and =org-astro-table-cell= functions that generate Markdown table syntax with proper header separator rows.
+
+*Rationale*: 
+- Maintains consistency with Markdown ecosystem
+- Better integration with MDX processors
+- More readable in source form than HTML tables
+
 * Bug Analysis: August 2025
 
 ** Hash Table Error in Image Processing
@@ -170,6 +242,10 @@ Consider removing raw image path detection to reduce complexity:
 | 2025-08-03 | Override TODO handling with task lists | Interactive checkboxes > headline prefixes for modern web content |
 | 2025-08-03 | Add defensive programming to image processing | Prevent runtime errors with nil data structures |
 | 2025-08-03 | Maintain raw image path detection | Provides user flexibility despite complexity |
+| 2025-08-16 | Add org-roam structure support | Preserve file organization for org-roam users |
+| 2025-08-16 | Support narrowed subtree export | Enable exporting individual blog posts from large org files |
+| 2025-08-16 | Override table export to Markdown | Better MDX compatibility than HTML tables |
+| 2025-08-16 | Preserve existing Markdown links | Respect user intent when mixing Org and Markdown syntax |
 
 * References
 
