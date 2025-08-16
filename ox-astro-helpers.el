@@ -176,9 +176,10 @@ reference-style links like [label][ref]."
                                       "\n")
                             (format "%s\n"
                                     (if (and (stringp val)
-                                             (string-match-p ":" val)
+                                             (or (string-match-p ":" val)
+                                                 (string-match-p "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$" val))
                                              (not (eq key 'publishDate)))
-                                        ;; Quote strings that contain ':' (avoid YAML parse issues)
+                                        ;; Quote strings that contain ':' or look like dates (avoid YAML parse issues)
                                         (format "\"%s\""
                                                 (replace-regexp-in-string
                                                  "\"" "\\\"" val))
