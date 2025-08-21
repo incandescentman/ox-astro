@@ -78,12 +78,18 @@ generated and added to the Org source file."
                      (date-present (or (plist-get info :astro-publish-date) (plist-get info :publish-date) (plist-get info :date))))
 
                 ;; 1. Handle Title
-                (unless title-present
+                ;; Generate title from first headline if: no title present OR doing subtree export
+                (when (or (not title-present) subtreep)
                   (let* ((headline (org-element-map tree 'headline 'identity nil 'first-match))
                          (title    (when headline
                                      (org-astro--safe-export (org-element-property :title headline) info))))
                     (when (and title (not (string-blank-p title)))
+                      ;; For subtree exports, always update the title even if one exists at document level
                       (org-astro--insert-keyword-at-end-of-block "TITLE" title)
+                      ;; Also generate and insert a slug to match the auto-generated title
+                      (let ((slug (org-astro--slugify title)))
+                        (when (and slug (not (string-blank-p slug)))
+                          (org-astro--insert-keyword-at-end-of-block "SLUG" slug)))
                       (setq buffer-modified-p t))))
 
                 ;; 2. Handle Excerpt
@@ -201,6 +207,7 @@ generated and added to the Org source file."
   :options-alist
   '((:smart-quotes       nil                   org-md-use-smart-quotes nil)
     (:title              "TITLE"               nil nil nil)
+    (:slug               "SLUG"                nil nil nil)
     (:author             "AUTHOR"              nil nil nil)
     (:author-image       "AUTHOR_IMAGE"        nil nil nil)
     (:date               "DATE"                nil nil nil)

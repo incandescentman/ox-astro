@@ -270,6 +270,7 @@ Falls back to the current time if no date is specified."
   (let* ((posts-folder (or (plist-get info :destination-folder)
                            (plist-get info :astro-posts-folder)))
          (title (org-astro--get-title tree info))
+         (slug (plist-get info :slug))
          (author (or (plist-get info :author) "Jay Dixit"))
          (excerpt (org-astro--get-excerpt tree info))
          (tags (org-astro--parse-tags info))
@@ -284,6 +285,7 @@ Falls back to the current time if no date is specified."
          (draft (when (and status (string= (downcase (org-trim status)) "draft")) t)))
     ;; Return the alist of final data - only include hidden/draft if they're true
     `((title . ,title)
+      ,@(when slug `((slug . ,slug)))
       (author . ,author)
       (authorImage . ,author-image)
       (publishDate . ,publish-date)
