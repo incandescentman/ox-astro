@@ -67,7 +67,7 @@ generated and added to the Org source file."
   (interactive)
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
-      (let ((info (org-export-get-environment 'astro))
+      (let ((info (org-export-get-environment 'astro subtreep))
             (buffer-modified-p nil))
         ;; --- Ensure essential front-matter exists, writing back if not ---
         (save-excursion
@@ -77,20 +77,24 @@ generated and added to the Org source file."
                      (excerpt-present (or (plist-get info :astro-excerpt) (plist-get info :excerpt)))
                      (date-present (or (plist-get info :astro-publish-date) (plist-get info :publish-date) (plist-get info :date))))
 
-                ;; 1. Handle Title
-                ;; Generate title from first headline if: no title present OR doing subtree export
-                (when (or (not title-present) subtreep)
-                  (let* ((headline (org-element-map tree 'headline 'identity nil 'first-match))
-                         (title    (when headline
-                                     (org-astro--safe-export (org-element-property :title headline) info))))
-                    (when (and title (not (string-blank-p title)))
-                      ;; For subtree exports, always update the title even if one exists at document level
-                      (org-astro--insert-keyword-at-end-of-block "TITLE" title)
-                      ;; Also generate and insert a slug to match the auto-generated title
-                      (let ((slug (org-astro--slugify title)))
-                        (when (and slug (not (string-blank-p slug)))
-                          (org-astro--insert-keyword-at-end-of-block "SLUG" slug)))
-                      (setq buffer-modified-p t))))
+                ;; 1. Handle Title and Slug
+                ;; Generate title and slug when title comes from headline (no #+TITLE keyword in narrowed tree)
+                (let* ((title-kw (org-element-map tree 'keyword
+                                   (lambda (k)
+                                     (when (string-equal "TITLE" (org-element-property :key k)) k))
+                                   nil 'first-match))
+                       (title-from-headline (not title-kw)))
+                  (when title-from-headline
+                    (let* ((headline (org-element-map tree 'headline 'identity nil 'first-match))
+                           (title    (when headline
+                                       (org-astro--safe-export (org-element-property :title headline) info))))
+                      (when (and title (not (string-blank-p title)))
+                        ;; Add title and slug to source document
+                        (org-astro--insert-keyword-at-end-of-block "TITLE" title)
+                        (let ((slug (org-astro--slugify title)))
+                          (when (and slug (not (string-blank-p slug)))
+                            (org-astro--insert-keyword-at-end-of-block "SLUG" slug)))
+                        (setq buffer-modified-p t)))))
 
                 ;; 2. Handle Excerpt
                 (unless excerpt-present
