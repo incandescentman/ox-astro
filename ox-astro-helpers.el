@@ -141,16 +141,20 @@ reference-style links like [label][ref]."
       (capitalize cleaned))))
 
 (defun org-astro--path-to-var-name (path)
-  "Convert a file PATH to a camelCase JS variable name."
+  "Convert a file PATH to a camelCase JS variable name.
+If the generated name starts with a number, it is prefixed with 'img'."
   (when (stringp path)
     (let* ((original-filename (file-name-sans-extension (file-name-nondirectory path)))
            ;; Use the sanitized filename for variable generation
            (clean-filename (org-astro--sanitize-filename original-filename))
-           (parts (split-string clean-filename "[-]")))
-      (if (null parts)
-          ""
-          (concat (car parts)
-                  (mapconcat #'capitalize (cdr parts) ""))))))
+           (parts (split-string clean-filename "[-]"))
+           (var-name (if (null parts)
+                         ""
+                       (concat (car parts)
+                               (mapconcat #'capitalize (cdr parts) "")))))
+      (if (and (> (length var-name) 0) (string-match-p "^[0-9]" var-name))
+          (concat "img" var-name)
+        var-name))))
 
 (defun org-astro--get-task-nesting-level (heading)
   "Calculate nesting level for a TODO task by counting TODO ancestors."
@@ -641,9 +645,9 @@ Returns the processed path suitable for Astro imports."
         (condition-case err
             (copy-file image-path target-path t)
           (error (message "Failed to copy image %s: %s" image-path err)))
-        ;; Return the relative path for imports
+        ;; Return the alias path for imports
         (when (file-exists-p target-path)
-          (concat "../../assets/images/" sub-dir clean-filename))))))
+          (concat "~/assets/images/" sub-dir clean-filename))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TABLE HANDLING

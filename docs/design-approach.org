@@ -281,34 +281,23 @@ Should result in:
 
 * Areas for Future Improvement
 
-** Simplify Image Processing
-Consider removing raw image path detection to reduce complexity:
-- Users could use standard =[[file:]]= links exclusively
-- Reduces custom parsing logic
-- Fewer edge cases to handle
-
 ** Enhanced Error Handling
 - Add validation for user inputs (image paths, folder configurations)
 - Provide clearer error messages for common issues
 - Graceful degradation when assets can't be processed
 
-** Performance Optimization
-- Cache asset processing results
-- Optimize tree traversal for large documents
-- Consider lazy loading of imports
-
 * Decision Log
 
-| Date | Decision | Rationale |
-|------+----------+-----------|
-| 2025-08-03 | Keep derived backend approach | Leverages ox-md strengths, focus on Astro-specific features |
-| 2025-08-03 | Override TODO handling with task lists | Interactive checkboxes > headline prefixes for modern web content |
-| 2025-08-03 | Add defensive programming to image processing | Prevent runtime errors with nil data structures |
-| 2025-08-03 | Maintain raw image path detection | Provides user flexibility despite complexity |
-| 2025-08-16 | Add org-roam structure support | Preserve file organization for org-roam users |
-| 2025-08-16 | Support narrowed subtree export | Enable exporting individual blog posts from large org files |
-| 2025-08-16 | Override table export to Markdown | Better MDX compatibility than HTML tables |
-| 2025-08-16 | Preserve existing Markdown links | Respect user intent when mixing Org and Markdown syntax |
+|       Date | Decision                                                         | Rationale                                                                          |
+|------------+------------------------------------------------------------------+------------------------------------------------------------------------------------|
+| 2025-08-03 | Keep derived backend approach                                    | Leverages ox-md strengths, focus on Astro-specific features                        |
+| 2025-08-03 | Override TODO handling with task lists                           | Interactive checkboxes > headline prefixes for modern web content                  |
+| 2025-08-03 | Add defensive programming to image processing                    | Prevent runtime errors with nil data structures                                    |
+| 2025-08-03 | Maintain raw image path detection                                | Provides user flexibility despite complexity                                       |
+| 2025-08-16 | Add org-roam structure support                                   | Preserve file organization for org-roam users                                      |
+| 2025-08-16 | Support narrowed subtree export                                  | Enable exporting individual blog posts from large org files                        |
+| 2025-08-16 | Override table export to Markdown                                | Better MDX compatibility than HTML tables                                          |
+| 2025-08-16 | Preserve existing Markdown links                                 | Respect user intent when mixing Org and Markdown syntax                            |
 | 2025-08-24 | Implement dual-storage pattern for export phase data persistence | Critical fix for raw image path detection and copying functionality - NEVER REMOVE |
 
 * References
