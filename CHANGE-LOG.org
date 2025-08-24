@@ -1,100 +1,6 @@
 #+TITLE: ox-astro Change Log
 #+AUTHOR: Jay Dixit & Claude
-#+DATE: 2025-08-02
-
-* Refactor: Simplified and Corrected Link Handling
-
-** Problem Statement
-
-The logic for handling links, especially raw URLs, was fragmented and incorrect.
-- `org-astro-link` would pass raw URLs to the default markdown backend, which incorrectly rendered them as `<url>` instead of using the desired `<LinkPeek>` component.
-- `org-astro-plain-text` was intended to handle these URLs, but Org mode's parser correctly identifies them as `link` elements, so the `plain-text` transcoder was never called for them.
-- `org-astro-final-output-filter` and `org-astro-body-filter` contained brittle, redundant regex-based workarounds to fix this, making the codebase hard to maintain.
-
-** Solution Implementation
-
-The link handling logic was consolidated and corrected by making `org-astro-link` the single source of truth for all link elements.
-
-1.  **`org-astro-link` Corrected**: The function was modified to properly detect raw URLs (i.e., link elements with no description). It now directly transcodes them into the correct `<LinkPeek>` component syntax.
-2.  **`plist-put` for Imports**: It now correctly sets the `:astro-uses-linkpeek` property in the `info` plist, ensuring the `LinkPeek` component is imported when needed.
-3.  **Redundant Logic Removed**: The previous, incorrect refactoring was reverted, and the brittle regex workarounds in `org-astro-final-output-filter` and `org-astro-body-filter` were removed in a prior step.
-4.  **`org-astro-plain-text` Role**: The logic in `org-astro-plain-text` is preserved to handle cases where a URL is not automatically recognized as a link by Org mode but exists on its own line.
-
-** Files Modified
-
-- `ox-astro-helpers.el`
-
-** User Impact
-
-- Raw URLs are now consistently and correctly converted to `<LinkPeek>` components as intended.
-  - The code is now cleaner, more robust, and easier to maintain.
-
-* Feature: Preserve Markdown Links Unchanged
-
-** Summary
-
-Some Org source files contain links already written in Markdown format (e.g.,
-`[Tripadvisor][1]` or `[Label](https://example.com)`). These should be exported
-unchanged.
-
-** Implementation
-
-- Added `org-astro--contains-markdown-link-p` to conservatively detect Markdown
-  link syntax in plain text.
-- Updated `org-astro-plain-text` to pass through any line containing Markdown
-  link syntax without further processing (e.g., no LinkPeek or image handling
-  on those lines).
-- Updated `org-astro-link` to return the description unchanged if it is already
-  a Markdown link string.
-
-** Impact
-
-- Inline and reference-style Markdown links written directly in the Org source
-  are preserved exactly in the exported MDX.
-
-* Arbitrary Posts Folder Path Support
-
-** Problem Statement
-
-The ox-astro exporter only supported posts folder selection through predefined nicknames in =org-astro-known-posts-folders=. Users could not specify arbitrary absolute paths directly in the =#+DESTINATION_FOLDER= keyword.
-
-For example, this would not work:
-#+begin_example
-#+DESTINATION_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/consequential-pages/
-#+end_example
-
-The exporter would fail to resolve the path since it wasn't in the known folders alist, forcing users to either:
-1. Add every possible path to their configuration
-2. Use the interactive folder selection every time
-
-** Solution Implementation
-
-Modified the posts folder resolution logic in =ox-astro-export-to-mdx= (lines 123-152) to support three resolution modes:
-
-1. **Nickname Resolution**: Check if the value matches a key in =org-astro-known-posts-folders=
-2. **Absolute Path Resolution**: If the value is an absolute path and the directory exists, use it directly
-3. **Interactive Fallback**: Prompt user to select from known folders if neither works
-
-** Technical Changes
-
-*** ox-astro.el:123-152
-Replaced simple =or= logic with a =cond= statement that:
-- Uses =file-name-absolute-p= to detect absolute paths
-- Uses =file-directory-p= to validate directory existence
-- Preserves existing behavior for known folder nicknames
-- Maintains interactive selection as fallback
-
-*** Key Functions Used
-- =file-name-absolute-p=: Detects if path starts with / (Unix) or drive letter (Windows)
-- =file-directory-p=: Validates that the directory actually exists
-- =expand-file-name=: Resolves any relative components in the path
-
-** User Impact
-
-Users can now specify any valid absolute directory path in =#+DESTINATION_FOLDER= without needing to pre-configure it in their Emacs settings. This enables:
-- Temporary exports to different locations
-- Project-specific folder structures
-- Dynamic folder paths without configuration changes
+#+DATE: 2025-08-24
 
 * Raw Image Path Processing Feature
 
@@ -354,6 +260,111 @@ This feature successfully bridges the gap between Org mode's plain text nature a
 4. **Systematic debugging** for complex integrations
 
 The solution transforms a simple raw image path into a fully optimized Astro image component with minimal user intervention, making the org-to-astro workflow significantly more powerful and user-friendly.
+
+** Current state: still broken 
+getting this error:
+Debugger entered---Lisp error: (void-variable matched-path)
+  (org-astro---filename-to-alt-text matched-path)
+  (or (org-astro---filename-to-alt-text matched-path) "Image")
+  (let ((var-name (plist-get matching-import :var-name)) (matched-path (plist-get matching-import :path)) (alt-text (or (org-astro---filename-to-alt-text matched-path) "Image"))) (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
+  (if matching-import (let ((var-name (plist-get matching-import :var-name)) (matched-path (plist-get matching-import :path)) (alt-text (or (org-astro---filename-to-alt-text matched-path) "Image"))) (format "<Image src={%s} alt=\"%s\" />" var-name alt-text)) "")
+  (let* ((image-imports (or (plist-get info :astro-body-images-imports) org-astro---current-body-images-imports)) (paragraph-context (org-element-interpret-data paragraph)) (matching-import nil)) (if image-imports (progn (let ((tail image-imports)) (while tail (let ((import ...)) (let* (... ...) (if ... ...)) (setq tail (cdr tail))))))) (if matching-import (let ((var-name (plist-get matching-import :var-name)) (matched-path (plist-get matching-import :path)) (alt-text (or (org-astro---filename-to-alt-text matched-path) "Image"))) (format "<Image src={%s} alt=\"%s\" />" var-name alt-text)) ""))
+  org-astro---handle-broken-image-paragraph((paragraph (:standard-properties [254 254 254 347 348 1 nil nil nil nil nil nil nil nil #<buffer 2025-08-20.org<2>> nil nil (section (:standard-properties ...) (keyword ...) (keyword ...) #1 (keyword ...) (keyword ...) (keyword ...) (src-block ...) (paragraph ... ... ... ...))]) #("/Users/jay/Downloads/20231005" 0 29 (:parent #1)) (subscript (:standard-properties [283 nil 284 289 289 0 nil nil nil nil nil nil nil nil #<buffer 2025-08-20.org<2>> nil nil #1] :use-brackets-p nil) #("BOGGI" 0 5 (:parent #5))) #("-SS24" 0 5 (:parent #1)) (subscript (:standard-properties [294 nil 295 302 302 0 nil nil nil nil nil nil nil nil #<buffer 2025-08-20.org<2>> nil nil #1] :use-brackets-p nil) #("MICHELE" 0 7 (:parent #7))) #("-DI-DIO" 0 7 
+
+
+* Refactor: Simplified and Corrected Link Handling
+
+** Problem Statement
+
+The logic for handling links, especially raw URLs, was fragmented and incorrect.
+- `org-astro-link` would pass raw URLs to the default markdown backend, which incorrectly rendered them as `<url>` instead of using the desired `<LinkPeek>` component.
+- `org-astro-plain-text` was intended to handle these URLs, but Org mode's parser correctly identifies them as `link` elements, so the `plain-text` transcoder was never called for them.
+- `org-astro-final-output-filter` and `org-astro-body-filter` contained brittle, redundant regex-based workarounds to fix this, making the codebase hard to maintain.
+
+** Solution Implementation
+
+The link handling logic was consolidated and corrected by making `org-astro-link` the single source of truth for all link elements.
+
+1.  **`org-astro-link` Corrected**: The function was modified to properly detect raw URLs (i.e., link elements with no description). It now directly transcodes them into the correct `<LinkPeek>` component syntax.
+2.  **`plist-put` for Imports**: It now correctly sets the `:astro-uses-linkpeek` property in the `info` plist, ensuring the `LinkPeek` component is imported when needed.
+3.  **Redundant Logic Removed**: The previous, incorrect refactoring was reverted, and the brittle regex workarounds in `org-astro-final-output-filter` and `org-astro-body-filter` were removed in a prior step.
+4.  **`org-astro-plain-text` Role**: The logic in `org-astro-plain-text` is preserved to handle cases where a URL is not automatically recognized as a link by Org mode but exists on its own line.
+
+** Files Modified
+
+- `ox-astro-helpers.el`
+
+** User Impact
+
+- Raw URLs are now consistently and correctly converted to `<LinkPeek>` components as intended.
+  - The code is now cleaner, more robust, and easier to maintain.
+
+* Feature: Preserve Markdown Links Unchanged
+
+** Summary
+
+Some Org source files contain links already written in Markdown format (e.g.,
+`[Tripadvisor][1]` or `[Label](https://example.com)`). These should be exported
+unchanged.
+
+** Implementation
+
+- Added `org-astro--contains-markdown-link-p` to conservatively detect Markdown
+  link syntax in plain text.
+- Updated `org-astro-plain-text` to pass through any line containing Markdown
+  link syntax without further processing (e.g., no LinkPeek or image handling
+  on those lines).
+- Updated `org-astro-link` to return the description unchanged if it is already
+  a Markdown link string.
+
+** Impact
+
+- Inline and reference-style Markdown links written directly in the Org source
+  are preserved exactly in the exported MDX.
+
+* Arbitrary Posts Folder Path Support
+
+** Problem Statement
+
+The ox-astro exporter only supported posts folder selection through predefined nicknames in =org-astro-known-posts-folders=. Users could not specify arbitrary absolute paths directly in the =#+DESTINATION_FOLDER= keyword.
+
+For example, this would not work:
+#+begin_example
+#+DESTINATION_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/consequential-pages/
+#+end_example
+
+The exporter would fail to resolve the path since it wasn't in the known folders alist, forcing users to either:
+1. Add every possible path to their configuration
+2. Use the interactive folder selection every time
+
+** Solution Implementation
+
+Modified the posts folder resolution logic in =ox-astro-export-to-mdx= (lines 123-152) to support three resolution modes:
+
+1. **Nickname Resolution**: Check if the value matches a key in =org-astro-known-posts-folders=
+2. **Absolute Path Resolution**: If the value is an absolute path and the directory exists, use it directly
+3. **Interactive Fallback**: Prompt user to select from known folders if neither works
+
+** Technical Changes
+
+*** ox-astro.el:123-152
+Replaced simple =or= logic with a =cond= statement that:
+- Uses =file-name-absolute-p= to detect absolute paths
+- Uses =file-directory-p= to validate directory existence
+- Preserves existing behavior for known folder nicknames
+- Maintains interactive selection as fallback
+
+*** Key Functions Used
+- =file-name-absolute-p=: Detects if path starts with / (Unix) or drive letter (Windows)
+- =file-directory-p=: Validates that the directory actually exists
+- =expand-file-name=: Resolves any relative components in the path
+
+** User Impact
+
+Users can now specify any valid absolute directory path in =#+DESTINATION_FOLDER= without needing to pre-configure it in their Emacs settings. This enables:
+- Temporary exports to different locations
+- Project-specific folder structures
+- Dynamic folder paths without configuration changes
 
 * Bug Fixes: Hash Table and YAML Escaping Errors
 
