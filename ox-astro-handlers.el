@@ -13,8 +13,21 @@ all local image links, copies them to the Astro assets
 directory, and prepares a list of import statements to be added
 to the final MDX file. The data is stored in the INFO plist
 under the key `:astro-body-images-imports`."
-  (let* ((posts-folder (or (plist-get info :destination-folder)
-                           (plist-get info :astro-posts-folder)))
+  (let* ((posts-folder-raw (or (plist-get info :destination-folder)
+                               (plist-get info :astro-posts-folder)))
+         ;; Resolve the posts folder using the same logic as in ox-astro.el
+         (resolved-posts-folder (and posts-folder-raw
+                                     (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+         (posts-folder (cond
+                        ;; If we found it in known folders, use that path
+                        (resolved-posts-folder resolved-posts-folder)
+                        ;; If posts-folder-raw exists and looks like an absolute path, use it directly
+                        ((and posts-folder-raw 
+                              (file-name-absolute-p posts-folder-raw)
+                              (file-directory-p (expand-file-name posts-folder-raw)))
+                         posts-folder-raw)
+                        ;; Otherwise, can't resolve - no posts folder
+                        (t nil)))
          ;; Collect all image links from the document body.
          (image-paths-from-tree (org-astro--collect-images-from-tree tree))
          ;; Also collect from raw buffer content to catch underscore paths

@@ -4,9 +4,7 @@
 This file contains a list of potential new features for the ox-astro exporter, grouped by category.
 
 * Content and Syntax Enhancements
-1.  *Advanced Table Support*: Convert Org mode tables into styled HTML `<table>` elements with specific CSS classes, rather than just basic Markdown tables. This would allow for better visual presentation in Astro.
 2.  *Footnote Handling*: Automatically convert Org-style footnotes (`[fn:1]`) into the standard Markdown footnote syntax (`[^1]`), which Astro can then process.
-3.  *LaTeX and Math Support*: Detect LaTeX fragments (e.g., `$\sin(x)$`) and automatically include the necessary KaTeX or MathJax imports and configuration in the MDX output, making it easy to render mathematical equations.
 4.  *Internal Link Resolution*: Create a system to resolve links between different Org files within the project (e.g., `[[file:another-post.org]]`). The exporter would convert these to valid relative URLs for the final Astro site, which is great for creating a personal wiki or a series of connected posts.
 
 * Deeper Astro Integration

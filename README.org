@@ -23,13 +23,12 @@ Then, add the following to your Emacs configuration (~init.el~):
 
 - **MDX Export**: Converts Org files to ~.mdx~ format, ready for Astro.
 - **Automatic Front Matter**: Generates YAML front matter from Org keywords and content.
-- **Smart Image Handling**: Automatically copies linked images to your Astro project's assets folder and generates the necessary import statements.
+- **Advanced Image Handling**: Automatically detects, copies, and processes images from anywhere on your filesystem, converting them into optimized Astro `<Image>` components.
 - **Interactive Workflow**: Prompts for a destination folder if one isn't specified, making it easy to work with multiple Astro projects.
-- **Advanced Formatting**: Intelligently handles Org-specific syntax and converts it to the correct Markdown equivalent.
+- **Advanced Formatting**: Intelligently handles Org-specific syntax (like TODOs and tables) and converts it to the correct Markdown equivalent.
 - **org-roam Integration**: Respects org-roam file structure and properties blocks.
 - **Subtree Export**: Export individual subtrees as standalone blog posts.
-- **Markdown Table Support**: Converts tables to clean Markdown format instead of HTML.
-- **Mixed Link Support**: Preserves existing Markdown links while processing Org links.
+- **Mixed Link Support**: Preserves existing Markdown links while processing Org links and converting raw URLs into custom components.
 
 * How to Use
 
@@ -47,19 +46,6 @@ You can export individual subtrees as standalone blog posts. This is especially 
 2.  Run ~M-x org-narrow-to-subtree~ to narrow to just that subtree.
 3.  Run ~M-x org-astro-export-to-mdx~ with the subtree parameter: ~C-u M-x org-astro-export-to-mdx~
 4.  Keywords like ~#+EXCERPT~ and ~#+PUBLISH_DATE~ will be inserted within the subtree, below the heading.
-
-Example subtree structure after export:
-#+begin_example
-* My Blog Post
-:PROPERTIES:
-:ID: 20250815T150000.123456
-:END:
-#+DESTINATION_FOLDER: jaydocs
-#+EXCERPT: This is generated from the first paragraph
-#+PUBLISH_DATE: [2025-08-15 Fri]
-
-Content of the blog post goes here...
-#+end_example
 
 * Front Matter Generation
 
@@ -81,70 +67,31 @@ The exporter automatically generates YAML front matter based on keywords in your
 | ~#+DESTINATION_FOLDER~ | (none)      | Specifies the export destination folder.    |
 
 **Fallback Logic:**
-- If ~#+TITLE~ is not found, the exporter uses the first level-1 headline in the buffer (or the top-level headline if the buffer is narrowed).
+- If ~#+TITLE~ is not found, the exporter uses the first level-1 headline.
 - If ~#+EXCERPT~ is not found, it uses the first paragraph of the document.
 - If ~#+DATE~ is not found, it uses the current time.
-- If ~#+COVER_IMAGE_ALT~ is not found, it generates a human-readable alt text from the image's filename (e.g., ~my-awesome-image.png~ becomes "My awesome image").
+- If ~#+COVER_IMAGE_ALT~ is not found, it generates a human-readable alt text from the image's filename.
 
-** org-roam Integration
-
-ox-astro is designed to work seamlessly with org-roam. It respects org-roam file structures and places export keywords in appropriate locations:
-
-#+begin_example
-:PROPERTIES:
-:ID:       20250815T145942.876996
-:END:
-#+TITLE: 2025-08-15
-#+FILETAGS: :journal:
-
-#+EXCERPT: Generated excerpt goes here
-#+PUBLISH_DATE: [2025-08-15 Fri]
-
-- Links ::
-
-Your content starts here...
-#+end_example
-
-The exporter will:
-- Skip over the ~:PROPERTIES:~ block when inserting keywords
-- Place new keywords after existing ~#+~ keywords  
-- Maintain the org-roam file structure integrity
-
-* Image Handling
+* Advanced Image Handling
 
 The exporter simplifies image management by automatically processing and importing them. It uses Astro's built-in `<Image>` component to ensure all images are optimized.
 
-**Cover Image**
-
-For the cover image specified by ~#+COVER_IMAGE~, the exporter automatically:
-1.  Copies the image file to your Astro project's ~src/assets/images/posts/~ directory.
-2.  Adds an import statement to the top of the ~.mdx~ file. The variable name is derived from the image's filename (e.g., ~my-pic.png~ becomes ~myPic~).
-   #+begin_src javascript
-   import myPic from '~/assets/images/posts/my-pic.png';
-   #+end_src
-
-**Body Images**
-
-When you link to a local image in the body of your Org file (e.g., `[[file:./images/post-image.png]]`), the exporter performs several actions automatically:
-
-1.  *Copying*: The image is copied to the `src/assets/images/posts/` directory in your Astro project.
-2.  *Import Generation*: An import statement for the `<Image>` component and the specific image is added to the top of the MDX file. The variable name is derived from the image's filename (e.g., `post-image.png` becomes `postImage`).
+The process is the same for cover images and images in the body of the text:
+1.  **Detection**: The exporter finds images specified as standard Org links (`[[file:...]]`) *and* raw absolute paths (e.g., `/Users/jay/Downloads/my-pic.png`) placed on their own line.
+2.  **Copying**: The image file is copied from its original location to your Astro project's `src/assets/images/posts/` directory. Filenames are sanitized to be web-friendly.
+3.  **Import Generation**: An ES6 import statement is added to the top of the `.mdx` file. The path uses Astro's `~/` alias for robustness.
     #+begin_src javascript
     import { Image } from 'astro:assets';
-    import postImage from '~/assets/images/posts/post-image.png';
+    import myPic from '~/assets/images/posts/my-pic.png';
     #+end_src
-3.  *Link Conversion*: The Org link is converted into an `<Image>` component that uses the imported image variable, making it ready for Astro's image processing pipeline.
+4.  **Component Conversion**: The Org link or raw path is converted into an `<Image>` component that uses the imported image variable, ready for Astro's optimization pipeline.
     #+begin_src html
-    <Image src={postImage} alt="Post image" />
+    <Image src={myPic} alt="My pic" />
     #+end_src
 
-This process applies to all local images found in the document body, streamlining the use of illustrations, diagrams, and other graphics in your posts.
+**Example Workflow**
 
-**Raw Image Paths in Body**
-
-You can also include an image by placing its raw file path on a line by itself. This is useful for quickly adding images without using Org's link syntax.
-
-For example:
+Simply drop an absolute path to an image on its own line:
 #+begin_example
 This is my introductory paragraph.
 
@@ -153,11 +100,7 @@ This is my introductory paragraph.
 And the text continues here.
 #+end_example
 
-The exporter will automatically:
-1.  Detect that `/Users/jay/Pictures/my-diagram.png` is an image.
-2.  Copy it to the `src/assets/images/posts/` directory.
-3.  Generate an import for it (e.g., `import myDiagram from '...'`).
-4.  Replace the path with the proper `<Image src={myDiagram} ... />` component.
+The exporter handles the rest automatically, making it incredibly fast to add images to your content.
 
 * Link Handling
 
@@ -169,25 +112,14 @@ A standard Org link with a description is converted directly to its Markdown equ
 - *MDX*: ~[Search with Google](https://google.com)~
 
 **Preserve Existing Markdown Links**
-If your Org text already includes Markdown-formatted links, they are preserved verbatim:
-- Inline: ~[Label](https://example.com)~
-- Reference: ~[Label][1]~ (with definitions at the bottom)
-This allows pasting Markdown prose directly into Org without reformatting.
-
-**Markdown Reference Definitions**
-Lines like ~[1]: https://example.com "Optional Title"~ are exported literally. They are not treated as raw URLs, so no ~LinkPeek~ transformation occurs.
+If your Org text already includes Markdown-formatted links, they are preserved verbatim. This allows pasting Markdown prose directly into Org without reformatting.
 
 **Raw URLs (LinkPeek)**
 A bare URL without a description is automatically converted into a custom ~<LinkPeek>~ component, which can be styled to provide rich link previews.
 - *Org*: ~https://google.com~
 - *MDX*: ~<LinkPeek href="https://google.com"></LinkPeek>~
 
-When any ~<LinkPeek>~ is emitted, ox-astro automatically adds the import at the top of the MDX file:
-#+begin_src javascript
-import LinkPeek from '../../components/ui/LinkPeek.astro';
-#+end_src
-
-This ensures that you have fine-grained control over how links appear on your site and that required imports are included automatically.
+When any ~<LinkPeek>~ is emitted, ox-astro automatically adds the necessary import to the top of the MDX file.
 
 * Special Formatting Rules
 
@@ -198,55 +130,13 @@ Org TODO items are converted into Markdown task lists.
 - ~*** TODO Buy milk~ becomes ~- [ ] Buy milk~
 - ~*** DONE Pay bills~ becomes ~- [x] Pay bills~
 
-**Code Blocks (~user~, ~prompt~, ~quote~)**
-Source blocks with the language ~user~, ~prompt~, or ~quote~ receive special treatment to format them as conversational prompts or pull quotes.
-- They are exported as fenced code blocks (e.g., ~~~user).
-- Any ~---~ within the block is converted to an em dash (—).
-- Blank lines inside the block are preserved.
-- Extraneous newlines at the end of the block are removed.
-
-**Example Blocks**
-Org example blocks (lines prefixed with ~:~) are converted to Markdown blockquotes.
-: This is an example.
-becomes:
-> This is an example.
-
-**Raw URLs**
-Bare URLs in your Org file are automatically converted into a custom ~<LinkPeek>~ component, which can be styled to provide rich link previews. If a URL is detected without a description (e.g., just `https://google.com`), it will be transcoded into:
-#+begin_src html
-<LinkPeek href="https://google.com"></LinkPeek>
-#+end_src
-This ensures that even plain links get special treatment, and the necessary component import is added automatically.
-
 **Tables**
-Org tables are converted to clean Markdown table format instead of HTML:
-#+begin_example
-| Name  | Age | City     |
-| Alice | 30  | New York |
-| Bob   | 25  | London   |
-#+end_example
-becomes:
-#+begin_example
-| Name | Age | City |
-| --- | --- | --- |
-| Alice | 30 | New York |
-| Bob | 25 | London |
-#+end_example
-
-**Literal Characters**
-The exporter ensures that apostrophes, quotation marks, and en dashes are exported as literal characters instead of HTML entities (~&rsquo;~, ~&#x2013;~, etc.), keeping the Markdown source clean.
+Org tables are converted to clean Markdown table format instead of HTML.
 
 * Customization
 
 You can customize the exporter's behavior using ~M-x customize-group~ and selecting ~org-export-astro~.
 
-- ~org-astro-known-posts-folders~ :: A list of your frequently used destination folders, each with a convenient nickname. This list is used to prompt you for a destination when exporting.
-  Example:
-  #+begin_src emacs-lisp
-  '(("socratic" . "/path/to/project-a/src/content/blog")
-    ("jaydocs" . "/path/to/project-b/src/content/blog"))
-  #+end_src
-
-- ~org-astro-default-author-image~ :: Sets a default path for the author's image if one is not specified in the Org file.
-
+- ~org-astro-known-posts-folders~ :: A list of your frequently used destination folders, each with a convenient nickname.
+- ~org-astro-default-author-image~ :: Sets a default path for the author's image.
 - ~org-astro-date-format~ :: A string to control the format of the ~publishDate~ in the front matter.
