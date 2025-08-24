@@ -185,6 +185,69 @@ Content of the blog post...
 - Better integration with MDX processors
 - More readable in source form than HTML tables
 
+** Decision 11: Dual-Storage Pattern for Export Phase Data Persistence
+
+*Problem*: Org's export system has multiple phases (parse-tree filter → transcoding → body filter → final filter). Data stored in the =info= plist during the parse-tree phase was not persisting to later phases, causing image imports to be lost.
+
+*Symptoms*:
+- Debug showed: "Storing N image imports" during parse-tree phase
+- Later phases showed: "image-imports: nil"
+- Raw image paths were detected but not converted to =<Image>= components
+
+*Root Cause*: The =info= plist may be copied or reset between export phases, losing custom data stored by our filters.
+
+*Solution*: Implement dual-storage approach with global variable fallback:
+
+#+BEGIN_SRC elisp
+;; Global variable to persist data across export phases
+(defvar org-astro--current-body-images-imports nil
+  "Global storage for body image imports to persist across export phases.")
+
+;; Store in both places during parse-tree phase
+(setq org-astro--current-body-images-imports final-data)
+(plist-put info :astro-body-images-imports final-data)
+
+;; Retrieve with fallback in all other phases
+(or (plist-get info :astro-body-images-imports)
+    org-astro--current-body-images-imports)
+#+END_SRC
+
+*Implementation*: 
+- Added global variable in both =ox-astro-handlers.el= and =ox-astro-helpers.el=
+- Updated =org-astro-prepare-images-filter= to store data in both locations
+- Updated all data retrieval points to use fallback pattern:
+  - =org-astro-body-filter= (generates import statements)
+  - =org-astro-final-output-filter= (converts markdown image syntax)  
+  - =org-astro-plain-text= (handles raw image paths)
+  - =org-astro-paragraph= (handles single raw image paths)
+
+*Critical Importance*: 
+- *NEVER REMOVE* the global variable or fallback retrieval pattern
+- Without this, raw image path detection and copying functionality breaks silently
+- Image assets won't be copied to Astro project and imports won't be generated
+- Raw paths will either disappear or remain as plain text instead of =<Image>= components
+
+*Testing*: Verify with org files containing raw image paths like:
+#+BEGIN_EXAMPLE
+*** Section Title
+Some text content.
+
+/Users/jay/Downloads/image.png
+
+More content.
+#+END_EXAMPLE
+
+Should result in:
+1. Image copied to =src/assets/images/posts/image.png=
+2. Import generated: =import image from '~/assets/images/posts/image.png';=
+3. Raw path converted to: =<Image src={image} alt="image" />=
+
+*Rationale*:
+- Solves fundamental data persistence issue in Org export pipeline
+- Enables complex asset management across export phases
+- Provides reliable fallback when plist data is lost
+- Essential for raw image URL detection and processing feature
+
 * Bug Analysis: August 2025
 
 ** Hash Table Error in Image Processing
@@ -246,6 +309,7 @@ Consider removing raw image path detection to reduce complexity:
 | 2025-08-16 | Support narrowed subtree export | Enable exporting individual blog posts from large org files |
 | 2025-08-16 | Override table export to Markdown | Better MDX compatibility than HTML tables |
 | 2025-08-16 | Preserve existing Markdown links | Respect user intent when mixing Org and Markdown syntax |
+| 2025-08-24 | Implement dual-storage pattern for export phase data persistence | Critical fix for raw image path detection and copying functionality - NEVER REMOVE |
 
 * References
 

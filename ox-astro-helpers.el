@@ -4,6 +4,10 @@
 
 (require 'subr-x) ; for string-trim, string-trim-right
 
+;; Declare global variable for data persistence across export phases
+(defvar org-astro--current-body-images-imports nil
+  "Global storage for body image imports to persist across export phases.")
+
 ;; Insert or replace a #+KEY: VALUE line in the top keyword block.
 (defun org-astro--upsert-keyword (key value)
   "Upsert #+KEY: VALUE near the top of the buffer or narrowed region.
@@ -139,8 +143,10 @@ reference-style links like [label][ref]."
 (defun org-astro--path-to-var-name (path)
   "Convert a file PATH to a camelCase JS variable name."
   (when (stringp path)
-    (let* ((filename (file-name-sans-extension (file-name-nondirectory path)))
-           (parts (split-string filename "[-_]")))
+    (let* ((original-filename (file-name-sans-extension (file-name-nondirectory path)))
+           ;; Use the sanitized filename for variable generation
+           (clean-filename (org-astro--sanitize-filename original-filename))
+           (parts (split-string clean-filename "[-]")))
       (if (null parts)
           ""
         (concat (car parts)
@@ -405,6 +411,33 @@ Falls back to the current time if no date is specified."
              (header (concat (make-string level ?#) " " title)))
         (concat header "\n\n" (or contents ""))))))
 
+(defun org-astro--handle-broken-image-paragraph (paragraph info)
+  "Handle a paragraph containing a broken image path with subscripts."
+  (let* ((image-imports (or (plist-get info :astro-body-images-imports)
+                           org-astro--current-body-images-imports))
+         (paragraph-context (org-element-interpret-data paragraph))
+         (matching-import nil))
+    
+    ;; Try to find a matching imported image by comparing filenames
+    (when image-imports
+      (dolist (import image-imports)
+        (let* ((import-file-path (plist-get import :path))
+               (import-filename (file-name-nondirectory import-file-path)))
+          ;; Check if the paragraph context contains this filename (even broken up)
+          (when (and import-filename
+                     (string-match-p (regexp-quote (file-name-sans-extension import-filename)) 
+                                   paragraph-context))
+            (setq matching-import import)))))
+    
+    (if matching-import
+        ;; Generate Image component for matched import  
+        (let ((var-name (plist-get matching-import :var-name))
+              (matched-path (plist-get matching-import :path))
+              (alt-text (or (org-astro--filename-to-alt-text matched-path) "Image")))
+          (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
+      ;; No match found - remove the broken paragraph
+      "")))
+
 (defun org-astro-paragraph (paragraph contents info)
   "Transcode a PARAGRAPH element.
 If the paragraph is a raw image path, convert it to an <img> tag.
@@ -417,12 +450,13 @@ Otherwise, use the default Markdown paragraph transcoding."
       (let* ((raw-text (org-element-property :value child))
              (text (when (stringp raw-text) (org-trim raw-text))))
         (when (and text
-                   (string-match-p "^/.*\\.\(png\\|jpe?g\)$" text)
+                   (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" text)
                    (file-exists-p text))
           (setq is-image-path t)
           (setq path text))))
     (if is-image-path
-        (let* ((image-imports (plist-get info :astro-body-images-imports))
+        (let* ((image-imports (or (plist-get info :astro-body-images-imports)
+                                  org-astro--current-body-images-imports))
                (image-data (when image-imports
                              (cl-find path image-imports
                                       :key (lambda (item) (plist-get item :path))
@@ -433,17 +467,23 @@ Otherwise, use the default Markdown paragraph transcoding."
                 (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
             ;; Fallback: if image wasn't processed by the filter, just output the original contents.
             contents))
-      ;; Not an image path, use default paragraph handling
-      (org-md-paragraph paragraph contents info))))
+      ;; Check if this paragraph contains broken image path (subscripts)
+      (let ((paragraph-context (org-element-interpret-data paragraph)))
+        (if (string-match-p "/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)" paragraph-context)
+            ;; This paragraph contains a broken image path - try to handle it
+            (org-astro--handle-broken-image-paragraph paragraph info)
+          ;; Regular paragraph
+          (org-md-paragraph paragraph contents info)))))
 
 (defun org-astro-plain-text (text info)
   "Transcode a plain-text element.
 If the text contains raw image paths on their own lines, convert them to <img> tags.
 If the text contains raw URLs on their own lines, convert them to LinkPeek components."
   (let* ((lines (split-string text "\n"))
-         (image-imports (plist-get info :astro-body-images-imports))
+         (image-imports (or (plist-get info :astro-body-images-imports)
+                            org-astro--current-body-images-imports))
          (has-linkpeek nil)
-          (processed-lines
+         (processed-lines
            (mapcar
             (lambda (line)
               (let ((trimmed-line (org-trim line)))
@@ -453,7 +493,7 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                   (cond
                    ;; Raw image path
                    ((and trimmed-line
-                         (string-match-p "^/.*\\.\(png\\|jpe?g\)$" trimmed-line)
+                         (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" trimmed-line)
                          (file-exists-p trimmed-line))
                     (let ((image-data (when image-imports
                                         (cl-find trimmed-line image-imports
@@ -472,11 +512,23 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                     (format "<LinkPeek href=\"%s\"></LinkPeek>" trimmed-line))
                    ;; Regular line
                    (t line)))))
-            lines)))
+            lines))))
     ;; Store LinkPeek usage in info for import generation
     (when has-linkpeek
       (plist-put info :astro-uses-linkpeek t))
     (mapconcat 'identity processed-lines "\n")))
+
+(defun org-astro-subscript (subscript contents info)
+  "Handle subscript elements, removing ones that are part of broken image paths."
+  (let* ((parent (org-element-property :parent subscript))
+         (parent-context (when parent (org-element-interpret-data parent))))
+    (if (and parent-context
+             (string-match-p "/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)" parent-context))
+        ;; This subscript is part of a broken image path - remove it entirely
+        ;; The raw image collection will handle the proper image processing
+        ""
+      ;; Regular subscript - use default markdown handling
+      (format "_%s_" (or contents "")))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -503,11 +555,45 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
           (dolist (line lines)
             (let ((text (org-trim line)))
               (when (and text
-                         (string-match-p "^/.*\\.\(png\\|jpe?g\)$" text)
+                         (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" text)
                          (file-exists-p text))
                 (push text images)))))))
+    ;; 3. Collect from paragraphs that contain subscript elements (broken up image paths)
+    (org-element-map tree 'paragraph
+      (lambda (paragraph)
+        (let ((reconstructed-path (org-astro--extract-image-path-from-paragraph paragraph)))
+          (when (and reconstructed-path
+                     (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" reconstructed-path)
+                     (file-exists-p reconstructed-path))
+            (push reconstructed-path images)))))
     ;; Return a list with no duplicates
     (delete-dups (nreverse images))))
+
+(defun org-astro--collect-raw-image-paths ()
+  "Collect image paths from raw buffer content, before org-mode parsing.
+This catches paths with underscores that would be broken by subscript parsing."
+  (let (images)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+        (let ((path (string-trim (match-string 0))))
+          (when (file-exists-p path)
+            (push path images)))))
+    images))
+
+(defun org-astro--extract-image-path-from-paragraph (paragraph)
+  "Extract a potential image path from a PARAGRAPH that may contain subscript elements."
+  (let ((raw-content (org-element-interpret-data paragraph)))
+    ;; Look for patterns like /Users/jay/Downloads/file_name.webp that may have been broken by subscripts
+    (when (string-match "/[^[:space:]<>]*\\.\\(webp\\|png\\|jpe?g\\)" raw-content)
+      (let ((potential-path (match-string 0 raw-content)))
+        ;; Clean up any HTML artifacts
+        (setq potential-path (replace-regexp-in-string "<[^>]*>" "" potential-path))
+        ;; Clean up any whitespace
+        (setq potential-path (string-trim potential-path))
+        ;; If it looks like a valid absolute path, return it
+        (when (string-match-p "^/" potential-path)
+          potential-path)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMAGE HANDLING
@@ -524,13 +610,25 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
                        (directory-file-name posts-dir))))))
       (expand-file-name (concat "assets/images/" sub-dir) src-dir))))
 
+(defun org-astro--sanitize-filename (filename)
+  "Sanitize FILENAME by replacing underscores with hyphens and removing problematic characters."
+  (let ((clean-name filename))
+    ;; Replace underscores with hyphens to avoid subscript parsing issues
+    (setq clean-name (replace-regexp-in-string "_" "-" clean-name))
+    ;; Remove or replace other potentially problematic characters
+    (setq clean-name (replace-regexp-in-string "[^a-zA-Z0-9.-]" "-" clean-name))
+    ;; Remove multiple consecutive hyphens
+    (setq clean-name (replace-regexp-in-string "--+" "-" clean-name))
+    clean-name))
+
 (defun org-astro--process-image-path (image-path posts-folder sub-dir)
   "Process IMAGE-PATH for POSTS-FOLDER, copying to SUB-DIR if needed.
 Returns the processed path suitable for Astro imports."
   (when (and image-path posts-folder)
     (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-           (filename (file-name-nondirectory image-path))
-           (target-path (when assets-folder (expand-file-name filename assets-folder))))
+           (original-filename (file-name-nondirectory image-path))
+           (clean-filename (org-astro--sanitize-filename original-filename))
+           (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
       (when (and target-path (file-exists-p image-path))
         ;; Create assets directory if it doesn't exist
         (when assets-folder
@@ -541,7 +639,7 @@ Returns the processed path suitable for Astro imports."
           (error (message "Failed to copy image %s: %s" image-path err)))
         ;; Return the relative path for imports
         (when (file-exists-p target-path)
-          (concat "../../assets/images/" sub-dir filename))))))
+          (concat "../../assets/images/" sub-dir clean-filename))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TABLE HANDLING

@@ -2,6 +2,10 @@
 ;;; Filter Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Global variable to persist data across export phases
+(defvar org-astro--current-body-images-imports nil
+  "Global storage for body image imports to persist across export phases.")
+
 (defun org-astro-prepare-images-filter (tree _backend info)
   "Find all local images, process them, and store import data in INFO.
 This filter runs on the parse TREE before transcoding. It collects
@@ -12,7 +16,10 @@ under the key `:astro-body-images-imports`."
   (let* ((posts-folder (or (plist-get info :destination-folder)
                            (plist-get info :astro-posts-folder)))
          ;; Collect all image links from the document body.
-         (image-paths (org-astro--collect-images-from-tree tree))
+         (image-paths-from-tree (org-astro--collect-images-from-tree tree))
+         ;; Also collect from raw buffer content to catch underscore paths
+         (image-paths-from-raw (org-astro--collect-raw-image-paths))
+         (image-paths (delete-dups (append image-paths-from-tree image-paths-from-raw)))
          image-imports-data)
     (when posts-folder
       (dolist (path image-paths)
@@ -25,6 +32,8 @@ under the key `:astro-body-images-imports`."
     ;; Store the collected data in the info plist for other functions to use.
     (when image-imports-data
       (let ((final-data (nreverse image-imports-data)))
+        ;; Store in both places for data persistence across export phases
+        (setq org-astro--current-body-images-imports final-data)
         (plist-put info :astro-body-images-imports final-data))))
   ;; Return the tree, as required for a parse-tree filter.
   tree)
@@ -42,7 +51,8 @@ under the key `:astro-body-images-imports`."
                            (format "{/* Source org: %s */}\n" source-path)))
          ;; --- Handle All Imports ---
          ;; 1. Body image imports (collected by our filter)
-         (body-images-imports (plist-get info :astro-body-images-imports))
+         (body-images-imports (or (plist-get info :astro-body-images-imports)
+                                  org-astro--current-body-images-imports))
          (body-imports-string
           (when body-images-imports
             (mapconcat
@@ -86,10 +96,11 @@ under the key `:astro-body-images-imports`."
     (dolist (pair entity-map)
       (setq s (replace-regexp-in-string (car pair) (cdr pair) s t t)))
     ;; Convert markdown image syntax with absolute paths to Image components
-    (let ((image-imports (plist-get info :astro-body-images-imports)))
+    (let ((image-imports (or (plist-get info :astro-body-images-imports)
+                             org-astro--current-body-images-imports)))
       (when image-imports
         (setq s (replace-regexp-in-string
-                 "!\[\([^]]*\)\](\(/[^)]+\.\(?:png\|jpe?g\)\))"
+                 "!\[\([^]]*\)\](\(/[^)]+\.\(?:png\|jpe?g\|webp\)\))"
                  (lambda (match)
                    (let* ((alt (match-string 1 match))
                           (path (match-string 2 match))

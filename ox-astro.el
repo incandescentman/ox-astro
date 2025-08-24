@@ -199,6 +199,7 @@ generated and added to the Org source file."
     (headline . org-astro-heading)
     (paragraph . org-astro-paragraph)
     (plain-text . org-astro-plain-text)
+    (subscript . org-astro-subscript)
     (table . org-astro-table)
     (table-row . org-astro-table-row)
     (table-cell . org-astro-table-cell))
