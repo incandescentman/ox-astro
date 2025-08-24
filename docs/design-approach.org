@@ -1,5 +1,5 @@
 #+TITLE: ox-astro Design Approach and Architecture Decisions
-#+DATE: 2025-08-03
+#+DATE: 2025-08-24
 
 * Architecture Overview
 
@@ -36,6 +36,67 @@ ox-astro is built as a *derived backend* from ox-md.el, following Org's extensib
 - =plain-text=: Image and URL processing within text
 - =table=, =table-row=, =table-cell=: Convert tables to Markdown format instead of HTML
 
+* Image Handling Strategy
+
+The image handling pipeline is a critical feature of ox-astro, designed to bridge the gap between local file paths in Org mode and optimized web assets in an Astro project.
+
+** Goals
+1.  **Detect** image paths from multiple sources (Org links, raw text).
+2.  **Copy** images from anywhere on the user's filesystem to the correct Astro assets directory.
+3.  **Sanitize** filenames to be web- and build-tool-friendly.
+4.  **Generate** valid, aliased ES6 import statements for MDX.
+5.  **Transform** the original path into a JSX-like =<Image>= component using the imported variable.
+
+** Implementation Details
+
+*** 1. Path Detection (Multi-Source)
+Image paths are collected from the Org buffer in a pre-processing step (=org-astro-prepare-images-filter=) using these methods:
+-  *Org Links*: Standard =[[file:/path/to/image.png]]= links are parsed.
+-  *Raw Text Paths*: Absolute paths like =/Users/jay/Downloads/image.png= appearing on their own line are detected.
+-  *Fragmented Paths*: Paths broken by Org's subscript parser (e.g., containing underscores) are reconstructed and detected.
+
+*** 2. Asset Folder Resolution
+The destination for copied images is determined dynamically.
+-  **Function**: =org-astro--get-assets-folder=
+-  **Logic**: It takes the post's destination folder (e.g., =.../src/content/blog/=) and navigates up the directory tree to find the project's =src/= directory. From there, it constructs the absolute path to =src/assets/images/posts/=.
+-  **Result**: This makes the logic resilient to different project structures, as long as the content and assets folders share a common =src/= ancestor.
+
+*** 3. File Copying and Sanitization
+-  **Function**: =org-astro--process-image-path=
+-  **Copying**: Once the source path and destination directory are known, =copy-file= is used to move the asset into the Astro project. The destination directory is created if it doesn't exist.
+-  **Sanitization**: Before copying, filenames are sanitized by =org-astro--sanitize-filename= to:
+    - Replace underscores with hyphens (to prevent Org subscript parsing issues).
+    - Remove characters unsafe for URLs or variable names.
+    - Coalesce multiple hyphens.
+
+*** 4. Import Path Generation
+-  **Function**: =org-astro--process-image-path=
+-  **Format**: The function returns an Astro-friendly aliased path.
+-  **Example**: A file copied to =/path/to/src/assets/images/posts/My-Image.png= will have its import path generated as =~/assets/images/posts/My-Image.png=.
+-  **Rationale**: Using the =~/= alias (which points to =/src/=) makes the imports robust and independent of the file's location within the =content/= directory.
+
+*** 5. JS Variable Name Generation
+-  **Function**: =org-astro--path-to-var-name=
+-  **Logic**: It converts the sanitized filename into a valid JavaScript camelCase variable name.
+-  **Edge Case**: It explicitly checks if the sanitized name starts with a number. If it does, it prepends the prefix "img" to ensure the variable name is valid.
+    -  =2025-image.png= → =img2025Image=
+
+*** 6. Data Persistence Across Export Phases
+-  **Problem**: Image data collected in the initial filter phase was being lost before the final transcoding phase.
+-  **Solution**: A dual-storage pattern is used. A global variable (=org-astro--current-body-images-imports=) acts as a reliable fallback if the image data is purged from the exporter's internal =info= plist between phases. This is critical for the feature's stability.
+
+*** 7. Final MDX Output
+The collected data is used to assemble the final MDX output:
+1.  **Import Injection**: The generated import statement is added at the top of the file.
+    #+BEGIN_SRC mdx
+    import { Image } from 'astro:assets';
+    import img2025Image from '~/assets/images/posts/2025-image.png';
+    #+END_SRC
+2.  **Component Transformation**: The original raw image path in the document body is replaced with an Astro =<Image>= component.
+    #+BEGIN_SRC mdx
+    <Image src={img2025Image} alt="2025 image" />
+    #+END_SRC
+
 * Key Design Decisions
 
 ** Decision 1: Derived Backend vs. Standalone
@@ -57,264 +118,37 @@ ox-astro is built as a *derived backend* from ox-md.el, following Org's extensib
 
 *Rationale*: Separates concerns and allows for complex asset management while keeping transcoding functions focused.
 
-** Decision 3: Custom Image Processing Pipeline
-Instead of relying only on standard =[[file:]]= links, we detect:
-- Standard Org image links: =[[file:/path/image.jpg]]=
-- Raw image paths in text: =/path/to/image.jpg= on its own line
-- Generate Astro import statements and =<Image>= components
+** Decision 3: Custom TODO → Task List Conversion
+*Problem*: ox-md handles TODO items by prepending the keyword to headlines.
+*Our Approach*: Convert TODO items to GitHub-style interactive task lists.
+*Rationale*: Task lists are more interactive and semantically correct for web content than headlines with TODO prefixes.
 
-*Rationale*: Provides flexibility for users while handling Astro's asset system requirements.
-
-** Decision 4: Custom TODO → Task List Conversion
-*Problem*: ox-md handles TODO items by prepending the keyword to headlines:
-#+BEGIN_EXAMPLE
-## TODO Fix the bug
-## DONE Complete the feature  
-#+END_EXAMPLE
-
-*Our Approach*: Convert TODO items to GitHub-style interactive task lists:
-#+BEGIN_EXAMPLE
-- [ ] Fix the bug
-- [x] Complete the feature
-#+END_EXAMPLE
-
-*Rationale*:
-- *Interactive*: Task lists provide clickable checkboxes in GitHub, GitLab, and modern MDX viewers
-- *Semantic correctness*: TODO items are tasks, not section headings
-- *Modern conventions*: GitHub-style task lists are widely supported and expected
-- *Blog-friendly*: Better suited for Astro blog content than headlines with TODO prefixes
-- *Visual hierarchy*: Doesn't disrupt document structure with artificial heading levels
-
-*Implementation*: Override =org-astro-heading= to detect TODO keywords and format as list items with appropriate checkbox state based on =org-done-keywords=.
-
-** Decision 5: Defensive Programming for Custom Logic
+** Decision 4: Defensive Programming for Custom Logic
 After encountering bugs with nil hash tables and regex escaping, adopted pattern of:
 - Always check for nil before using =cl-find=
 - Validate data structures before processing
 - Use proper escape sequences in regex replacements
 
-** Decision 6: Graceful Handling of Missing Information
+** Decision 5: Graceful Handling of Missing Information
 *Principle*: If there is missing information in the Org source file, ox-astro must either use sensible defaults (like the default author image) or prompt the user to supply the information (e.g., destination folder), rather than failing with an error.
 *Rationale*: Provides a smoother user experience and prevents export failures for common omissions. It makes the exporter more robust and user-friendly.
 
-** Decision 7: Comprehensive Link Handling
+** Decision 6: Comprehensive Link Handling
+We standardize all link behavior within our transcoding functions to avoid post-hoc regex fixes. Bare URLs are converted to a custom =<LinkPeek>= component, and Markdown links are preserved.
 
-We standardize all link behavior within our transcoding functions to avoid post-hoc regex fixes.
+** Decision 7: org-roam Integration and Keyword Placement
+The keyword insertion logic is designed to respect =:PROPERTIES:= blocks created by org-roam, ensuring metadata is inserted in the correct location without disrupting the file structure.
 
-Behavior matrix:
-- *Org links with description* → Markdown link (~[text](url)~)
-- *Already-Markdown links in text* (~[text](url)~, ~[text][ref]~) → preserved verbatim
-- *Markdown reference definitions* (~[ref]: url "Title"~) → exported literally
-- *Bare raw URLs* (not part of reference definitions) → ~<LinkPeek href="…"></LinkPeek>~ and mark ~:astro-uses-linkpeek~ in ~info~ so the import is injected
+** Decision 8: Narrowed Subtree Export Support
+The exporter correctly handles inserting keywords and metadata when exporting a narrowed subtree, enabling workflows where multiple posts exist in a single Org file.
 
-Import injection:
-- When ~:astro-uses-linkpeek~ is set, ~org-astro-body-filter~ includes
-  ~import LinkPeek from '../../components/ui/LinkPeek.astro';~ at the top of the MDX.
-
-Rationale:
-- Preserves author intent when pasting Markdown prose into Org
-- Keeps reference-style link workflows intact
-- Provides rich previews for plain URLs without cluttering normal links
-
-** Decision 8: org-roam Integration and Keyword Placement
-
-*Problem*: Many users use org-roam, which places a :PROPERTIES: block at the beginning of files. Previous keyword insertion logic would skip these and place export metadata before them, disrupting the expected file structure.
-
-*Solution*: Enhanced =org-astro--upsert-keyword= to recognize and respect org-roam structure:
-#+BEGIN_EXAMPLE
-:PROPERTIES:
-:ID: 20250815T145942.876996  
-:END:
-#+TITLE: Existing Title
-#+FILETAGS: :journal:
-
-#+EXCERPT: Generated excerpt  ; <- Keywords inserted here
-#+PUBLISH_DATE: [2025-08-15 Fri]
-#+END_EXAMPLE
-
-*Implementation*: 
-- Detect :PROPERTIES: blocks at buffer start
-- Skip to :END: before processing keywords
-- Insert new keywords after existing file structure
-
-*Rationale*: Preserves org-roam file integrity while supporting export metadata generation.
-
-** Decision 9: Narrowed Subtree Export Support
-
-*Problem*: When exporting from a narrowed subtree (using =org-narrow-to-subtree=), keywords were being inserted at the file level rather than within the subtree being exported.
-
-*Enhanced Behavior*:
-- *Full file export*: Keywords inserted after properties/keyword block at top
-- *Narrowed subtree export*: Keywords inserted below the subtree heading, after any properties
-
-#+BEGIN_EXAMPLE
-* Blog Post Heading
-:PROPERTIES:
-:ID: 20250815T150000.123456
-:END:
-#+DESTINATION_FOLDER: /tmp
-#+EXCERPT: Generated from paragraph  ; <- Keywords here in narrowed export
-#+PUBLISH_DATE: [2025-08-15 Fri]
-
-Content of the blog post...
-#+END_EXAMPLE
-
-*Implementation*:
-- Remove =widen= call from keyword insertion logic  
-- Detect narrowed context by checking if buffer starts with heading
-- Use different insertion logic based on context
-
-*Rationale*: Supports org-roam workflows where multiple blog posts exist as subtrees in a single file, allowing each subtree to be exported independently with proper metadata.
-
-** Decision 10: Table Export to Markdown
-
-*Problem*: ox-md exports tables as HTML by default, which doesn't fit well with MDX/Astro content that expects Markdown tables.
-
-*Solution*: Override table transcoding to generate proper Markdown table syntax:
-#+BEGIN_EXAMPLE
-| Name | Age | City |
-| --- | --- | --- |
-| Alice | 30 | New York |
-| Bob | 25 | London |
-#+END_EXAMPLE
-
-*Implementation*: Custom =org-astro-table=, =org-astro-table-row=, and =org-astro-table-cell= functions that generate Markdown table syntax with proper header separator rows.
-
-*Rationale*: 
-- Maintains consistency with Markdown ecosystem
-- Better integration with MDX processors
-- More readable in source form than HTML tables
-
-** Decision 11: Dual-Storage Pattern for Export Phase Data Persistence
-
-*Problem*: Org's export system has multiple phases (parse-tree filter → transcoding → body filter → final filter). Data stored in the =info= plist during the parse-tree phase was not persisting to later phases, causing image imports to be lost.
-
-*Symptoms*:
-- Debug showed: "Storing N image imports" during parse-tree phase
-- Later phases showed: "image-imports: nil"
-- Raw image paths were detected but not converted to =<Image>= components
-
-*Root Cause*: The =info= plist may be copied or reset between export phases, losing custom data stored by our filters.
-
-*Solution*: Implement dual-storage approach with global variable fallback:
-
-#+BEGIN_SRC elisp
-;; Global variable to persist data across export phases
-(defvar org-astro--current-body-images-imports nil
-  "Global storage for body image imports to persist across export phases.")
-
-;; Store in both places during parse-tree phase
-(setq org-astro--current-body-images-imports final-data)
-(plist-put info :astro-body-images-imports final-data)
-
-;; Retrieve with fallback in all other phases
-(or (plist-get info :astro-body-images-imports)
-    org-astro--current-body-images-imports)
-#+END_SRC
-
-*Implementation*: 
-- Added global variable in both =ox-astro-handlers.el= and =ox-astro-helpers.el=
-- Updated =org-astro-prepare-images-filter= to store data in both locations
-- Updated all data retrieval points to use fallback pattern:
-  - =org-astro-body-filter= (generates import statements)
-  - =org-astro-final-output-filter= (converts markdown image syntax)  
-  - =org-astro-plain-text= (handles raw image paths)
-  - =org-astro-paragraph= (handles single raw image paths)
-
-*Critical Importance*: 
-- *NEVER REMOVE* the global variable or fallback retrieval pattern
-- Without this, raw image path detection and copying functionality breaks silently
-- Image assets won't be copied to Astro project and imports won't be generated
-- Raw paths will either disappear or remain as plain text instead of =<Image>= components
-
-*Testing*: Verify with org files containing raw image paths like:
-#+BEGIN_EXAMPLE
-*** Section Title
-Some text content.
-
-/Users/jay/Downloads/image.png
-
-More content.
-#+END_EXAMPLE
-
-Should result in:
-1. Image copied to =src/assets/images/posts/image.png=
-2. Import generated: =import image from '~/assets/images/posts/image.png';=
-3. Raw path converted to: =<Image src={image} alt="image" />=
-
-*Rationale*:
-- Solves fundamental data persistence issue in Org export pipeline
-- Enables complex asset management across export phases
-- Provides reliable fallback when plist data is lost
-- Essential for raw image URL detection and processing feature
-
-* Bug Analysis: August 2025
-
-** Hash Table Error in Image Processing
-*Problem*: =cl-find= called with =nil= instead of list when =:astro-body-images-imports= was empty.
-*Root Cause*: Assumed image imports would always be available.
-*Fix*: Added null checks before =cl-find= calls.
-*Lesson*: Custom logic needs defensive programming, especially for optional data.
-
-** YAML Front Matter Escaping
-*Problem*: Invalid backslash escaping in =replace-regexp-in-string=.
-*Root Cause*: Incorrect escape sequence for literal quotes in YAML.
-*Fix*: Updated regex replacement pattern.
-*Lesson*: String escaping in Emacs Lisp requires careful attention to backslash doubling.
-
-* Architectural Strengths
-
-** Leverages Org Export Engine
-- Uses proven, battle-tested export infrastructure
-- Inherits performance optimizations
-- Benefits from community maintenance
-
-** Modular Design
-- Clean separation between config, helpers, handlers, and main export
-- Easy to extend with new transcoding functions
-- Filter system allows for complex pre/post-processing
-
-** Astro Integration
-- Handles asset copying automatically
-- Generates proper import statements
-- Creates valid MDX with front matter
-
-* Areas for Future Improvement
-
-** Enhanced Error Handling
-- Add validation for user inputs (image paths, folder configurations)
-- Provide clearer error messages for common issues
-- Graceful degradation when assets can't be processed
-
-* Decision Log
-
-|       Date | Decision                                                         | Rationale                                                                          |
-|------------+------------------------------------------------------------------+------------------------------------------------------------------------------------|
-| 2025-08-03 | Keep derived backend approach                                    | Leverages ox-md strengths, focus on Astro-specific features                        |
-| 2025-08-03 | Override TODO handling with task lists                           | Interactive checkboxes > headline prefixes for modern web content                  |
-| 2025-08-03 | Add defensive programming to image processing                    | Prevent runtime errors with nil data structures                                    |
-| 2025-08-03 | Maintain raw image path detection                                | Provides user flexibility despite complexity                                       |
-| 2025-08-16 | Add org-roam structure support                                   | Preserve file organization for org-roam users                                      |
-| 2025-08-16 | Support narrowed subtree export                                  | Enable exporting individual blog posts from large org files                        |
-| 2025-08-16 | Override table export to Markdown                                | Better MDX compatibility than HTML tables                                          |
-| 2025-08-16 | Preserve existing Markdown links                                 | Respect user intent when mixing Org and Markdown syntax                            |
-| 2025-08-24 | Implement dual-storage pattern for export phase data persistence | Critical fix for raw image path detection and copying functionality - NEVER REMOVE |
+** Decision 9: Table Export to Markdown
+Tables are transcoded to Markdown syntax (instead of the default HTML) for better compatibility with the MDX ecosystem.
 
 * References
 
 - [[file:../ox-astro.el][ox-astro.el]] - Main backend definition
 - [[file:../ox-astro-helpers.el][ox-astro-helpers.el]] - Transcoding functions and utilities  
 - [[file:../ox-astro-handlers.el][ox-astro-handlers.el]] - Filter functions and processing pipeline
-- [[file:../org-reference-backends/ox-md.el][ox-md.el]] - Reference implementation for markdown export (consult when extending standard markdown functionality)
+- [[file:../org-reference-backends/ox-md.el][ox-md.el]] - Reference implementation for markdown export
 - [[https://orgmode.org/worg/dev/org-export-reference.html][Org Export Reference]] - Official documentation
-
-** Development Guidelines
-
-*** When to Consult ox-md.el
-Before implementing custom transcoding functions, check =org-reference-backends/ox-md.el= to understand:
-- How standard markdown export handles the element
-- What the default behavior provides
-- Whether we need to override or can build upon existing functionality
-- Pattern examples for similar transcoding functions
-
-This helps avoid reinventing functionality and ensures our overrides are truly necessary.
