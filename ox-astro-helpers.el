@@ -18,14 +18,14 @@ Respects narrowing - works within the current narrowed region."
          (re (format "^#\\+%s:\\s-*\\(.*\\)$" (regexp-quote ukey))))
     (save-excursion
       (goto-char (point-min))
-        (let ((limit (save-excursion
-                       (or (re-search-forward "^\\*" nil t) (point-max)))))
-          (if (re-search-forward re limit t)
-              ;; Replace existing line
-              (progn
-                (beginning-of-line)
-                (kill-line)
-                (insert (format "#+%s: %s" ukey (or value ""))))
+      (let ((limit (save-excursion
+                     (or (re-search-forward "^\\*" nil t) (point-max)))))
+        (if (re-search-forward re limit t)
+            ;; Replace existing line
+            (progn
+              (beginning-of-line)
+              (kill-line)
+              (insert (format "#+%s: %s" ukey (or value ""))))
             ;; Insert at end of keyword/comment/properties block
             (goto-char (point-min))
             ;; Check if we're in a narrowed subtree (starts with heading)
@@ -47,22 +47,22 @@ Respects narrowing - works within the current narrowed region."
                                   (looking-at-p "^#\\s-")
                                   (looking-at-p "^\\s-*$")))
                     (forward-line 1)))
-              ;; In full file: place at top after properties/keywords
-              (progn
-                ;; First, skip over any org-roam properties block
-                (when (looking-at-p "^:PROPERTIES:")
-                  (forward-line 1)
+                ;; In full file: place at top after properties/keywords
+                (progn
+                  ;; First, skip over any org-roam properties block
+                  (when (looking-at-p "^:PROPERTIES:")
+                    (forward-line 1)
+                    (while (and (< (point) limit)
+                                (not (looking-at-p "^:END:")))
+                      (forward-line 1))
+                    (when (looking-at-p "^:END:")
+                      (forward-line 1)))
+                  ;; Then skip over keywords, comments, and blank lines
                   (while (and (< (point) limit)
-                              (not (looking-at-p "^:END:")))
-                    (forward-line 1))
-                  (when (looking-at-p "^:END:")
-                    (forward-line 1)))
-                ;; Then skip over keywords, comments, and blank lines
-                (while (and (< (point) limit)
-                            (or (looking-at-p "^#\\+")
-                                (looking-at-p "^#\\s-")
-                                (looking-at-p "^\\s-*$")))
-                  (forward-line 1))))
+                              (or (looking-at-p "^#\\+")
+                                  (looking-at-p "^#\\s-")
+                                  (looking-at-p "^\\s-*$")))
+                    (forward-line 1))))
             ;; Keep one blank line before insert unless at BOF or already blank
             (unless (or (bobp) (looking-at-p "^\\s-*$"))
               (insert "\n"))
@@ -103,7 +103,7 @@ reference-style links like [label][ref]."
   (when (and text (stringp text))
     (or (string-match-p "\\[[^]]+\\](\\([^)]\\|\\n\\)+)" text) ; inline [..](..)
         (string-match-p "\\[[^]]+\\]\\[[^]]+\\]" text)))   ; reference [..][..]
-)
+  )
 
 ;; Detect Markdown reference-style link definitions lines like:
 ;;   [1]: https://example.com "Title"
@@ -149,8 +149,8 @@ reference-style links like [label][ref]."
            (parts (split-string clean-filename "[-]")))
       (if (null parts)
           ""
-        (concat (car parts)
-                (mapconcat #'capitalize (cdr parts) ""))))))
+          (concat (car parts)
+                  (mapconcat #'capitalize (cdr parts) ""))))))
 
 (defun org-astro--get-task-nesting-level (heading)
   "Calculate nesting level for a TODO task by counting TODO ancestors."
@@ -166,31 +166,31 @@ reference-style links like [label][ref]."
   "Generate a YAML front-matter string from an alist DATA."
   (if (null data)
       ""
-    (let ((yaml-str "---\n"))
-      (dolist (pair data)
-        (let ((key (car pair))
-              (val (cdr pair)))
-          (when val
-            (setq yaml-str
-                  (concat yaml-str
-                          (format "%s: " (symbol-name key))
-                          (if (listp val)
-                              (concat "\n"
-                                      (mapconcat (lambda (item)
-                                                   (format "- %s" item))
-                                                 val "\n")
-                                      "\n")
-                            (format "%s\n"
-                                    (if (and (stringp val)
-                                             (or (string-match-p ":" val)
-                                                 (string-match-p "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$" val))
-                                             (not (eq key 'publishDate)))
-                                        ;; Quote strings that contain ':' or look like dates (avoid YAML parse issues)
-                                        (format "\"%s\""
-                                                (replace-regexp-in-string
-                                                 "\"" "\\\"" val))
-                                      val))))))))
-      (concat yaml-str "---\n"))))
+      (let ((yaml-str "---\n"))
+        (dolist (pair data)
+          (let ((key (car pair))
+                (val (cdr pair)))
+            (when val
+              (setq yaml-str
+                    (concat yaml-str
+                            (format "%s: " (symbol-name key))
+                            (if (listp val)
+                                (concat "\n"
+                                        (mapconcat (lambda (item)
+                                                     (format "- %s" item))
+                                                   val "\n")
+                                        "\n")
+                                (format "%s\n"
+                                        (if (and (stringp val)
+                                                 (or (string-match-p ":" val)
+                                                     (string-match-p "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$" val))
+                                                 (not (eq key 'publishDate)))
+                                            ;; Quote strings that contain ':' or look like dates (avoid YAML parse issues)
+                                            (format "\"%s\""
+                                                    (replace-regexp-in-string
+                                                     "\"" "\\\"" val))
+                                            val))))))))
+        (concat yaml-str "---\n"))))
 
 (defun org-astro--get-title (tree info)
   "Return a title string from TREE/INFO, never nil."
@@ -230,7 +230,7 @@ reference-style links like [label][ref]."
          ;; take first sentence up to ~300 chars, else truncate with ellipsis
          (if (string-match "\`\(.\{1,300\}?[.?!]\)" one)
              (org-trim (match-string 1 one))
-           (truncate-string-to-width (org-trim one) 300 nil nil "…")))))
+             (truncate-string-to-width (org-trim one) 300 nil nil "…")))))
    ;; If all else fails:
    ""))
 
@@ -250,7 +250,7 @@ Falls back to the current time if no date is specified."
                       (plist-get info :date))))
     (if date-raw
         (org-astro--format-date date-raw info)
-      (format-time-string (plist-get info :astro-date-format) (current-time)))))
+        (format-time-string (plist-get info :astro-date-format) (current-time)))))
 
 (defun org-astro--get-author-image (info posts-folder)
   "Get the author image path from INFO, with defaults."
@@ -339,29 +339,29 @@ Falls back to the current time if no date is specified."
      ((and (null desc) (member type '("http" "https" "ftp" "mailto")))
       ;; If this bare URL is part of a Markdown reference link definition
       ;; like "[1]: https://example.com", preserve it literally.
-      (let* ((parent (condition-case _ 
+      (let* ((parent (condition-case _
                          (org-element-property :parent link)
                        (error nil))))
         (if (and parent (org-astro--markdown-link-definition-paragraph-p parent))
             ;; Return the raw URL so the whole line exports as "[x]: url"
             (or (org-element-property :raw-link link)
                 (concat type ":" path))
-          ;; Otherwise, emit LinkPeek + mark for import
-          (progn
-            (setf (plist-get info :astro-uses-linkpeek) t)
-            (format "<LinkPeek href=\"%s\"></LinkPeek>"
-                    (or (org-element-property :raw-link link)
-                        (concat type ":" path)))))))
+            ;; Otherwise, emit LinkPeek + mark for import
+            (progn
+              (setf (plist-get info :astro-uses-linkpeek) t)
+              (format "<LinkPeek href=\"%s\"></LinkPeek>"
+                      (or (org-element-property :raw-link link)
+                          (concat type ":" path)))))))
 
      ;; Everything else → prefer org's MD translator; fall back to plain Markdown
      (t
-     (let ((md (when (fboundp 'org-md-link)
-                 (ignore-errors (org-md-link link desc info)))))
-       (or md
-           (let* ((raw (or (org-element-property :raw-link link)
-                           (concat type ":" path)))
-                  (text (or desc raw)))
-             (format "[%s](%s)" text raw))))))))
+      (let ((md (when (fboundp 'org-md-link)
+                  (ignore-errors (org-md-link link desc info)))))
+        (or md
+            (let* ((raw (or (org-element-property :raw-link link)
+                            (concat type ":" path)))
+                   (text (or desc raw)))
+              (format "[%s](%s)" text raw))))))))
 
 (defun org-astro-src-block (src-block contents info)
   "Transcode a SRC-BLOCK element into fenced Markdown format."
@@ -374,10 +374,10 @@ Falls back to the current time if no date is specified."
         ;; Trim trailing newlines/whitespace to prevent extra space at the end.
         (setq code (string-trim-right code))
         (format "```%s\n%s\n```" (or lang "") code))
-    ;; Fallback to simple fenced code block
-    (let* ((lang (org-element-property :language src-block))
-           (code (org-element-property :value src-block)))
-      (format "```%s\n%s\n```" (or lang "") (org-trim code)))))
+      ;; Fallback to simple fenced code block
+      (let* ((lang (org-element-property :language src-block))
+             (code (org-element-property :value src-block)))
+        (format "```%s\n%s\n```" (or lang "") (org-trim code)))))
 
 (defun org-astro-heading (heading contents info)
   (let ((todo-keyword (org-element-property :todo-keyword heading)))
@@ -399,25 +399,26 @@ Falls back to the current time if no date is specified."
                                "\n"
                                (concat "\n" content-indent)
                                trimmed-contents)))
-                  "")))
+                    "")))
           (format "%s- %s %s%s\n" indent checkbox title indented-contents))
-      ;; regular heading
-      (let* ((info-copy (copy-sequence info))
-             (_ (plist-put info-copy :with-smart-quotes nil))
-             (title (org-astro--safe-export (org-element-property :title heading) info-copy))
-             (level (+ (org-element-property :level heading)
-                       (or (plist-get info :headline-offset) 0)))
-             (level (min (max level 1) 6))
-             (header (concat (make-string level ?#) " " title)))
-        (concat header "\n\n" (or contents ""))))))
+        ;; regular heading
+        (let* ((info-copy (copy-sequence info))
+               (_ (plist-put info-copy :with-smart-quotes nil))
+               (title (org-astro--safe-export (org-element-property :title heading) info-copy))
+               (level (+ (org-element-property :level heading)
+                         (or (plist-get info :headline-offset) 0)))
+               (level (min (max level 1) 6))
+               (header (concat (make-string level ?#) " " title)))
+          (concat header "\n\n" (or contents ""))))))
 
 (defun org-astro--handle-broken-image-paragraph (paragraph info)
   "Handle a paragraph containing a broken image path with subscripts."
   (let* ((image-imports (or (plist-get info :astro-body-images-imports)
-                           org-astro--current-body-images-imports))
+                            org-astro--current-body-images-imports))
          (paragraph-context (org-element-interpret-data paragraph))
          (matching-import nil))
-    
+
+
     ;; Try to find a matching imported image by comparing filenames
     (when image-imports
       (dolist (import image-imports)
@@ -425,18 +426,19 @@ Falls back to the current time if no date is specified."
                (import-filename (file-name-nondirectory import-file-path)))
           ;; Check if the paragraph context contains this filename (even broken up)
           (when (and import-filename
-                     (string-match-p (regexp-quote (file-name-sans-extension import-filename)) 
-                                   paragraph-context))
+                     (string-match-p (regexp-quote (file-name-sans-extension import-filename))
+                                     paragraph-context))
             (setq matching-import import)))))
-    
+
     (if matching-import
-        ;; Generate Image component for matched import  
-        (let ((var-name (plist-get matching-import :var-name))
-              (matched-path (plist-get matching-import :path))
-              (alt-text (or (org-astro--filename-to-alt-text matched-path) "Image")))
+        ;; Generate Image component for matched import
+        (let* ((var-name (plist-get matching-import :var-name))
+               (matched-path (plist-get matching-import :path))
+               (alt-text (or (org-astro--filename-to-alt-text matched-path) "Image")))
           (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
-      ;; No match found - remove the broken paragraph
-      "")))
+        ;; No match found - remove the broken paragraph
+        "")))
+
 
 (defun org-astro-paragraph (paragraph contents info)
   "Transcode a PARAGRAPH element.
@@ -465,15 +467,16 @@ Otherwise, use the default Markdown paragraph transcoding."
               (let ((var-name (plist-get image-data :var-name))
                     (alt-text (or (org-astro--filename-to-alt-text path) "Image")))
                 (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
-            ;; Fallback: if image wasn't processed by the filter, just output the original contents.
-            contents))
-      ;; Check if this paragraph contains broken image path (subscripts)
-      (let ((paragraph-context (org-element-interpret-data paragraph)))
-        (if (string-match-p "/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)" paragraph-context)
-            ;; This paragraph contains a broken image path - try to handle it
-            (org-astro--handle-broken-image-paragraph paragraph info)
-          ;; Regular paragraph
-          (org-md-paragraph paragraph contents info)))))
+              ;; Fallback: if image wasn't processed by the filter, just output the original contents.
+              contents))
+        ;; Check if this paragraph contains broken image path (subscripts)
+        (let ((paragraph-context (org-element-interpret-data paragraph)))
+          (if (string-match-p "/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)" paragraph-context)
+              ;; This paragraph contains a broken image path - try to handle it
+              (org-astro--handle-broken-image-paragraph paragraph info)
+              ;; Regular paragraph
+              (org-md-paragraph paragraph contents info))))))
+
 
 (defun org-astro-plain-text (text info)
   "Transcode a plain-text element.
@@ -484,39 +487,40 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                             org-astro--current-body-images-imports))
          (has-linkpeek nil)
          (processed-lines
-           (mapcar
-            (lambda (line)
-              (let ((trimmed-line (org-trim line)))
-                (if (org-astro--contains-markdown-link-p line)
-                    ;; Preserve Markdown link formatting unchanged
-                    line
-                  (cond
-                   ;; Raw image path
-                   ((and trimmed-line
-                         (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" trimmed-line)
-                         (file-exists-p trimmed-line))
-                    (let ((image-data (when image-imports
-                                        (cl-find trimmed-line image-imports
-                                                 :key (lambda (item) (plist-get item :path))
-                                                 :test #'string-equal))))
-                      (if image-data
-                          (let ((var-name (plist-get image-data :var-name))
-                                (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
-                            (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
-                        ;; Fallback: if image wasn't processed, return empty string to remove the raw path
-                        "")))
-                   ;; Raw URL
-                   ((and trimmed-line
-                         (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
-                    (setq has-linkpeek t)
-                    (format "<LinkPeek href=\"%s\"></LinkPeek>" trimmed-line))
-                   ;; Regular line
-                   (t line)))))
-            lines))))
+          (mapcar
+           (lambda (line)
+             (let ((trimmed-line (org-trim line)))
+               (if (org-astro--contains-markdown-link-p line)
+                   ;; Preserve Markdown link formatting unchanged
+                   line
+                   (cond
+                    ;; Raw image path
+                    ((and trimmed-line
+                          (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" trimmed-line)
+                          (file-exists-p trimmed-line))
+                     (let ((image-data (when image-imports
+                                         (cl-find trimmed-line image-imports
+                                                  :key (lambda (item) (plist-get item :path))
+                                                  :test #'string-equal))))
+                       (if image-data
+                           (let ((var-name (plist-get image-data :var-name))
+                                 (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
+                             (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
+                           ;; Fallback: if image wasn't processed, return empty string to remove the raw path
+                           "")))
+                    ;; Raw URL
+                    ((and trimmed-line
+                          (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
+                     (setq has-linkpeek t)
+                     (format "<LinkPeek href=\"%s\"></LinkPeek>" trimmed-line))
+                    ;; Regular line
+                    (t line)))))
+           lines)))
     ;; Store LinkPeek usage in info for import generation
     (when has-linkpeek
       (plist-put info :astro-uses-linkpeek t))
     (mapconcat 'identity processed-lines "\n")))
+
 
 (defun org-astro-subscript (subscript contents info)
   "Handle subscript elements, removing ones that are part of broken image paths."
@@ -527,8 +531,8 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
         ;; This subscript is part of a broken image path - remove it entirely
         ;; The raw image collection will handle the proper image processing
         ""
-      ;; Regular subscript - use default markdown handling
-      (format "_%s_" (or contents "")))))
+        ;; Regular subscript - use default markdown handling
+        (format "_%s_" (or contents "")))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
