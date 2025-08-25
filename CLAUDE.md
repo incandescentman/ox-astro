@@ -49,6 +49,7 @@ org-astro-known-posts-folders
 - `#+EXCERPT` → `excerpt`
 - `#+COVER_IMAGE` → `image`
 - `#+TAGS` → `tags`
+- `#+CATEGORIES` → `categories`
 - `#+VISIBILITY: hidden` → `hidden: true` (only if specified)
 - `#+STATUS: draft` → `draft: true` (only if specified)
 

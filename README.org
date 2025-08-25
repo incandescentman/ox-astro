@@ -2,7 +2,7 @@
 
 ~ox-astro.el~ is a specialized back-end for the Org export engine, designed to convert Org mode files into Astro-compatible MDX (~.mdx~) files. It streamlines the process of writing blog posts in Org mode for publication on an Astro website.
 
-The exporter automates many of the tedious parts of content creation, including front-matter generation, image handling, and Markdown-specific formatting, allowing you to focus on writing.
+The exporter automates many of the tedious parts of content creation, including automatic front-matter generation (written back to your .org source file), advanced image handling, and Markdown-specific formatting, allowing you to focus on writing.
 
 * Installation and Setup
 
@@ -42,8 +42,8 @@ Example configuration:
 #+begin_src emacs-lisp
 (setq org-astro-known-posts-folders
       '(("actions" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/actions/src/content/blog")
-        ("jaydocs" . "/Users/jay/Library/CloudStorage/Dropbox/github/wt-jaydocs/apps/jaydocs/src/content/blog")
-        ("socratic" . "/Users/jay/Library/CloudStorage/Dropbox/github/wt-socraticai/apps/socraticai/src/content/blog"))) 
+        ("jaydocs" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog")
+        ("socratic" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog"))) 
 #+end_src
 
 * How to Use
@@ -77,15 +77,19 @@ The exporter automatically generates YAML front matter based on keywords in your
 | ~#+COVER_IMAGE~        | ~image~       | Path to the post's cover image.             |
 | ~#+COVER_IMAGE_ALT~    | ~imageAlt~    | Alt text for the cover image.               |
 | ~#+TAGS~               | ~tags~        | A comma- or space-separated list of tags.   |
+| ~#+CATEGORIES~         | ~categories~  | A comma- or space-separated list of categories. |
 | ~#+AUTHOR_IMAGE~       | ~authorImage~ | Path to the author's image.                 |
 | ~#+VISIBILITY~         | ~hidden~      | Set to "hidden" to mark post as hidden.     |
 | ~#+STATUS~             | ~draft~       | Set to "draft" to mark post as draft.       |
-| ~#+DESTINATION_FOLDER~ | (none)      | Specifies the export destination folder.    |
+| ~#+SLUG~               | ~slug~        | URL-friendly slug for the post.             |
+| ~#+DESTINATION_FOLDER~ | (none)        | Specifies the export destination folder.    |
 
-**Fallback Logic:**
-- If ~#+TITLE~ is not found, the exporter uses the first level-1 headline.
-- If ~#+EXCERPT~ is not found, it uses the first paragraph of the document.
-- If ~#+DATE~ is not found, it uses the current time.
+**Automatic Front Matter Generation:**
+The exporter automatically adds missing front matter to your .org source file during export:
+- If ~#+TITLE~ is not found, it uses the first level-1 headline and adds it to the file.
+- If ~#+EXCERPT~ is not found, it generates one from the first paragraph (excluding any image tags) and adds it to the file.
+- If ~#+DATE~ is not found, it uses the current time and adds ~#+PUBLISH_DATE~ to the file.
+- If ~#+SLUG~ is not found but ~#+TITLE~ exists, it generates a URL-friendly slug and adds it to the file.
 - If ~#+COVER_IMAGE_ALT~ is not found, it generates a human-readable alt text from the image's filename.
 
 * Advanced Image Handling

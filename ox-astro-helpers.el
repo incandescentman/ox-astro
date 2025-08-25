@@ -249,6 +249,14 @@ If the generated name starts with a number, it is prefixed with 'img'."
                  (org-split-string tags-raw "[, \t\n]+"))))
     (delq nil (mapcar #'string-trim tags))))
 
+(defun org-astro--parse-categories (info)
+  "Return a list of categories from INFO, splitting on commas/whitespace/newlines."
+  (let* ((categories-raw (or (plist-get info :astro-categories)
+                             (plist-get info :categories)))
+         (categories (when (and categories-raw (stringp categories-raw))
+                       (org-split-string categories-raw "[, \t\n]+"))))
+    (delq nil (mapcar #'string-trim categories))))
+
 (defun org-astro--get-publish-date (info)
   "Extract and format the publish date from INFO.
 Falls back to the current time if no date is specified."
@@ -296,6 +304,7 @@ Falls back to the current time if no date is specified."
          (author (or (plist-get info :author) "Jay Dixit"))
          (excerpt (org-astro--get-excerpt tree info))
          (tags (org-astro--parse-tags info))
+         (categories (org-astro--parse-categories info))
          (publish-date (org-astro--get-publish-date info))
          (author-image (org-astro--get-author-image info posts-folder))
          (cover-image-data (org-astro--get-cover-image info posts-folder))
@@ -315,6 +324,7 @@ Falls back to the current time if no date is specified."
       (image . ,image)
       (imageAlt . ,image-alt)
       (tags . ,tags)
+      (categories . ,categories)
       ,@(when hidden `((hidden . ,hidden)))
       ,@(when draft `((draft . ,draft))))))
 
