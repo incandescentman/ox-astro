@@ -713,7 +713,7 @@ This is more robust for narrowed subtrees than relying on `plain-text` parsing."
           (save-restriction
             (narrow-to-region beg end)
             (goto-char (point-min))
-            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\(png\|jpe?g\|webp\|jpg\)\s-*$" nil t)
+            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
               (let ((path (string-trim (match-string 0))))
                 (when (file-exists-p path)
                   (push path images))))))))

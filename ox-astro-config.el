@@ -26,8 +26,8 @@ Uses Astro's alias, which maps to the project's src/ directory."
 
 (defcustom org-astro-known-posts-folders
   '(("actions" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/actions/src/content/blog")
-    ("jaydocs" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog")
-    ("socratic" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog"))
+    ("jaydocs" . "/Users/jay/Library/CloudStorage/Dropbox/github/wt-jaydocs/apps/jaydocs/src/content/blog")
+    ("socratic" . "/Users/jay/Library/CloudStorage/Dropbox/github/wt-socraticai/apps/socraticai/src/content/blog"))
   "An alist of known directories for exporting Astro posts.
 Each element is a cons cell of the form (NICKNAME . PATH)."
   :group 'org-export-astro
