@@ -15,7 +15,8 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Read(//Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/**)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Read(//Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

@@ -68,6 +68,8 @@ generated and added to the Org source file."
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
       (let ((info (org-export-get-environment 'astro subtreep))
+            ;; Detect if the user is currently narrowed to a subtree.
+            (was-narrowed (buffer-narrowed-p))
             (buffer-modified-p nil))
         ;; --- Ensure essential front-matter exists, writing back if not ---
         (save-excursion
@@ -162,10 +164,32 @@ generated and added to the Org source file."
                (default-outfile (org-export-output-file-name ".mdx" subtreep pub-dir))
                (out-dir (file-name-directory default-outfile))
                (out-filename (file-name-nondirectory default-outfile))
+               ;; Prefer a SLUG found in the narrowed region (subtree) first,
+               ;; then fall back to searching the full buffer.
+               (slug-filename (let ((slug-in-narrow
+                                     (save-excursion
+                                       (goto-char (point-min))
+                                       (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" (point-max) t)
+                                         (org-trim (match-string 1)))))
+                                    (slug-in-full
+                                     (save-excursion
+                                       (save-restriction
+                                         (widen)
+                                         (goto-char (point-min))
+                                         (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" nil t)
+                                           (org-trim (match-string 1)))))))
+                                (or slug-in-narrow slug-in-full)))
                (final-filename
-                (replace-regexp-in-string
-                 "_" "-"
-                 (replace-regexp-in-string "^[0-9]+-" "" out-filename)))
+                ;; Treat either explicit subtree export or an actively narrowed buffer
+                ;; as a signal to use the subtree slug for the filename.
+                (if (and (or subtreep was-narrowed)
+                         slug-filename (not (string-blank-p slug-filename)))
+                    ;; Use slug as filename for subtree exports
+                    (concat slug-filename ".mdx")
+                  ;; Use default filename processing for full file exports
+                  (replace-regexp-in-string
+                   "_" "-"
+                   (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
                (outfile (expand-file-name final-filename out-dir)))
 
           (if pub-dir
