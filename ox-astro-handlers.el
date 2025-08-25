@@ -78,17 +78,26 @@ under the key `:astro-body-images-imports`."
                        (plist-get item :astro-path)))
              body-images-imports
              "\n")))
-         ;; 2. Manual imports from #+ASTRO_IMPORTS
+         ;; 2. Hero image import (if first body image is being used as hero)
+         (posts-folder (or (plist-get info :destination-folder)
+                           (plist-get info :astro-posts-folder)))
+         (explicit-hero (or (plist-get info :astro-image)
+                            (plist-get info :cover-image)))
+         (hero-import (when (and (not explicit-hero) body-images-imports posts-folder)
+                        (let ((first-image (car body-images-imports)))
+                          (format "import hero from '%s';"
+                                  (plist-get first-image :astro-path)))))
+         ;; 3. Manual imports from #+ASTRO_IMPORTS
          (manual-imports (plist-get info :astro-imports))
-         ;; 3. Astro Image component import (always include if we have any body images)
+         ;; 4. Astro Image component import (always include if we have any body images)
          (astro-image-import (when body-images-imports
                                "import { Image } from 'astro:assets';"))
-         ;; 4. LinkPeek component import (if raw URLs are used - check body for raw URL patterns)
+         ;; 5. LinkPeek component import (if raw URLs are used - check body for raw URL patterns)
          (linkpeek-import (when (plist-get info :astro-uses-linkpeek)
                             "import LinkPeek from '../../components/ui/LinkPeek.astro';"))
-         ;; 5. Combine all imports, filtering out nil/empty values
+         ;; 6. Combine all imports, filtering out nil/empty values
          (all-imports (mapconcat #'identity
-                                 (delq nil (list astro-image-import linkpeek-import body-imports-string manual-imports))
+                                 (delq nil (list hero-import astro-image-import linkpeek-import body-imports-string manual-imports))
                                  "\n")))
     (concat front-matter-string
             (or source-comment "")

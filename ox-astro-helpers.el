@@ -276,15 +276,22 @@ Falls back to the current time if no date is specified."
         org-astro-default-author-image)))
 
 (defun org-astro--get-cover-image (info posts-folder)
-  "Get the cover image path and alt text from INFO."
+  "Get the cover image path and alt text from INFO.
+If no explicit cover image is specified, use the first body image as hero."
   (let* ((image-raw (or (plist-get info :astro-image)
                         (plist-get info :cover-image)))
          (image (and image-raw posts-folder
                      (org-astro--process-image-path image-raw posts-folder "posts/")))
+         ;; If no explicit image, try to use first body image as hero
+         (body-images (or (plist-get info :astro-body-images-imports)
+                          org-astro--current-body-images-imports))
+         (fallback-image (when (and (not image) body-images)
+                           (plist-get (car body-images) :astro-path)))
+         (final-image (or image fallback-image))
          (image-alt (or (plist-get info :astro-image-alt)
                         (plist-get info :cover-image-alt)
-                        (and image (org-astro--filename-to-alt-text image)))))
-    (list image image-alt)))
+                        (and final-image (org-astro--filename-to-alt-text final-image)))))
+    (list final-image image-alt)))
 
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
