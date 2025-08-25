@@ -11,7 +11,9 @@
       "Bash(git checkout:*)",
       "Bash(cat:*)",
       "Read(//Users/jay/Library/CloudStorage/Dropbox/roam/journal/**)",
-      "Read(//Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog/**)"
+      "Read(//Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog/**)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

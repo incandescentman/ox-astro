@@ -1,0 +1,15 @@
+#+TITLE: Test Categories Support
+#+AUTHOR: Jay Dixit
+#+TAGS: web development, astro
+#+CATEGORIES: tutorial, programming, frontend
+#+DESTINATION_FOLDER: /tmp/test-export
+
+
+#+EXCERPT: This is a test document to verify that categories are properly supported alongside tags.
+
+#+PUBLISH_DATE: [2025-08-25 Mon 12:17]
+* Introduction
+
+This is a test document to verify that categories are properly supported alongside tags.
+
+Categories should appear in the front matter alongside tags.

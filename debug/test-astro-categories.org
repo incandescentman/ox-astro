@@ -1,0 +1,13 @@
+#+TITLE: Test Astro Categories
+#+AUTHOR: Jay Dixit  
+#+ASTRO_TAGS: advanced, custom
+#+ASTRO_CATEGORIES: advanced tutorials, astro specific
+#+DESTINATION_FOLDER: /tmp/test-export
+
+
+#+EXCERPT: Testing ASTROCATEGORIES keyword which should take precedence over CATEGORIES.
+
+#+PUBLISH_DATE: [2025-08-25 Mon 12:17]
+* Content
+
+Testing ASTRO_CATEGORIES keyword which should take precedence over CATEGORIES.
