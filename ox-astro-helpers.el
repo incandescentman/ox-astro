@@ -507,8 +507,16 @@ Otherwise, use the default Markdown paragraph transcoding."
 If the text contains raw image paths on their own lines, convert them to <img> tags.
 If the text contains raw URLs on their own lines, convert them to LinkPeek components."
   (let* ((lines (split-string text "\n"))
-         (image-imports (or (plist-get info :astro-body-images-imports)
-                            org-astro--current-body-images-imports))
+         (image-imports-raw (or (plist-get info :astro-body-images-imports)
+                                org-astro--current-body-images-imports))
+         ;; Apply same logic as other filters - exclude first image when it's used as hero
+         (explicit-hero (or (plist-get info :astro-image)
+                            (plist-get info :cover-image)))
+         (image-imports (if (and (not explicit-hero) image-imports-raw)
+                            ;; Exclude first image when it's used as hero
+                            (cdr image-imports-raw)
+                          ;; Use all images when there's an explicit hero
+                          image-imports-raw))
          (has-linkpeek nil)
          (processed-lines
           (mapcar

@@ -13,7 +13,9 @@
       "Read(//Users/jay/Library/CloudStorage/Dropbox/roam/journal/**)",
       "Read(//Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog/**)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Read(//Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/**)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

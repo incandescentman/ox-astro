@@ -67,8 +67,16 @@ under the key `:astro-body-images-imports`."
                            (format "{/* Source org: %s */}\n" source-path)))
          ;; --- Handle All Imports ---
          ;; 1. Body image imports (collected by our filter)
-         (body-images-imports (or (plist-get info :astro-body-images-imports)
-                                  org-astro--current-body-images-imports))
+         (body-images-imports-raw (or (plist-get info :astro-body-images-imports)
+                                      org-astro--current-body-images-imports))
+         ;; Check if first image is being used as hero (no explicit hero specified)
+         (explicit-hero (or (plist-get info :astro-image)
+                            (plist-get info :cover-image)))
+         (body-images-imports (if (and (not explicit-hero) body-images-imports-raw)
+                                  ;; Exclude first image when it's used as hero
+                                  (cdr body-images-imports-raw)
+                                ;; Use all images when there's an explicit hero
+                                body-images-imports-raw))
          (body-imports-string
           (when body-images-imports
             (mapconcat
@@ -81,10 +89,8 @@ under the key `:astro-body-images-imports`."
          ;; 2. Hero image import (if first body image is being used as hero)
          (posts-folder (or (plist-get info :destination-folder)
                            (plist-get info :astro-posts-folder)))
-         (explicit-hero (or (plist-get info :astro-image)
-                            (plist-get info :cover-image)))
-         (hero-import (when (and (not explicit-hero) body-images-imports posts-folder)
-                        (let ((first-image (car body-images-imports)))
+         (hero-import (when (and (not explicit-hero) body-images-imports-raw posts-folder)
+                        (let ((first-image (car body-images-imports-raw)))
                           (format "import hero from '%s';"
                                   (plist-get first-image :astro-path)))))
          ;; 3. Manual imports from #+ASTRO_IMPORTS
@@ -121,8 +127,16 @@ under the key `:astro-body-images-imports`."
     (dolist (pair entity-map)
       (setq s (replace-regexp-in-string (car pair) (cdr pair) s t t)))
     ;; Convert markdown image syntax with absolute paths to Image components
-    (let ((image-imports (or (plist-get info :astro-body-images-imports)
-                             org-astro--current-body-images-imports)))
+    (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
+                                  org-astro--current-body-images-imports))
+           ;; Exclude first image when it's being used as hero (same logic as imports)
+           (explicit-hero (or (plist-get info :astro-image)
+                              (plist-get info :cover-image)))
+           (image-imports (if (and (not explicit-hero) image-imports-raw)
+                              ;; Exclude first image when it's used as hero
+                              (cdr image-imports-raw)
+                            ;; Use all images when there's an explicit hero
+                            image-imports-raw)))
       (when image-imports
         (setq s (replace-regexp-in-string
                  "!\[\([^]]*\)\](\(/[^)]+\.\(?:png\|jpe?g\|webp\)\))"
