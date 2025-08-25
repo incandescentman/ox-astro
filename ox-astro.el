@@ -127,8 +127,11 @@ generated and added to the Org source file."
         ;; --- Original export logic continues below ---
         (let* ((posts-folder-from-file (or (plist-get info :astro-posts-folder)
                                            (plist-get info :destination-folder)))
-               (resolved-posts-folder (and posts-folder-from-file
-                                           (cdr (assoc posts-folder-from-file org-astro-known-posts-folders))))
+               (resolved-posts-folder-raw (and posts-folder-from-file
+                                               (cdr (assoc posts-folder-from-file org-astro-known-posts-folders))))
+               ;; Trim whitespace from resolved path to handle configuration errors
+               (resolved-posts-folder (and resolved-posts-folder-raw
+                                           (string-trim resolved-posts-folder-raw)))
                (posts-folder
                 (cond
                  ;; If we found it in known folders, use that path
@@ -143,8 +146,11 @@ generated and added to the Org source file."
                   (let* ((selection (completing-read "Select a posts folder: "
                                                      org-astro-known-posts-folders
                                                      nil t posts-folder-from-file))
-                         (selected-path (when selection
-                                          (cdr (assoc selection org-astro-known-posts-folders)))))
+                         (selected-path-raw (when selection
+                                              (cdr (assoc selection org-astro-known-posts-folders))))
+                         ;; Trim whitespace from selected path
+                         (selected-path (and selected-path-raw
+                                             (string-trim selected-path-raw))))
                     (when selected-path
                       ;; Add the DESTINATION_FOLDER keyword to the org file
                       (save-excursion

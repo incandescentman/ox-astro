@@ -25,11 +25,22 @@ Uses Astro's alias, which maps to the project's src/ directory."
   :type 'string)   ;; treat it as raw front-matter text, not a local file
 
 (defcustom org-astro-known-posts-folders
-  '(("actions" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/actions/src/content/blog")
-    ("jaydocs" . "/Users/jay/Library/CloudStorage/Dropbox/github/wt-jaydocs/apps/jaydocs/src/content/blog")
-    ("socratic" . "/Users/jay/Library/CloudStorage/Dropbox/github/wt-socraticai/apps/socraticai/src/content/blog"))
+  '(("blog" . "~/projects/my-astro-site/src/content/blog")
+    ("docs" . "~/projects/my-docs-site/src/content/docs"))
   "An alist of known directories for exporting Astro posts.
-Each element is a cons cell of the form (NICKNAME . PATH)."
+Each element is a cons cell of the form (NICKNAME . PATH).
+
+To customize this:
+1. Run M-x customize-group RET org-export-astro RET
+2. Edit the 'Org Astro Known Posts Folders' setting
+3. Add your project paths using nicknames you can reference in #+DESTINATION_FOLDER
+
+Example configuration:
+  ((\"blog\" . \"/path/to/my-blog/src/content/blog\")
+   (\"docs\" . \"/path/to/my-docs/src/content/docs\")
+   (\"portfolio\" . \"/path/to/portfolio/src/content/posts\"))
+
+Then in your Org files, use: #+DESTINATION_FOLDER: blog"
   :group 'org-export-astro
   :type '(alist :key-type (string :tag "Nickname")
                 :value-type (directory :tag "Path")))

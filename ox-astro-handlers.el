@@ -16,8 +16,11 @@ under the key `:astro-body-images-imports`."
   (let* ((posts-folder-raw (or (plist-get info :destination-folder)
                                (plist-get info :astro-posts-folder)))
          ;; Resolve the posts folder using the same logic as in ox-astro.el
-         (resolved-posts-folder (and posts-folder-raw
-                                     (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+         (resolved-posts-folder-raw (and posts-folder-raw
+                                         (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+         ;; Trim whitespace from resolved path to handle configuration errors
+         (resolved-posts-folder (and resolved-posts-folder-raw
+                                     (string-trim resolved-posts-folder-raw)))
          (posts-folder (cond
                         ;; If we found it in known folders, use that path
                         (resolved-posts-folder resolved-posts-folder)

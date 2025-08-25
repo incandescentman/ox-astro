@@ -30,6 +30,22 @@ Then, add the following to your Emacs configuration (~init.el~):
 - **Subtree Export**: Export individual subtrees as standalone blog posts.
 - **Mixed Link Support**: Preserves existing Markdown links while processing Org links and converting raw URLs into custom components.
 
+* Configuration
+
+Before using ox-astro, you need to configure your project paths:
+
+1. Run ~M-x customize-group RET org-export-astro RET~
+2. Edit the "Org Astro Known Posts Folders" setting
+3. Add your Astro project paths with memorable nicknames
+
+Example configuration:
+#+begin_src emacs-lisp
+(setq org-astro-known-posts-folders
+      '(("actions" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/actions/src/content/blog")
+        ("jaydocs" . "/Users/jay/Library/CloudStorage/Dropbox/github/wt-jaydocs/apps/jaydocs/src/content/blog")
+        ("socratic" . "/Users/jay/Library/CloudStorage/Dropbox/github/wt-socraticai/apps/socraticai/src/content/blog"))) 
+#+end_src
+
 * How to Use
 
 1.  Open the Org file you want to export.
