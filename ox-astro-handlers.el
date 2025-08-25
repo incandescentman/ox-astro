@@ -13,6 +13,9 @@ all local image links, copies them to the Astro assets
 directory, and prepares a list of import statements to be added
 to the final MDX file. The data is stored in the INFO plist
 under the key `:astro-body-images-imports`."
+  ;; Reset any stale state from previous exports so we never carry images over.
+  (setq org-astro--current-body-images-imports nil)
+  (plist-put info :astro-body-images-imports nil)
   (let* ((posts-folder-raw (or (plist-get info :destination-folder)
                                (plist-get info :astro-posts-folder)))
          ;; Resolve the posts folder using the same logic as in ox-astro.el

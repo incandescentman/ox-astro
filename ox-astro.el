@@ -71,6 +71,8 @@ generated and added to the Org source file."
             ;; Detect if the user is currently narrowed to a subtree.
             (was-narrowed (buffer-narrowed-p))
             (buffer-modified-p nil))
+        ;; Clear any stale image import state before running export filters.
+        (setq org-astro--current-body-images-imports nil)
         ;; --- Ensure essential front-matter exists, writing back if not ---
         (save-excursion
           (condition-case err
