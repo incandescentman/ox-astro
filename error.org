@@ -1,0 +1,167 @@
+#+TITLE: Hero Image Implementation Error Report
+#+DATE: [2025-08-25 Sun]
+#+AUTHOR: Claude Code
+
+* Problem Description
+
+When implementing the feature to use the first raw image URL as a hero image (when no explicit hero is specified), we encounter a critical JavaScript reference error in the generated MDX output.
+
+** Expected Behavior
+When no explicit hero image is specified (no ~#+COVER_IMAGE~ or ~#+IMAGE~), the system should:
+1. Use the first raw image URL as the hero image in front matter
+2. Generate a hero import statement
+3. Completely remove the raw image from the body content (no duplicate ~<Image>~ component)
+
+** Current Broken Behavior
+The system correctly:
+- ✅ Sets hero in front matter: ~image: ~/assets/images/posts/QR1-0941.jpg~
+- ✅ Generates hero import: ~import hero from '~/assets/images/posts/QR1-0941.jpg';~
+- ✅ Removes duplicate body import (no ~import QR10941 from '~/assets/images/posts/QR1-0941.jpg';~)
+
+But incorrectly:
+- ❌ Still generates: ~<Image src={QR10941} alt="Qr1 0941" />~
+- ❌ This creates a JavaScript error because ~QR10941~ is referenced but not imported
+
+* Root Cause Analysis
+
+The raw image path ~/Users/jay/Downloads/QR1_0941.jpg~ in the source content is being processed by the ~org-astro-plain-text~ function, which should either:
+
+1. Convert it to an ~<Image>~ component (when it's a body image)
+2. Return empty string to remove it entirely (when it's used as hero)
+
+The filtering logic was implemented to exclude the first image from the ~image-imports~ list when it becomes the hero, but the ~org-astro-plain-text~ function is still generating the ~<Image>~ component somehow.
+
+* Test Case
+
+** Source File: ~/Users/jay/Library/CloudStorage/Dropbox/roam/journal/2025-08-24.org~
+#+begin_example
+#+TITLE: Cascais
+#+DESTINATION_FOLDER: jaydocs
+The thing about Cascais is that the town is beautiful and the weather is exceptionally clement. 
+
+/Users/jay/Downloads/QR1_0941.jpg 
+#+end_example
+
+** Generated Output: ~08-24.mdx~
+#+begin_src javascript
+---
+title: Cascais
+image: ~/assets/images/posts/QR1-0941.jpg  // ✅ Correct hero in front matter
+---
+import hero from '~/assets/images/posts/QR1-0941.jpg';  // ✅ Correct hero import
+// ✅ No duplicate body import - good!
+
+# Cascais
+The thing about Cascais is that the town is beautiful and the weather is exceptionally clement. 
+
+<Image src={QR10941} alt="Qr1 0941" />  // ❌ PROBLEM: References undefined variable
+#+end_src
+
+* Solutions Attempted
+
+** 1. Modified ~org-astro--get-cover-image~ (✅ Working)
+**File:** ~ox-astro-helpers.el:278~
+**Change:** Added fallback logic to use first body image as hero when no explicit hero specified.
+**Result:** Successfully sets hero image in front matter.
+
+** 2. Modified ~org-astro-body-filter~ Imports (✅ Working)
+**File:** ~ox-astro-handlers.el:69-100~
+**Changes:** 
+- Added hero import generation when first body image becomes hero
+- Excluded first image from body imports when used as hero
+- Applied filtering logic: ~(cdr body-images-imports-raw)~
+**Result:** Successfully generates hero import and removes duplicate body import.
+
+** 3. Modified ~org-astro-final-output-filter~ (✅ Working)
+**File:** ~ox-astro-handlers.el:129-154~
+**Change:** Applied same filtering logic to exclude first image from markdown image replacement.
+**Result:** Correctly filters the image replacement logic.
+
+** 4. Modified ~org-astro-plain-text~ (❌ Not Working)
+**File:** ~ox-astro-helpers.el:509-519~
+**Change:** Applied same filtering logic to exclude first image when it becomes hero.
+**Expected:** Raw image path should return empty string, removing it from content.
+**Actual:** Still generates ~<Image>~ component with undefined variable reference.
+
+* Current Implementation Details
+
+The filtering logic implemented in all functions:
+
+#+begin_src elisp
+;; Get raw imports list
+(image-imports-raw (or (plist-get info :astro-body-images-imports)
+                       org-astro--current-body-images-imports))
+;; Check if hero is explicit
+(explicit-hero (or (plist-get info :astro-image)
+                   (plist-get info :cover-image)))
+;; Filter out first image when it becomes hero
+(image-imports (if (and (not explicit-hero) image-imports-raw)
+                   (cdr image-imports-raw)  ; Skip first image
+                 image-imports-raw))        ; Use all images
+#+end_src
+
+* Debugging Questions
+
+1. **Path Matching Issue?** 
+   - Is the path ~/Users/jay/Downloads/QR1_0941.jpg~ being matched correctly against the ~:path~ property in the imports data?
+   - Are there path normalization issues (relative vs absolute, trailing spaces, etc.)?
+
+2. **Function Call Order?**
+   - Is ~org-astro-plain-text~ being called before or after the filtering logic is applied?
+   - Is there a timing issue with when the ~image-imports~ data is available?
+
+3. **Alternative Processing Path?**
+   - Is there another function besides ~org-astro-plain-text~ that could be generating the ~<Image>~ component?
+   - Could the ~org-astro-final-output-filter~ be processing this after ~org-astro-plain-text~?
+
+4. **Data Structure Issues?**
+   - Is the ~cl-find~ lookup in ~org-astro-plain-text~ working correctly with the filtered ~image-imports~ list?
+   - Are the ~:path~ values in the imports data structure what we expect?
+
+* Next Steps for Resolution
+
+1. **Add Debug Logging**
+   - Log the ~image-imports~ list in ~org-astro-plain-text~ to verify filtering
+   - Log the ~trimmed-line~ being processed
+   - Log the ~image-data~ lookup result
+
+2. **Path Verification** 
+   - Verify exact path format stored in ~:path~ property vs. ~trimmed-line~
+   - Check for any path normalization or whitespace issues
+
+3. **Function Call Flow Analysis**
+   - Trace the exact order of function calls during export
+   - Verify when filtering logic is applied vs. when content is processed
+
+4. **Alternative Approaches**
+   - Consider removing the raw image line entirely in the parse tree filter phase
+   - Consider a more direct approach to exclude the first image path from content
+
+* Files Modified
+
+- ~ox-astro-helpers.el:278~ - ~org-astro--get-cover-image~ ✅
+- ~ox-astro-handlers.el:69-100~ - ~org-astro-body-filter~ imports ✅  
+- ~ox-astro-handlers.el:129-154~ - ~org-astro-final-output-filter~ ✅
+- ~ox-astro-helpers.el:509-519~ - ~org-astro-plain-text~ ❌
+
+* Test Commands
+
+#+begin_src bash
+# Test export
+cd "/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro" && \
+emacs --batch --eval "(progn \
+  (setq org-astro-known-posts-folders '((\"jaydocs\" . \"/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog\"))) \
+  (add-to-list 'load-path \".\") \
+  (load \"ox-astro-config.el\") \
+  (load \"ox-astro-helpers.el\") \
+  (load \"ox-astro-handlers.el\") \
+  (load \"ox-astro.el\") \
+  (find-file \"/Users/jay/Library/CloudStorage/Dropbox/roam/journal/2025-08-24.org\") \
+  (goto-char (point-min)) \
+  (search-forward \"** Cascais\") \
+  (org-narrow-to-subtree) \
+  (org-astro-export-to-mdx))"
+
+# Check result
+cat "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/08-24.mdx"
+#+end_src

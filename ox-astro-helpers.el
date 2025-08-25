@@ -437,8 +437,14 @@ If no explicit cover image is specified, use the first body image as hero."
 
 (defun org-astro--handle-broken-image-paragraph (paragraph info)
   "Handle a paragraph containing a broken image path with subscripts."
-  (let* ((image-imports (or (plist-get info :astro-body-images-imports)
-                            org-astro--current-body-images-imports))
+  (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
+                                org-astro--current-body-images-imports))
+         ;; Exclude first image if it's being used as the implicit hero
+         (explicit-hero (or (plist-get info :astro-image)
+                            (plist-get info :cover-image)))
+         (image-imports (if (and (not explicit-hero) image-imports-raw)
+                            (cdr image-imports-raw)
+                          image-imports-raw))
          (paragraph-context (org-element-interpret-data paragraph))
          (matching-import nil))
 
@@ -481,8 +487,14 @@ Otherwise, use the default Markdown paragraph transcoding."
           (setq is-image-path t)
           (setq path text))))
     (if is-image-path
-        (let* ((image-imports (or (plist-get info :astro-body-images-imports)
-                                  org-astro--current-body-images-imports))
+        (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
+                                      org-astro--current-body-images-imports))
+               ;; Exclude first image if it's being used as the implicit hero
+               (explicit-hero (or (plist-get info :astro-image)
+                                  (plist-get info :cover-image)))
+               (image-imports (if (and (not explicit-hero) image-imports-raw)
+                                  (cdr image-imports-raw)
+                                image-imports-raw))
                (image-data (when image-imports
                              (cl-find path image-imports
                                       :key (lambda (item) (plist-get item :path))
@@ -747,4 +759,3 @@ This is more robust for narrowed subtrees than relying on `plain-text` parsing."
                   (push path images))))))))
     (nreverse images)))
 ;;; ox-astro-helpers.el ends here
-
