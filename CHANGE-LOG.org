@@ -1,6 +1,38 @@
 #+TITLE: ox-astro Change Log
 #+AUTHOR: Jay Dixit & Claude
-#+DATE: 2025-08-24
+#+DATE: 2025-08-25
+
+* Excerpt Image Tag Removal Fix
+
+** Problem Statement
+
+Auto-generated excerpts were including image tags, causing unwanted image references in the excerpt text. For example:
+
+#+begin_example
+excerpt: The thing about Cascais is that the town is beautiful and the weather is exceptionally clement.  ![img](UsersjayDownloadsQR10941.jpg)
+#+end_example
+
+This created messy excerpts and potential broken image references in blog post previews.
+
+** Solution
+
+Enhanced the excerpt generation logic in two places:
+
+1. **ox-astro-helpers.el** - Updated `org-astro--get-excerpt` function to remove both Markdown image tags (`![img](path)`) and HTML image tags (`<img...>`) from generated excerpts
+2. **ox-astro.el** - Simplified duplicate excerpt logic in `org-astro-export-to-mdx` to use the centralized excerpt generation function
+
+** Implementation Details
+
+The fix uses regex patterns to strip image tags:
+- `!\\[.*?\\]([^)]*)` - removes Markdown image syntax
+- `<img[^>]*>` - removes HTML image tags
+
+This ensures clean, text-only excerpts in both the .org source file and .mdx export.
+
+** Files Changed
+
+- =ox-astro-helpers.el:234-235= - Added image tag removal to excerpt processing
+- =ox-astro.el:100-103= - Refactored to use centralized excerpt generation
 
 * Raw Image Path Processing Feature
 

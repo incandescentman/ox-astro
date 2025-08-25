@@ -98,16 +98,7 @@ generated and added to the Org source file."
 
                 ;; 2. Handle Excerpt
                 (unless excerpt-present
-                  (let* ((paragraph (org-element-map tree 'paragraph 'identity nil 'first-match))
-                         (excerpt-text
-                          (when paragraph
-                            (let* ((raw (org-astro--safe-export (org-element-contents paragraph) info))
-                                   (clean (replace-regexp-in-string "[*_/]" "" raw))
-                                   (one   (replace-regexp-in-string "\n" " " clean))
-                                   (first (if (string-match "\\`\\(.\\{1,300\\}?[.?!]\\)" one)
-                                              (match-string 1 one)
-                                            (truncate-string-to-width one 300 nil nil "..."))))
-                              (org-trim first)))))
+                  (let ((excerpt-text (org-astro--get-excerpt tree info)))
                     (when (and excerpt-text (not (string-blank-p excerpt-text)))
                       (org-astro--insert-keyword-at-end-of-block "EXCERPT" excerpt-text)
                       (setq buffer-modified-p t))))
