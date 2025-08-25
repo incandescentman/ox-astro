@@ -47,7 +47,7 @@ Respects narrowing - works within the current narrowed region."
                                   (looking-at-p "^#\\s-")
                                   (looking-at-p "^\\s-*$")))
                     (forward-line 1)))
-                ;; In full file: place at top after properties/keywords
+                ;; In full file: prefer placing after org-roam preamble (- Links :: / - Source ::)
                 (progn
                   ;; First, skip over any org-roam properties block
                   (when (looking-at-p "^:PROPERTIES:")
@@ -57,12 +57,27 @@ Respects narrowing - works within the current narrowed region."
                       (forward-line 1))
                     (when (looking-at-p "^:END:")
                       (forward-line 1)))
-                  ;; Then skip over keywords, comments, and blank lines
-                  (while (and (< (point) limit)
-                              (or (looking-at-p "^#\\+")
-                                  (looking-at-p "^#\\s-")
-                                  (looking-at-p "^\\s-*$")))
-                    (forward-line 1))))
+                  ;; If there is a roam preamble (- Links :: or - Source ::) before first headline,
+                  ;; insert after the last such line; otherwise fall back to after existing keywords/comments.
+                  (let ((roam-anchor (save-excursion
+                                       (let ((last-pos nil))
+                                         (save-restriction
+                                           (narrow-to-region (point-min) limit)
+                                           (goto-char (point-min))
+                                           (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+                                             (setq last-pos (line-end-position))))
+                                         (when last-pos
+                                           (goto-char last-pos)
+                                           (forward-line 1)
+                                           (point))))))
+                    (if roam-anchor
+                        (goto-char roam-anchor)
+                      ;; Fall back: skip over keywords, comments, and blank lines
+                      (while (and (< (point) limit)
+                                  (or (looking-at-p "^#\\+")
+                                      (looking-at-p "^#\\s-")
+                                      (looking-at-p "^\\s-*$")))
+                        (forward-line 1))))))
             ;; Keep one blank line before insert unless at BOF or already blank
             (unless (or (bobp) (looking-at-p "^\\s-*$"))
               (insert "\n"))
@@ -73,6 +88,48 @@ Respects narrowing - works within the current narrowed region."
   "Alias for `org-astro--upsert-keyword'."
   (org-astro--upsert-keyword key value))
 
+;; Return point after the last org-roam preamble line before first headline.
+(defun org-astro--find-roam-anchor-position ()
+  (save-excursion
+    (goto-char (point-min))
+    (let ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
+          (last-pos nil))
+      (save-restriction
+        (narrow-to-region (point-min) limit)
+        (goto-char (point-min))
+        (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+          (setq last-pos (line-end-position)))
+        (when last-pos
+          (goto-char last-pos)
+          (forward-line 1)
+          (point)))))
+
+;; Upsert keyword, preferring placement after org-roam preamble for full-file exports.
+(defun org-astro--upsert-keyword-after-roam (key value)
+  (let* ((ukey (upcase (format "%s" key)))
+         (re (format "^#\\+%s:\\s-*\\(.*\\)$" (regexp-quote ukey))))
+    (save-excursion
+      (goto-char (point-min))
+      (let ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max)))))
+        (if (re-search-forward re limit t)
+            (progn
+              (beginning-of-line)
+              (kill-line)
+              (insert (format "#+%s: %s" ukey (or value ""))))
+          (goto-char (point-min))
+          (if (looking-at-p "^\\*+")
+              ;; In a narrowed subtree region, reuse standard insertion
+              (org-astro--upsert-keyword key value)
+            ;; Full file: try after roam preamble
+            (let ((anchor (org-astro--find-roam-anchor-position)))
+              (if anchor
+                  (progn
+                    (goto-char anchor)
+                    (unless (or (bobp) (looking-at-p "^\\s-*$"))
+                      (insert "\n"))
+                    (insert (format "#+%s: %s\n" ukey (or value ""))))
+                ;; Fallback to normal behavior
+                (org-astro--upsert-keyword key value)))))))))
 
 (defun org-astro--safe-export (data info)
   "Like `org-export-data' but never throws. Falls back to readable plain text."

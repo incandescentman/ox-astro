@@ -51,6 +51,9 @@
 (require 'ox-astro-helpers)
 (require 'ox-astro-handlers)
 
+;; Placement helper: insert keywords after org-roam preamble (- Links :: / - Source ::)
+;; (Placement helper removed for now — using existing insertion helper.)
+
 
 ;;;###autoload
 (defun org-astro-export-as-mdx (&optional async subtreep visible-only body-only)
@@ -100,14 +103,14 @@ generated and added to the Org source file."
                             (org-astro--insert-keyword-at-end-of-block "SLUG" slug)))
                         (setq buffer-modified-p t)))))
 
-                ;; 2. Handle Excerpt
+                ;; 2. Handle Excerpt (only if missing), placed after org-roam preamble
                 (unless excerpt-present
                   (let ((excerpt-text (org-astro--get-excerpt tree info)))
                     (when (and excerpt-text (not (string-blank-p excerpt-text)))
                       (org-astro--insert-keyword-at-end-of-block "EXCERPT" excerpt-text)
                       (setq buffer-modified-p t))))
 
-                ;; 3. Handle Date
+                ;; 3. Handle Date (only if missing), placed after org-roam preamble
                 (unless date-present
                   (let ((date-str (format-time-string (org-time-stamp-format 'long 'inactive) (current-time))))
                     (org-astro--insert-keyword-at-end-of-block "PUBLISH_DATE" date-str)
@@ -156,8 +159,8 @@ generated and added to the Org source file."
                               (beginning-of-line)
                               (kill-line)
                               (insert (format "#+DESTINATION_FOLDER: %s" selection)))
-                            ;; Add new DESTINATION_FOLDER keyword
-                            (org-astro--insert-keyword-at-end-of-block "DESTINATION_FOLDER" selection)))
+                          ;; Add new DESTINATION_FOLDER keyword
+                          (org-astro--insert-keyword-at-end-of-block "DESTINATION_FOLDER" selection)))
                       (save-buffer))
                     selected-path))))
                (pub-dir (when posts-folder
