@@ -28,10 +28,10 @@ under the key `:astro-body-images-imports`."
                          posts-folder-raw)
                         ;; Otherwise, can't resolve - no posts folder
                         (t nil)))
-         ;; Collect all image links from the document body.
+         ;; Collect all image links from the document body using multiple strategies.
          (image-paths-from-tree (org-astro--collect-images-from-tree tree))
-         ;; Also collect from raw buffer content to catch underscore paths
-         (image-paths-from-raw (org-astro--collect-raw-image-paths))
+         ;; Also collect from raw buffer content to catch underscore paths and fix subtree issues
+         (image-paths-from-raw (org-astro--collect-raw-images-from-tree-region tree))
          (image-paths (delete-dups (append image-paths-from-tree image-paths-from-raw)))
          image-imports-data)
     (when posts-folder
