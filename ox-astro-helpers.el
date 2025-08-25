@@ -701,4 +701,22 @@ INFO is a plist used as a communication channel."
     (concat "| " (mapconcat #'identity separators " | ") " |")))
 
 (provide 'ox-astro-helpers)
+
+(defun org-astro--collect-raw-images-from-tree-region (tree)
+  "Collect raw image paths by scanning the buffer region of a parse TREE.
+This is more robust for narrowed subtrees than relying on `plain-text` parsing."
+  (let (images)
+    (let ((beg (org-element-property :begin tree))
+          (end (org-element-property :end tree)))
+      (when (and beg end)
+        (save-excursion
+          (save-restriction
+            (narrow-to-region beg end)
+            (goto-char (point-min))
+            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\(png\|jpe?g\|webp\|jpg\)\s-*$" nil t)
+              (let ((path (string-trim (match-string 0))))
+                (when (file-exists-p path)
+                  (push path images))))))))
+    (nreverse images)))
 ;;; ox-astro-helpers.el ends here
+
