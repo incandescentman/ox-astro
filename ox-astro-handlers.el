@@ -16,6 +16,8 @@ under the key `:astro-body-images-imports`."
   ;; Reset any stale state from previous exports so we never carry images over.
   (setq org-astro--current-body-images-imports nil)
   (plist-put info :astro-body-images-imports nil)
+  ;; Also reset LinkPeek flag so imports don't leak across exports
+  (plist-put info :astro-uses-linkpeek nil)
   (let* ((posts-folder-raw (or (plist-get info :destination-folder)
                                (plist-get info :astro-posts-folder)))
          ;; Resolve the posts folder using the same logic as in ox-astro.el
