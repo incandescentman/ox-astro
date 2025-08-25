@@ -29,6 +29,7 @@ Then, add the following to your Emacs configuration (~init.el~):
 - **org-roam Integration**: Respects org-roam file structure and properties blocks.
 - **Subtree Export**: Export individual subtrees as standalone blog posts.
 - **Mixed Link Support**: Preserves existing Markdown links while processing Org links and converting raw URLs into custom components.
+- **Slug Filenames for Subtrees**: When exporting a subtree (or when the buffer is narrowed to a subtree), the output filename uses the subtree's ~#+SLUG~ as ~slug.mdx~.
 
 * Configuration
 
@@ -59,34 +60,42 @@ Example configuration:
 You can export individual subtrees as standalone blog posts. This is especially useful for org-roam workflows where you might have multiple blog posts as subtrees in a single file.
 
 1.  Position your cursor on the heading you want to export.
-2.  Run ~M-x org-narrow-to-subtree~ to narrow to just that subtree.
-3.  Run ~M-x org-astro-export-to-mdx~ with the subtree parameter: ~C-u M-x org-astro-export-to-mdx~
-4.  Keywords like ~#+EXCERPT~ and ~#+PUBLISH_DATE~ will be inserted within the subtree, below the heading.
+2.  Run ~M-x org-narrow-to-subtree~ to narrow to just that subtree. (Optional: You can also export the subtree via prefix argument ~C-u~.)
+3.  Run ~M-x org-astro-export-to-mdx~. If the buffer is narrowed or you use the subtree prefix arg, the exporter treats it as a subtree export.
+4.  The output filename will use the subtree's ~#+SLUG~ (e.g., ~cascais.mdx~). If ~#+SLUG~ is missing, it is generated from the subtree title.
+5.  Keywords like ~#+TITLE~, ~#+SLUG~, ~#+EXCERPT~, and ~#+PUBLISH_DATE~ are inserted within the subtree, just below the heading (and after any ~:PROPERTIES:~ block).
+
+** Filename Generation
+
+- **Full-file exports**: Uses Org's default ~org-export-output-file-name~ result (with minor sanitization like replacing underscores with hyphens).
+- **Subtree/narrowed exports**: Searches for ~#+SLUG:~ in the current narrowed region first, then in the full buffer. If found and non-empty, the final filename is ~slug.mdx~.
+- **Slug creation**: If the subtree lacks ~#+TITLE~, the exporter derives a title from the first heading and inserts both ~#+TITLE~ and a slugified ~#+SLUG~ into the source.
 
 * Front Matter Generation
 
 The exporter automatically generates YAML front matter based on keywords in your Org file.
 
 **Supported Keys:**
-| Org Keyword          | YAML Key    | Description                                 |
-|----------------------+-------------+---------------------------------------------|
-| ~#+TITLE~              | ~title~       | The title of the post.                      |
-| ~#+AUTHOR~             | ~author~      | The author's name. Defaults to "Jay Dixit". |
-| ~#+DATE~               | ~publishDate~ | The publication date.                       |
-| ~#+EXCERPT~            | ~excerpt~     | A short summary of the post.                |
-| ~#+COVER_IMAGE~        | ~image~       | Path to the post's cover image.             |
-| ~#+COVER_IMAGE_ALT~    | ~imageAlt~    | Alt text for the cover image.               |
-| ~#+TAGS~               | ~tags~        | A comma- or space-separated list of tags.   |
+| Org Keyword          | YAML Key    | Description                                     |
+|----------------------+-------------+-------------------------------------------------|
+| ~#+TITLE~              | ~title~       | The title of the post.                          |
+| ~#+AUTHOR~             | ~author~      | The author's name. Defaults to "Jay Dixit".     |
+| ~#+DATE~               | ~publishDate~ | The publication date.                           |
+| ~#+EXCERPT~            | ~excerpt~     | A short summary of the post.                    |
+| ~#+COVER_IMAGE~        | ~image~       | Path to the post's cover image.                 |
+| ~#+COVER_IMAGE_ALT~    | ~imageAlt~    | Alt text for the cover image.                   |
+| ~#+TAGS~               | ~tags~        | A comma- or space-separated list of tags.       |
 | ~#+CATEGORIES~         | ~categories~  | A comma- or space-separated list of categories. |
-| ~#+AUTHOR_IMAGE~       | ~authorImage~ | Path to the author's image.                 |
-| ~#+VISIBILITY~         | ~hidden~      | Set to "hidden" to mark post as hidden.     |
-| ~#+STATUS~             | ~draft~       | Set to "draft" to mark post as draft.       |
-| ~#+SLUG~               | ~slug~        | URL-friendly slug for the post.             |
-| ~#+DESTINATION_FOLDER~ | (none)        | Specifies the export destination folder.    |
+| ~#+AUTHOR_IMAGE~       | ~authorImage~ | Path to the author's image.                     |
+| ~#+VISIBILITY~         | ~hidden~      | Set to "hidden" to mark post as hidden.         |
+| ~#+STATUS~             | ~draft~       | Set to "draft" to mark post as draft.           |
+| ~#+SLUG~               | ~slug~        | URL-friendly slug for the post.                 |
+| ~#+DESTINATION_FOLDER~ | (none)      | Specifies the export destination folder.        |
 
 **Automatic Front Matter Generation:**
 The exporter automatically adds missing front matter to your .org source file during export:
 - If ~#+TITLE~ is not found, it uses the first level-1 headline and adds it to the file.
+- In a narrowed subtree without ~#+TITLE~, the title is derived from the subtree heading. The exporter inserts ~#+TITLE~ and a ~#+SLUG~ for that subtree.
 - If ~#+EXCERPT~ is not found, it generates one from the first paragraph (excluding any image tags) and adds it to the file.
 - If ~#+DATE~ is not found, it uses the current time and adds ~#+PUBLISH_DATE~ to the file.
 - If ~#+SLUG~ is not found but ~#+TITLE~ exists, it generates a URL-friendly slug and adds it to the file.

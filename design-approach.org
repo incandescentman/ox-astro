@@ -145,6 +145,11 @@ The exporter correctly handles inserting keywords and metadata when exporting a 
 ** Decision 9: Table Export to Markdown
 Tables are transcoded to Markdown syntax (instead of the default HTML) for better compatibility with the MDX ecosystem.
 
+** Decision 10: Filename Resolution Honors Subtree SLUG
+*Problem*: Subtree exports (especially when triggered from a narrowed buffer) produced filenames derived from the parent file (e.g., date-based) rather than the subtree's slug.
+*Approach*: Detect an actively narrowed buffer via =buffer-narrowed-p= and treat it equivalently to an explicit subtree export. When exporting, search for ~#+SLUG:~ in the narrowed region first; if not found, fall back to a full-buffer search.
+*Result*: Subtree/narrowed exports now reliably produce ~slug.mdx~ using the subtree's own ~#+SLUG~. If missing, the preflight step derives ~#+TITLE~ from the subtree heading and inserts a slugified ~#+SLUG~ within the subtree before export.
+
 * References
 
 - [[file:../ox-astro.el][ox-astro.el]] - Main backend definition
