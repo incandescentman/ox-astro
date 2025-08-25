@@ -1,0 +1,13 @@
+#+TITLE: Test Excerpt with Images
+#+AUTHOR: Jay Dixit
+#+DESTINATION_FOLDER: /tmp/test-export
+
+
+#+EXCERPT: The thing about Cascais is that the town is beautiful and the weather is exceptionally clement. ![img](UsersjayDownloadsQR10941.jpg) This should not appear in the excerpt.
+
+#+PUBLISH_DATE: [2025-08-25 Mon 02:19]
+* Main Content
+
+The thing about Cascais is that the town is beautiful and the weather is exceptionally clement. ![img](UsersjayDownloadsQR10941.jpg) This should not appear in the excerpt.
+
+More content here without images.

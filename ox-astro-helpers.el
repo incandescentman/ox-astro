@@ -230,7 +230,10 @@ If the generated name starts with a number, it is prefixed with 'img'."
      (when p
        (let* ((raw (org-astro--safe-export (org-element-contents p) info))
               (clean (replace-regexp-in-string "[*_/]" "" raw))
-              (one   (replace-regexp-in-string "\n" " " clean)))
+              ;; Remove image tags like ![img](path) and <img...> tags
+              (no-images (replace-regexp-in-string "!\\[.*?\\]([^)]*)" "" clean))
+              (no-html-images (replace-regexp-in-string "<img[^>]*>" "" no-images))
+              (one   (replace-regexp-in-string "\n" " " no-html-images)))
          ;; take first sentence up to ~300 chars, else truncate with ellipsis
          (if (string-match "\`\(.\{1,300\}?[.?!]\)" one)
              (org-trim (match-string 1 one))
