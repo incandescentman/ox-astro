@@ -7,6 +7,6 @@
 
 * Hidden Content
 
-This post should have `hidden: true` in its front matter when exported to MDX.
+This post should have `visibility: hidden` in its front matter when exported to MDX.
 
-The visibility field is set to "hidden" which should add the hidden flag to the YAML front matter.
+The visibility field is set to "hidden" which should add `visibility: hidden` to the YAML front matter.

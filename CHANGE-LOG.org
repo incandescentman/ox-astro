@@ -2,6 +2,42 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Visibility System Update: switch to `visibility` string (2025-08-26)
+
+** Summary
+- Replaced prior boolean-based visibility flags with a single string field `visibility` in front matter.
+- Removed all support and references for `HIDE_FROM_MAIN` and `hideFromMain`.
+- Continued support for `STATUS: draft` → `draft: true` (unchanged).
+
+** New Behavior
+- `#+VISIBILITY: blog` → `visibility: blog` (default channel; if omitted, key is not emitted and behavior should be equivalent to blog).
+- `#+VISIBILITY: hidden` → `visibility: hidden` (exclude everywhere).
+- `#+VISIBILITY: example` → `visibility: example` (exclude from main feed; visible on tags/categories if site is configured that way).
+- Any other value is allowed: `#+VISIBILITY: <custom>` → `visibility: <custom>`.
+
+** Implementation
+- Front matter assembly now includes `(visibility . <string>)` when provided.
+- Removed generation of legacy booleans `hidden` and `hideFromMain`.
+- Removed legacy `:hide-from-main` option from the exporter’s `:options-alist`.
+
+** Files Changed
+- ox-astro-helpers.el: Front matter builder now reads `:visibility` only and emits `visibility` string; removed `hidden`/`hideFromMain` logic.
+- ox-astro.el: Removed `(:hide-from-main "HIDE_FROM_MAIN" ...)` from `:options-alist`.
+- README.org: Updated docs to describe `visibility` channels (blog/hidden/example/custom). Removed `HIDE_FROM_MAIN` examples and language.
+- CLAUDE.md: Updated mapping to `visibility`.
+- example-post.org: Updated examples to use `#+VISIBILITY: blog` and `#+VISIBILITY: example`.
+- debug/*.org: Updated expectations to refer to `visibility: hidden` instead of `hidden: true`.
+
+** Migration Notes
+- Replace `#+HIDE_FROM_MAIN: true` with `#+VISIBILITY: example` (or another channel you prefer).
+- Replace any logic in your Astro site that referenced `hidden`/`hideFromMain` with the new `visibility` string.
+  - Example: treat `visibility !== 'blog'` as excluded from the main feed; treat `visibility === 'hidden'` as excluded everywhere.
+
+** Validation Checklist
+- Exporting a file with `#+VISIBILITY: hidden` yields front matter containing `visibility: hidden` and no `hidden` key.
+- Exporting without `#+VISIBILITY` yields no `visibility` key in front matter.
+- Exporting with `#+STATUS: draft` still yields `draft: true`.
+
 * Excerpt Image Tag Removal Fix
 
 ** Problem Statement

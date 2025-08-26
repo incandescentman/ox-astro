@@ -14,8 +14,11 @@ This is a comprehensive example of an org-mode file that demonstrates all the fe
 
 * Post Visibility Examples
 
-** Regular Post (Default)
-By default, posts are visible everywhere. No special keywords needed.
+** Default (Blog)
+By default, posts are visible everywhere. This occurs when visibility is not set, or explicitly set to blog:
+#+begin_example
+#+VISIBILITY: blog
+#+end_example
 
 ** Hidden Post Example
 To hide a post completely from all listings:
@@ -26,8 +29,7 @@ To hide a post completely from all listings:
 ** Hide From Main Blog Example  
 To hide from main blog but show on tag/category pages:
 #+begin_example
-#+HIDE_FROM_MAIN: true
-#+TAGS: special, advanced
+#+VISIBILITY: example
 #+end_example
 
 ** Draft Post Example
@@ -75,11 +77,11 @@ https://github.com/withastro/astro
 *** TODO Review the documentation
 
 ** Tables
-| Feature | Status | Notes |
-|---------+--------+-------|
-| Images  | ✓      | Full support with auto-import |
-| Links   | ✓      | Multiple formats supported |
-| Tables  | ✓      | Clean markdown output |
+| Feature | Status | Notes                         |
+|---------+--------+-------------------------------|
+| Images  | ✓     | Full support with auto-import |
+| Links   | ✓     | Multiple formats supported    |
+| Tables  | ✓     | Clean markdown output         |
 
 ** Code Blocks
 #+begin_src javascript

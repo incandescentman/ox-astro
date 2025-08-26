@@ -72,12 +72,12 @@ Respects narrowing - works within the current narrowed region."
                                            (point))))))
                     (if roam-anchor
                         (goto-char roam-anchor)
-                      ;; Fall back: skip over keywords, comments, and blank lines
-                      (while (and (< (point) limit)
-                                  (or (looking-at-p "^#\\+")
-                                      (looking-at-p "^#\\s-")
-                                      (looking-at-p "^\\s-*$")))
-                        (forward-line 1))))))
+                        ;; Fall back: skip over keywords, comments, and blank lines
+                        (while (and (< (point) limit)
+                                    (or (looking-at-p "^#\\+")
+                                        (looking-at-p "^#\\s-")
+                                        (looking-at-p "^\\s-*$")))
+                          (forward-line 1))))))
             ;; Keep one blank line before insert unless at BOF or already blank
             (unless (or (bobp) (looking-at-p "^\\s-*$"))
               (insert "\n"))
@@ -105,7 +105,7 @@ Respects narrowing - works within the current narrowed region."
           (progn (goto-char anchor)
                  (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
                  (insert (format "#+%s: %s\n" (upcase key) value)))
-        (org-astro--upsert-keyword key value)))))
+          (org-astro--upsert-keyword key value)))))
 
 (defun org-astro--safe-export (data info)
   "Like `org-export-data' but never throws. Falls back to readable plain text."
@@ -183,11 +183,11 @@ If the generated name starts with a number, it is prefixed with 'img'."
            (parts (split-string clean-filename "[-]"))
            (var-name (if (null parts)
                          ""
-                       (concat (car parts)
-                               (mapconcat #'capitalize (cdr parts) "")))))
+                         (concat (car parts)
+                                 (mapconcat #'capitalize (cdr parts) "")))))
       (if (and (> (length var-name) 0) (string-match-p "^[0-9]" var-name))
           (concat "img" var-name)
-        var-name))))
+          var-name))))
 
 (defun org-astro--get-task-nesting-level (heading)
   "Calculate nesting level for a TODO task by counting TODO ancestors."
@@ -325,7 +325,6 @@ If no explicit cover image is specified, use the first body image as hero."
                         (plist-get info :cover-image-alt)
                         (and final-image (org-astro--filename-to-alt-text final-image)))))
     (list final-image image-alt)))
-
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
   (let* ((posts-folder (or (plist-get info :destination-folder)
@@ -350,13 +349,12 @@ If no explicit cover image is specified, use the first body image as hero."
          (cover-image-data (org-astro--get-cover-image info posts-folder))
          (image (car cover-image-data))
          (image-alt (cadr cover-image-data))
-         (visibility (plist-get info :visibility))
-         (hidden (when (and visibility (string= (downcase (org-trim visibility)) "hidden")) "true"))
+         (visibility (let ((v (plist-get info :visibility)))
+                       (when (and v (not (string-empty-p (org-trim v))))
+                         (org-trim v))))
          (status (plist-get info :status))
-         (draft (when (and status (string= (downcase (org-trim status)) "draft")) "true"))
-         (hide-from-main-raw (plist-get info :hide-from-main))
-         (hide-from-main (when (and hide-from-main-raw (string= (downcase (org-trim hide-from-main-raw)) "true")) "true")))
-    ;; Return the alist of final data - only include hidden/draft/hideFromMain if they're true
+         (draft (when (and status (string= (downcase (org-trim status)) "draft")) "true")))
+    ;; Return the alist of final data - include visibility as a string when provided
     `((title . ,title)
       ,@(when slug `((slug . ,slug)))
       (author . ,author)
@@ -367,9 +365,8 @@ If no explicit cover image is specified, use the first body image as hero."
       (imageAlt . ,image-alt)
       (tags . ,tags)
       (categories . ,categories)
-      ,@(when hidden `((hidden . ,hidden)))
-      ,@(when draft `((draft . ,draft)))
-      ,@(when hide-from-main `((hideFromMain . ,hide-from-main))))))
+      ,@(when visibility `((visibility . ,visibility)))
+      ,@(when draft `((draft . ,draft))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transcode Functions
@@ -480,7 +477,7 @@ If no explicit cover image is specified, use the first body image as hero."
                             (plist-get info :cover-image)))
          (image-imports (if (and (not explicit-hero) image-imports-raw)
                             (cdr image-imports-raw)
-                          image-imports-raw))
+                            image-imports-raw))
          (paragraph-context (org-element-interpret-data paragraph))
          (matching-import nil))
 
@@ -530,7 +527,7 @@ Otherwise, use the default Markdown paragraph transcoding."
                                   (plist-get info :cover-image)))
                (image-imports (if (and (not explicit-hero) image-imports-raw)
                                   (cdr image-imports-raw)
-                                image-imports-raw))
+                                  image-imports-raw))
                (image-data (when image-imports
                              (cl-find path image-imports
                                       :key (lambda (item) (plist-get item :path))
@@ -563,8 +560,8 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
          (image-imports (if (and (not explicit-hero) image-imports-raw)
                             ;; Exclude first image when it's used as hero
                             (cdr image-imports-raw)
-                          ;; Use all images when there's an explicit hero
-                          image-imports-raw))
+                            ;; Use all images when there's an explicit hero
+                            image-imports-raw))
          (has-linkpeek nil)
          (processed-lines
           (mapcar

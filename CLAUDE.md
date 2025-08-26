@@ -50,7 +50,7 @@ org-astro-known-posts-folders
 - `#+COVER_IMAGE` → `image`
 - `#+TAGS` → `tags`
 - `#+CATEGORIES` → `categories`
-- `#+VISIBILITY: hidden` → `hidden: true` (only if specified)
+- `#+VISIBILITY: <value>` → `visibility: <value>` (e.g., `blog`, `hidden`, `example`; arbitrary strings allowed)
 - `#+STATUS: draft` → `draft: true` (only if specified)
 
 ### Fallback Logic

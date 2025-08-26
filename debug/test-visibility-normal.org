@@ -6,6 +6,6 @@
 
 * Normal Content
 
-This post should NOT have any `hidden` field in its front matter when exported to MDX.
+This post should NOT have any `visibility` field in its front matter unless explicitly set.
 
-The visibility field is not specified, so it should remain visible by default.
+The visibility field is not specified, so it should remain visible by default (equivalent to `visibility: blog`).

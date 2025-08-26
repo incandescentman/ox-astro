@@ -87,9 +87,8 @@ The exporter automatically generates YAML front matter based on keywords in your
 | ~#+TAGS~               | ~tags~        | A comma- or space-separated list of tags.       |
 | ~#+CATEGORIES~         | ~categories~  | A comma- or space-separated list of categories. |
 | ~#+AUTHOR_IMAGE~       | ~authorImage~ | Path to the author's image.                     |
-| ~#+VISIBILITY~         | ~hidden~      | Set to "hidden" - post files are created but excluded from all listings and feeds. |
+| ~#+VISIBILITY~         | ~visibility~  | Visibility channel for the post. Common values: ~blog~ (default), ~hidden~, ~example~; any arbitrary string is allowed. |
 | ~#+STATUS~             | ~draft~       | Set to "draft" - post files are created but marked for exclusion from production builds. |
-| ~#+HIDE_FROM_MAIN~     | ~hideFromMain~ | Set to "true" - post appears on tag/category pages but not in main blog feed. |
 | ~#+SLUG~               | ~slug~        | URL-friendly slug for the post.                 |
 | ~#+DESTINATION_FOLDER~ | (none)      | Specifies the export destination folder.        |
 
@@ -155,12 +154,20 @@ When any ~<LinkPeek>~ is emitted, ox-astro automatically adds the necessary impo
 
 ~ox-astro~ supports several options for controlling how and where posts appear on your website. These settings add metadata to the front matter that your Astro site can use to filter content appropriately.
 
+** Default (Blog)
+By default, posts appear in the main blog list. This happens when ~#+VISIBILITY~ is omitted, or explicitly set to ~blog~:
+#+begin_src org
+#+VISIBILITY: blog
+#+end_src
+
+*Effect:* The MDX front matter may include ~visibility: blog~ (if specified). Your site should treat this as a normal public blog post.
+
 **Completely Hidden Posts**
 #+begin_src org
 #+VISIBILITY: hidden
 #+end_src
 
-*Effect:* The MDX file is created with ~hidden: true~ in the front matter. Your Astro site should exclude these posts from all listings, feeds, sitemaps, and search results. The post files exist but are treated as if they don't exist publicly. Useful for private notes or posts you want to keep but not publish.
+*Effect:* The MDX file is created with ~visibility: hidden~ in the front matter. Your Astro site should exclude these posts from all listings, feeds, sitemaps, and search results. The post files exist but are treated as if they don't exist publicly.
 
 **Draft Posts**  
 #+begin_src org
@@ -171,11 +178,10 @@ When any ~<LinkPeek>~ is emitted, ox-astro automatically adds the necessary impo
 
 **Hide From Main Feed**
 #+begin_src org
-#+HIDE_FROM_MAIN: true
-#+TAGS: tutorial, advanced
+#+VISIBILITY: example
 #+end_src
 
-*Effect:* The MDX file is created with ~hideFromMain: true~ in the front matter. The post won't appear in your main blog listing or recent posts feed, but it will still appear on tag pages, category pages, and can be accessed via direct link. Useful for specialized content like tutorials, reference materials, or niche posts that shouldn't clutter your main feed but should remain discoverable through tags.
+*Effect:* The MDX file is created with ~visibility: example~ in the front matter. Configure your site to treat non-~blog~ visibilities as excluded from the main feed while remaining visible on tag/category pages. You can choose any string for specialized channels (e.g., ~reference~, ~til~, ~notes~).
 
 * Special Formatting Rules
 
