@@ -57,6 +57,77 @@ The thing about Cascais is that the town is beautiful and the weather is excepti
 <Image src={QR10941} alt="Qr1 0941" />  // ❌ PROBLEM: References undefined variable
 #+end_src
 
+* Org-roam Preamble Placement Errors (Aug 26)
+
+** Goal
+- Ensure that auto-inserted keywords (#+TITLE, #+SLUG, #+EXCERPT, #+PUBLISH_DATE, and new #+DESTINATION_FOLDER when chosen) are inserted after the org-roam preamble lines:
+  - Prefer after "- Source ::"; otherwise after "- Links ::"; else fallback to usual placement.
+  - Preserve subtree behavior (insert within subtree, after :PROPERTIES:).
+
+** Changes Attempted
+- Added placement-aware helpers in ~ox-astro-helpers.el~:
+  - ~org-astro--find-roam-anchor-position~
+  - ~org-astro--upsert-keyword-after-roam~
+- Wired preflight in ~ox-astro.el~ to use these helpers for TITLE/SLUG/EXCERPT/PUBLISH_DATE and for adding DESTINATION_FOLDER after selection.
+- Removed any hardcoded defaults (e.g., no FILETAGS, no assumed destination).
+
+** Errors Encountered
+- Emacs batch “check-parens” flagged syntax errors while iterating on helpers and main exporter:
+  - ~ox-astro-helpers.el~: End-of-file during parsing / Unmatched bracket or quote
+    - First failure location: line ~92 (start of defun org-astro--find-roam-anchor-position)~
+    - Status: Fixed by simplifying and later removing duplicate helpers from this file; helpers now pass check-parens (OK).
+  - ~ox-astro.el~: Unmatched bracket or quote
+    - First failure reported around the beginning of ~org-astro-export-to-mdx~ (SEXP-ERR at pos ~2315~, line ~66~)
+    - Likely caused by large inline insertion blocks added for placement (anchor calculation repeated several times), leading to parenthesis mismatch.
+
+** Repro Logs (selected)
+- Helpers before fix:
+  - ~emacs -Q --batch (find-file ox-astro-helpers.el) (check-parens)~ → ERR: Unmatched bracket or quote
+  - After removal of the extra helpers and consolidation: → OK
+- Exporter current:
+  - ~emacs -Q --batch (find-file ox-astro.el) (check-parens)~ → ERR: Unmatched bracket or quote
+  - ~forward-sexp~ first failure at ~line 66~, i.e., near ~defun org-astro-export-to-mdx~ prologue.
+
+** Observed Behavior During Testing
+- Earlier test (before inline placement changes) showed EXCERPT and PUBLISH_DATE being inserted before the preamble lines, confirming the need for the placement anchor.
+- After attempting inline placement logic, exporter could not be loaded due to unmatched parens in ~ox-astro.el~, so final placement could not be verified.
+
+** Current Status
+- ~ox-astro-helpers.el~: syntactically valid (check-parens OK).
+- ~ox-astro.el~: syntax error remains (Unmatched bracket or quote), preventing batch export and verification.
+- No defaults are injected; behavior is placement-only once parsing is fixed.
+
+** Proposed Fix Plan
+- Reduce inline complexity in ~ox-astro.el~ to avoid paren mismatches:
+  - Implement a single helper in ~ox-astro-helpers.el~ (which parses cleanly) that inserts a ~#+KEY: VALUE~ after the org-roam preamble if present, else falls back. Keep docstrings simple to avoid quote escaping.
+  - Replace the repeated anchor blocks in ~ox-astro.el~ with calls to that helper for TITLE/SLUG/EXCERPT/PUBLISH_DATE and for DESTINATION_FOLDER (when added).
+  - Re-run Emacs batch export on a debug file containing “- Links ::” and “- Source ::” to confirm correct placement.
+
+** Notes
+- No assumptions about tags or destination are made; user selects DESTINATION_FOLDER as before.
+- Subtree behavior is preserved (keywords stay within the subtree after the heading/properties).
+
+** Commands Used
+#+begin_src bash
+# Check syntax
+emacs -Q --batch \
+  --eval "(find-file \"$PWD/ox-astro-helpers.el\")" \
+  --eval "(emacs-lisp-mode)" \
+  --eval "(condition-case err (progn (check-parens) (princ \"OK\\n\")) (error (princ (format \"ERR: %S\\n\" err))))"
+
+emacs -Q --batch \
+  --eval "(find-file \"$PWD/ox-astro.el\")" \
+  --eval "(emacs-lisp-mode)" \
+  --eval "(condition-case err (progn (check-parens) (princ \"OK\\n\")) (error (princ (format \"ERR: %S\\n\" err))))"
+
+# Forward-sexp to locate first mismatch in ox-astro.el
+emacs -Q --batch \
+  --eval "(find-file \"$PWD/ox-astro.el\")" \
+  --eval "(let ((done nil)) (while (not done) (condition-case err (forward-sexp 1) (scan-error (setq done t) (princ (format \"SEXP-ERR at %d\\n\" (nth 2 err)))) (error (setq done t) (princ (format \"ERR %S at %d\\n\" err (point)))))))"
+#+end_src
+
+*** End of Org-roam Placement log
+
 * Solutions Attempted
 
 ** 1. Modified ~org-astro--get-cover-image~ (✅ Working)

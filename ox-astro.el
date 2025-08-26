@@ -96,24 +96,84 @@ generated and added to the Org source file."
                            (title    (when headline
                                        (org-astro--safe-export (org-element-property :title headline) info))))
                       (when (and title (not (string-blank-p title)))
-                        ;; Add title and slug to source document
-                        (org-astro--insert-keyword-at-end-of-block "TITLE" title)
+                        ;; Add title to source document, placed after org-roam preamble when present
+                        (save-excursion
+                          (goto-char (point-min))
+                          (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
+                                 (anchor (save-excursion
+                                           (save-restriction
+                                             (narrow-to-region (point-min) limit)
+                                             (goto-char (point-min))
+                                             (let ((last-pos nil))
+                                               (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+                                                 (setq last-pos (line-end-position)))
+                                               (when last-pos (goto-char last-pos) (forward-line 1) (point)))))))
+                            (if anchor
+                                (progn (goto-char anchor)
+                                       (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
+                                       (insert (format "#+%s: %s\n" "TITLE" title)))
+                              (org-astro--insert-keyword-at-end-of-block "TITLE" title))))
                         (let ((slug (org-astro--slugify title)))
                           (when (and slug (not (string-blank-p slug)))
-                            (org-astro--insert-keyword-at-end-of-block "SLUG" slug)))
+                            (save-excursion
+                              (goto-char (point-min))
+                              (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
+                                     (anchor (save-excursion
+                                               (save-restriction
+                                                 (narrow-to-region (point-min) limit)
+                                                 (goto-char (point-min))
+                                                 (let ((last-pos nil))
+                                                   (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+                                                     (setq last-pos (line-end-position)))
+                                                   (when last-pos (goto-char last-pos) (forward-line 1) (point)))))))
+                                (if anchor
+                                    (progn (goto-char anchor)
+                                           (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
+                                           (insert (format "#+%s: %s\n" "SLUG" slug)))
+                                  (org-astro--insert-keyword-at-end-of-block "SLUG" slug)))))
                         (setq buffer-modified-p t)))))
 
                 ;; 2. Handle Excerpt (only if missing), placed after org-roam preamble
                 (unless excerpt-present
                   (let ((excerpt-text (org-astro--get-excerpt tree info)))
                     (when (and excerpt-text (not (string-blank-p excerpt-text)))
-                      (org-astro--insert-keyword-at-end-of-block "EXCERPT" excerpt-text)
+                      (save-excursion
+                        (goto-char (point-min))
+                        (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
+                               (anchor (save-excursion
+                                         (save-restriction
+                                           (narrow-to-region (point-min) limit)
+                                           (goto-char (point-min))
+                                           (let ((last-pos nil))
+                                             (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+                                               (setq last-pos (line-end-position)))
+                                             (when last-pos (goto-char last-pos) (forward-line 1) (point)))))))
+                          (if anchor
+                              (progn (goto-char anchor)
+                                     (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
+                                     (insert (format "#+%s: %s\n" "EXCERPT" excerpt-text)))
+                            (org-astro--insert-keyword-at-end-of-block "EXCERPT" excerpt-text))))
                       (setq buffer-modified-p t))))
 
                 ;; 3. Handle Date (only if missing), placed after org-roam preamble
                 (unless date-present
                   (let ((date-str (format-time-string (org-time-stamp-format 'long 'inactive) (current-time))))
-                    (org-astro--insert-keyword-at-end-of-block "PUBLISH_DATE" date-str)
+                    (save-excursion
+                      (goto-char (point-min))
+                      (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
+                             (anchor (save-excursion
+                                       (save-restriction
+                                         (narrow-to-region (point-min) limit)
+                                         (goto-char (point-min))
+                                         (let ((last-pos nil))
+                                           (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+                                             (setq last-pos (line-end-position)))
+                                           (when last-pos (goto-char last-pos) (forward-line 1) (point)))))))
+                        (if anchor
+                            (progn (goto-char anchor)
+                                   (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
+                                   (insert (format "#+%s: %s\n" "PUBLISH_DATE" date-str)))
+                          (org-astro--insert-keyword-at-end-of-block "PUBLISH_DATE" date-str))))
                     (setq buffer-modified-p t))))
             (error (message "[ox-astro] Preflight skipped due to: %S" err))))
 
@@ -159,8 +219,23 @@ generated and added to the Org source file."
                               (beginning-of-line)
                               (kill-line)
                               (insert (format "#+DESTINATION_FOLDER: %s" selection)))
-                          ;; Add new DESTINATION_FOLDER keyword
-                          (org-astro--insert-keyword-at-end-of-block "DESTINATION_FOLDER" selection)))
+                          ;; Add new DESTINATION_FOLDER keyword after org-roam preamble
+                          (save-excursion
+                            (goto-char (point-min))
+                            (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
+                                   (anchor (save-excursion
+                                             (save-restriction
+                                               (narrow-to-region (point-min) limit)
+                                               (goto-char (point-min))
+                                               (let ((last-pos nil))
+                                                 (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+                                                   (setq last-pos (line-end-position)))
+                                                 (when last-pos (goto-char last-pos) (forward-line 1) (point)))))))
+                              (if anchor
+                                  (progn (goto-char anchor)
+                                         (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
+                                         (insert (format "#+%s: %s\n" "DESTINATION_FOLDER" selection)))
+                                (org-astro--insert-keyword-at-end-of-block "DESTINATION_FOLDER" selection)))))
                       (save-buffer))
                     selected-path))))
                (pub-dir (when posts-folder

@@ -1,0 +1,14 @@
+:PROPERTIES:
+:ID: roam-placement-final
+:END:
+#+TITLE: Final Placement Test
+
+- Links ::
+- Source ::
+
+This paragraph should be the excerpt.
+
+* Heading
+Body content.
+
+#+DESTINATION_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/debug/out

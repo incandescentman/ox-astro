@@ -88,48 +88,7 @@ Respects narrowing - works within the current narrowed region."
   "Alias for `org-astro--upsert-keyword'."
   (org-astro--upsert-keyword key value))
 
-;; Return point after the last org-roam preamble line before first headline.
-(defun org-astro--find-roam-anchor-position ()
-  (save-excursion
-    (goto-char (point-min))
-    (let ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
-          (last-pos nil))
-      (save-restriction
-        (narrow-to-region (point-min) limit)
-        (goto-char (point-min))
-        (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
-          (setq last-pos (line-end-position)))
-        (when last-pos
-          (goto-char last-pos)
-          (forward-line 1)
-          (point)))))
-
-;; Upsert keyword, preferring placement after org-roam preamble for full-file exports.
-(defun org-astro--upsert-keyword-after-roam (key value)
-  (let* ((ukey (upcase (format "%s" key)))
-         (re (format "^#\\+%s:\\s-*\\(.*\\)$" (regexp-quote ukey))))
-    (save-excursion
-      (goto-char (point-min))
-      (let ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max)))))
-        (if (re-search-forward re limit t)
-            (progn
-              (beginning-of-line)
-              (kill-line)
-              (insert (format "#+%s: %s" ukey (or value ""))))
-          (goto-char (point-min))
-          (if (looking-at-p "^\\*+")
-              ;; In a narrowed subtree region, reuse standard insertion
-              (org-astro--upsert-keyword key value)
-            ;; Full file: try after roam preamble
-            (let ((anchor (org-astro--find-roam-anchor-position)))
-              (if anchor
-                  (progn
-                    (goto-char anchor)
-                    (unless (or (bobp) (looking-at-p "^\\s-*$"))
-                      (insert "\n"))
-                    (insert (format "#+%s: %s\n" ukey (or value ""))))
-                ;; Fallback to normal behavior
-                (org-astro--upsert-keyword key value)))))))))
+;; (roam placement helpers are now handled inline in ox-astro.el)
 
 (defun org-astro--safe-export (data info)
   "Like `org-export-data' but never throws. Falls back to readable plain text."

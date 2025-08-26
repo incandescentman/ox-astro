@@ -1,0 +1,18 @@
+:PROPERTIES:
+:ID: test-roam-placement-2
+:END:
+#+TITLE: Roam Placement Test 2
+
+
+#+EXCERPT: This is the first paragraph that should become the excerpt two.
+
+#+PUBLISH_DATE: [2025-08-26 Tue 00:55]
+- Links ::
+- Source ::
+
+This is the first paragraph that should become the excerpt two.
+
+* Heading
+Body content.
+
+#+DESTINATION_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/debug/out
