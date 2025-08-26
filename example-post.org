@@ -1,0 +1,160 @@
+#+TITLE: Example Blog Post with All Features
+#+AUTHOR: Jay Dixit  
+#+PUBLISH_DATE: [2025-01-26 Sun 16:00]
+#+EXCERPT: This is a comprehensive example showing all ox-astro features including images, links, formatting, and visibility options.
+#+TAGS: example, tutorial, markdown, astro
+#+CATEGORIES: tutorials, documentation
+#+COVER_IMAGE: ~/assets/images/posts/example-cover.jpg
+#+COVER_IMAGE_ALT: A beautiful example cover image
+#+AUTHOR_IMAGE: ~/assets/images/authors/jay-dixit-512.png
+#+SLUG: example-blog-post-features
+#+DESTINATION_FOLDER: jaydocs
+
+This is a comprehensive example of an org-mode file that demonstrates all the features supported by ox-astro.
+
+* Post Visibility Examples
+
+** Regular Post (Default)
+By default, posts are visible everywhere. No special keywords needed.
+
+** Hidden Post Example
+To hide a post completely from all listings:
+#+begin_example
+#+VISIBILITY: hidden
+#+end_example
+
+** Hide From Main Blog Example  
+To hide from main blog but show on tag/category pages:
+#+begin_example
+#+HIDE_FROM_MAIN: true
+#+TAGS: special, advanced
+#+end_example
+
+** Draft Post Example
+To mark as draft:
+#+begin_example
+#+STATUS: draft
+#+end_example
+
+* Image Handling Examples
+
+** Cover Image
+The cover image is specified in the header with:
+#+begin_example
+#+COVER_IMAGE: ~/assets/images/posts/example-cover.jpg
+#+COVER_IMAGE_ALT: A beautiful example cover image
+#+end_example
+
+** Inline Images
+You can add images in several ways:
+
+*** Using Org Links
+[[file:~/Pictures/diagram.png]]
+
+*** Using Raw Paths (automatically detected)
+/Users/jay/Pictures/screenshot.png
+
+Both methods will be converted to Astro Image components with proper imports.
+
+* Link Examples
+
+** Standard Links with Descriptions
+[[https://astro.build][Astro Framework]] - This becomes a regular markdown link.
+
+** Raw URLs (converted to LinkPeek components)
+https://github.com/withastro/astro
+
+** Existing Markdown Links (preserved as-is)  
+[Google Search](https://google.com) - This markdown syntax is preserved.
+
+* Formatting Examples
+
+** TODO Items
+*** TODO Write more examples
+*** DONE Set up the repository
+*** TODO Review the documentation
+
+** Tables
+| Feature | Status | Notes |
+|---------+--------+-------|
+| Images  | ✓      | Full support with auto-import |
+| Links   | ✓      | Multiple formats supported |
+| Tables  | ✓      | Clean markdown output |
+
+** Code Blocks
+#+begin_src javascript
+import { Image } from 'astro:assets';
+import cover from '~/assets/images/posts/example-cover.jpg';
+
+export default function BlogPost() {
+  return <Image src={cover} alt="Example" />;
+}
+#+end_src
+
+** Quotes and Examples
+#+begin_quote
+This is a blockquote that will be converted to markdown format.
+#+end_quote
+
+#+begin_example
+This is an example block that preserves formatting.
+#+end_example
+
+* Front Matter Generated
+
+The ox-astro exporter will generate this front matter from the keywords above:
+
+#+begin_src yaml
+---
+title: Example Blog Post with All Features
+slug: example-blog-post-features  
+author: Jay Dixit
+authorImage: ~/assets/images/authors/jay-dixit-512.png
+publishDate: 2025-01-26T16:00:00Z
+excerpt: This is a comprehensive example showing all ox-astro features...
+image: ~/assets/images/posts/example-cover.jpg
+imageAlt: A beautiful example cover image
+tags:
+- example
+- tutorial
+- markdown
+- astro
+categories:
+- tutorials
+- documentation
+---
+#+end_src
+
+* Subtree Export Example
+
+This section demonstrates how subtrees can be exported as individual posts.
+
+#+TITLE: Subtree Blog Post
+#+SLUG: subtree-example  
+#+EXCERPT: This subtree can be exported as its own blog post
+#+TAGS: subtree, example
+#+PUBLISH_DATE: [2025-01-26 Sun 16:30]
+
+When you narrow to this subtree and export, it will create a separate ~subtree-example.mdx~ file with its own front matter derived from these keywords.
+
+The subtree export is perfect for org-roam workflows where you have multiple blog posts as subtrees in a single file.
+
+* Advanced Features
+
+** Automatic Content Detection
+- Missing titles are generated from the first headline
+- Missing excerpts are created from the first paragraph  
+- Missing dates use the current timestamp
+- Missing slugs are generated from titles
+
+** org-roam Integration
+The exporter respects org-roam file structure and places generated keywords after any existing org-roam metadata blocks.
+
+** Mixed Content Support  
+You can mix and match:
+- Org syntax with markdown syntax
+- Different image reference styles
+- Various link formats
+- Standard and custom components
+
+This flexibility makes it easy to migrate existing content or work with mixed markdown/org workflows.

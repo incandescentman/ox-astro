@@ -87,8 +87,9 @@ The exporter automatically generates YAML front matter based on keywords in your
 | ~#+TAGS~               | ~tags~        | A comma- or space-separated list of tags.       |
 | ~#+CATEGORIES~         | ~categories~  | A comma- or space-separated list of categories. |
 | ~#+AUTHOR_IMAGE~       | ~authorImage~ | Path to the author's image.                     |
-| ~#+VISIBILITY~         | ~hidden~      | Set to "hidden" to mark post as hidden.         |
-| ~#+STATUS~             | ~draft~       | Set to "draft" to mark post as draft.           |
+| ~#+VISIBILITY~         | ~hidden~      | Set to "hidden" - post files are created but excluded from all listings and feeds. |
+| ~#+STATUS~             | ~draft~       | Set to "draft" - post files are created but marked for exclusion from production builds. |
+| ~#+HIDE_FROM_MAIN~     | ~hideFromMain~ | Set to "true" - post appears on tag/category pages but not in main blog feed. |
 | ~#+SLUG~               | ~slug~        | URL-friendly slug for the post.                 |
 | ~#+DESTINATION_FOLDER~ | (none)      | Specifies the export destination folder.        |
 
@@ -149,6 +150,32 @@ A bare URL without a description is automatically converted into a custom ~<Link
 - *MDX*: ~<LinkPeek href="https://google.com"></LinkPeek>~
 
 When any ~<LinkPeek>~ is emitted, ox-astro automatically adds the necessary import to the top of the MDX file.
+
+* Post Visibility Options
+
+~ox-astro~ supports several options for controlling how and where posts appear on your website. These settings add metadata to the front matter that your Astro site can use to filter content appropriately.
+
+**Completely Hidden Posts**
+#+begin_src org
+#+VISIBILITY: hidden
+#+end_src
+
+*Effect:* The MDX file is created with ~hidden: true~ in the front matter. Your Astro site should exclude these posts from all listings, feeds, sitemaps, and search results. The post files exist but are treated as if they don't exist publicly. Useful for private notes or posts you want to keep but not publish.
+
+**Draft Posts**  
+#+begin_src org
+#+STATUS: draft
+#+end_src
+
+*Effect:* The MDX file is created with ~draft: true~ in the front matter. Typically used with Astro's build process to exclude draft posts from production builds while keeping them visible in development. The post is "unpublished" - it exists in your content but won't appear on the live site until you remove the draft status.
+
+**Hide From Main Feed**
+#+begin_src org
+#+HIDE_FROM_MAIN: true
+#+TAGS: tutorial, advanced
+#+end_src
+
+*Effect:* The MDX file is created with ~hideFromMain: true~ in the front matter. The post won't appear in your main blog listing or recent posts feed, but it will still appear on tag pages, category pages, and can be accessed via direct link. Useful for specialized content like tutorials, reference materials, or niche posts that shouldn't clutter your main feed but should remain discoverable through tags.
 
 * Special Formatting Rules
 

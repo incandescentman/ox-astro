@@ -351,10 +351,12 @@ If no explicit cover image is specified, use the first body image as hero."
          (image (car cover-image-data))
          (image-alt (cadr cover-image-data))
          (visibility (plist-get info :visibility))
-         (hidden (when (and visibility (string= (downcase (org-trim visibility)) "hidden")) t))
+         (hidden (when (and visibility (string= (downcase (org-trim visibility)) "hidden")) "true"))
          (status (plist-get info :status))
-         (draft (when (and status (string= (downcase (org-trim status)) "draft")) t)))
-    ;; Return the alist of final data - only include hidden/draft if they're true
+         (draft (when (and status (string= (downcase (org-trim status)) "draft")) "true"))
+         (hide-from-main-raw (plist-get info :hide-from-main))
+         (hide-from-main (when (and hide-from-main-raw (string= (downcase (org-trim hide-from-main-raw)) "true")) "true")))
+    ;; Return the alist of final data - only include hidden/draft/hideFromMain if they're true
     `((title . ,title)
       ,@(when slug `((slug . ,slug)))
       (author . ,author)
@@ -366,7 +368,8 @@ If no explicit cover image is specified, use the first body image as hero."
       (tags . ,tags)
       (categories . ,categories)
       ,@(when hidden `((hidden . ,hidden)))
-      ,@(when draft `((draft . ,draft))))))
+      ,@(when draft `((draft . ,draft)))
+      ,@(when hide-from-main `((hideFromMain . ,hide-from-main))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transcode Functions

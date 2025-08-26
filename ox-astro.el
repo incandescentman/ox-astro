@@ -257,7 +257,8 @@ generated and added to the Org source file."
     (:astro-categories   "ASTRO_CATEGORIES"    nil nil 'newline)
     (:astro-imports      "ASTRO_IMPORTS"       nil nil 'newline)
     (:astro-posts-folder "ASTRO_POSTS_FOLDER"  nil nil nil)
-    (:astro-date-format  nil "date-format" org-astro-date-format nil)))
+    (:astro-date-format  nil "date-format" org-astro-date-format nil)
+    (:hide-from-main     "HIDE_FROM_MAIN"     nil nil nil)))
 
 (provide 'ox-astro)
 
