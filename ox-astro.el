@@ -30,12 +30,12 @@
 ;; for component imports, which are essential for MDX.
 
 ;; To start using this exporter, add the below to your Emacs config:
-;; 
+;;
 ;;   (with-eval-after-load 'ox
 ;;     (require 'ox-astro))
-;; 
+;;
 ;; # Workflow
-;; 
+;;
 ;; This exporter is designed for a one-post-per-file workflow.
 ;; A single Org file exports to a single .mdx file. If #+DESTINATION_FOLDER is not
 ;; set, files are exported to a subdirectory named "astro-posts". This can
@@ -134,7 +134,7 @@ generated and added to the Org source file."
                  ;; If we found it in known folders, use that path
                  (resolved-posts-folder resolved-posts-folder)
                  ;; If posts-folder-from-file exists and looks like an absolute path, use it directly
-                 ((and posts-folder-from-file 
+                 ((and posts-folder-from-file
                        (file-name-absolute-p posts-folder-from-file)
                        (file-directory-p (expand-file-name posts-folder-from-file)))
                   posts-folder-from-file)
@@ -158,7 +158,7 @@ generated and added to the Org source file."
                               (beginning-of-line)
                               (kill-line)
                               (insert (format "#+DESTINATION_FOLDER: %s" selection)))
-                          (org-astro--upsert-keyword-after-roam "DESTINATION_FOLDER" selection))
+                            (org-astro--upsert-keyword-after-roam "DESTINATION_FOLDER" selection)))
                       (save-buffer))
                     selected-path))))
                (pub-dir (when posts-folder
@@ -189,10 +189,10 @@ generated and added to the Org source file."
                          slug-filename (not (string-blank-p slug-filename)))
                     ;; Use slug as filename for subtree exports
                     (concat slug-filename ".mdx")
-                  ;; Use default filename processing for full file exports
-                  (replace-regexp-in-string
-                   "_" "-"
-                   (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
+                    ;; Use default filename processing for full file exports
+                    (replace-regexp-in-string
+                     "_" "-"
+                     (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
                (outfile (expand-file-name final-filename out-dir)))
 
           (if pub-dir
@@ -202,8 +202,7 @@ generated and added to the Org source file."
                 outfile)  ; Return the output file path
               (progn
                 (message "Astro export cancelled: No posts folder selected.")
-                nil))))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                nil))))));;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
