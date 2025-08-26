@@ -2,61 +2,6 @@
 #+DATE: [2025-08-25 Sun]
 #+AUTHOR: Claude Code
 
-* Problem Description
-
-When implementing the feature to use the first raw image URL as a hero image (when no explicit hero is specified), we encounter a critical JavaScript reference error in the generated MDX output.
-
-** Expected Behavior
-When no explicit hero image is specified (no ~#+COVER_IMAGE~ or ~#+IMAGE~), the system should:
-1. Use the first raw image URL as the hero image in front matter
-2. Generate a hero import statement
-3. Completely remove the raw image from the body content (no duplicate ~<Image>~ component)
-
-** Current Broken Behavior
-The system correctly:
-- ✅ Sets hero in front matter: ~image: ~/assets/images/posts/QR1-0941.jpg~
-- ✅ Generates hero import: ~import hero from '~/assets/images/posts/QR1-0941.jpg';~
-- ✅ Removes duplicate body import (no ~import QR10941 from '~/assets/images/posts/QR1-0941.jpg';~)
-
-But incorrectly:
-- ❌ Still generates: ~<Image src={QR10941} alt="Qr1 0941" />~
-- ❌ This creates a JavaScript error because ~QR10941~ is referenced but not imported
-
-* Root Cause Analysis
-
-The raw image path ~/Users/jay/Downloads/QR1_0941.jpg~ in the source content is being processed by the ~org-astro-plain-text~ function, which should either:
-
-1. Convert it to an ~<Image>~ component (when it's a body image)
-2. Return empty string to remove it entirely (when it's used as hero)
-
-The filtering logic was implemented to exclude the first image from the ~image-imports~ list when it becomes the hero, but the ~org-astro-plain-text~ function is still generating the ~<Image>~ component somehow.
-
-* Test Case
-
-** Source File: ~/Users/jay/Library/CloudStorage/Dropbox/roam/journal/2025-08-24.org~
-#+begin_example
-#+TITLE: Cascais
-#+DESTINATION_FOLDER: jaydocs
-The thing about Cascais is that the town is beautiful and the weather is exceptionally clement. 
-
-/Users/jay/Downloads/QR1_0941.jpg 
-#+end_example
-
-** Generated Output: ~08-24.mdx~
-#+begin_src javascript
----
-title: Cascais
-image: ~/assets/images/posts/QR1-0941.jpg  // ✅ Correct hero in front matter
----
-import hero from '~/assets/images/posts/QR1-0941.jpg';  // ✅ Correct hero import
-// ✅ No duplicate body import - good!
-
-# Cascais
-The thing about Cascais is that the town is beautiful and the weather is exceptionally clement. 
-
-<Image src={QR10941} alt="Qr1 0941" />  // ❌ PROBLEM: References undefined variable
-#+end_src
-
 * Org-roam Preamble Placement Errors (Aug 26)
 
 ** Goal

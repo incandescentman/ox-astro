@@ -88,7 +88,24 @@ Respects narrowing - works within the current narrowed region."
   "Alias for `org-astro--upsert-keyword'."
   (org-astro--upsert-keyword key value))
 
-;; (roam placement helpers are now handled inline in ox-astro.el)
+(defun org-astro--upsert-keyword-after-roam (key value)
+  "Insert #+KEY: VALUE after org-roam preamble if present, else use normal placement."
+  (save-excursion
+    (goto-char (point-min))
+    (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
+           (anchor (save-excursion
+                     (save-restriction
+                       (narrow-to-region (point-min) limit)
+                       (goto-char (point-min))
+                       (let ((last-pos nil))
+                         (while (re-search-forward "^-[ \t]+\\(Links\\|Source\\) ::[ \t]*$" nil t)
+                           (setq last-pos (line-end-position)))
+                         (when last-pos (goto-char last-pos) (forward-line 1) (point)))))))
+      (if anchor
+          (progn (goto-char anchor)
+                 (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
+                 (insert (format "#+%s: %s\n" (upcase key) value)))
+        (org-astro--upsert-keyword key value)))))
 
 (defun org-astro--safe-export (data info)
   "Like `org-export-data' but never throws. Falls back to readable plain text."
