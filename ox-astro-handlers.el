@@ -21,6 +21,8 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
   ;; Return tree unchanged
   tree)
 
+
+
 (defun org-astro-prepare-images-filter (tree _backend info)
   "Find all local images, process them, and store import data in INFO.
 This filter runs on the parse TREE before transcoding. It collects
@@ -103,17 +105,18 @@ preprocessing has already been completed and we skip the processing."
           ;; 1) Persist suggestions block
           (ignore-errors
             (when src
-              (org-astro--upsert-image-paths-comment-into-file src image-imports-data)))
-))
-      ;; Store the collected data in the info plist for other functions to use.
-      (when image-imports-data
-        (let ((final-data (nreverse image-imports-data)))
-          ;; Store in both places for data persistence across export phases
-          (setq org-astro--current-body-images-imports final-data)
-          (plist-put info :astro-body-images-imports final-data)))
+              (org-astro--upsert-image-paths-comment-into-file src image-imports-data))))))
+    ;; Store the collected data in the info plist for other functions to use.
+    (when image-imports-data
+      (let ((final-data (nreverse image-imports-data)))
+        ;; Store in both places for data persistence across export phases
+        (setq org-astro--current-body-images-imports final-data)
+        (plist-put info :astro-body-images-imports final-data)))
 
     ;; Return the potentially updated tree
     tree))
+
+
 
 (defun org-astro-body-filter (body _backend info)
   "Add front-matter, source comment, and imports to BODY."
