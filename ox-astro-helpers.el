@@ -854,6 +854,17 @@ and are not already an Org link. Returns number of lines changed."
                 (setq count (1+ count))))))))
     count))
 
+(defun org-astro--persist-wrap-raw-image-lines (file)
+  "Open FILE, wrap raw absolute image path lines with [[...]], save, and return count of lines changed."
+  (when (and file (file-exists-p file))
+    (with-current-buffer (find-file-noselect file)
+      (save-excursion
+        (let ((cnt (org-astro--wrap-raw-image-path-lines-in-region (point-min) (point-max))))
+          (when (> cnt 0)
+            (save-buffer))
+          cnt)))))
+
+
 (defun org-astro--generate-image-paths-comment-block (items)
   "Generate a comment block with suggested image path replacements.
 ITEMS is a list of plists containing :path (old), :target-path (abs new), :astro-path (alias)."

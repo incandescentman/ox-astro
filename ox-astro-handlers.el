@@ -41,6 +41,11 @@ under the key `:astro-body-images-imports`."
   (plist-put info :astro-uses-linkpeek nil)
   (let* ((posts-folder-raw (or (plist-get info :destination-folder)
                                (plist-get info :astro-posts-folder)))
+         ;; Try to persistently wrap raw image lines in the source file as well,
+         ;; so authors can see [[...]] in their Org files.
+         (src-file (or (plist-get info :input-file)
+                       (and (buffer-file-name) (expand-file-name (buffer-file-name)))))
+         (_persist-wrap-count (ignore-errors (org-astro--persist-wrap-raw-image-lines src-file)))
          ;; Preprocessing: wrap raw absolute image path lines with [[...]]
          (tree-beg (org-element-property :begin tree))
          (tree-end (org-element-property :end tree))
