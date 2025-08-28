@@ -798,10 +798,11 @@ This function finds the source buffer and modifies it directly."
             (when (and buf-file
                        (not buf-readonly)
                        (string-match-p "\\.org$" buf-file)
-                       ;; Check if this buffer contains the image path
+                       ;; Check if this buffer contains the image path (raw or bracketed)
                        (save-excursion
                          (goto-char (point-min))
-                         (search-forward old-path nil t)))
+                         (or (search-forward old-path nil t)
+                             (search-forward (format "[[%s]]" old-path) nil t))))
               (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file)
               (setq source-buffer buf)
               (return)))))))
