@@ -795,8 +795,9 @@ This function finds the source buffer and modifies it directly."
                          (search-forward old-path nil t)))
               (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file)
               (setq source-buffer buf)
-              (return))))))))
+              (return)))))))
     
+    ;; Now use the source-buffer within the same let binding
     (if source-buffer
         (progn
           (message "DEBUG: Updating source buffer: %s" (buffer-name source-buffer))
@@ -806,7 +807,7 @@ This function finds the source buffer and modifies it directly."
                 (message "DEBUG: Saving source buffer after changes")
                 (save-buffer))
               changes-made)))
-        (message "DEBUG: WARNING - Could not find source buffer to update!")))
+        (message "DEBUG: WARNING - Could not find source buffer to update!"))))
 
 (defun org-astro--get-assets-folder (posts-folder sub-dir)
   "Get the assets folder based on POSTS-FOLDER and SUB-DIR."
