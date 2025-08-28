@@ -411,11 +411,14 @@ If no explicit cover image is specified, use the first body image as hero."
                 (or (cl-find path image-imports
                              :key (lambda (item) (plist-get item :path))
                              :test #'string-equal)
-                    ;; Fallback: match by filename if absolute path comparison fails
-                    (let ((base (file-name-nondirectory path)))
-                      (cl-find base image-imports
+                    ;; Fallback: match by sanitized filename if absolute path compare fails
+                    (let* ((base (file-name-nondirectory path))
+                           (base-s (org-astro--sanitize-filename (file-name-sans-extension base))))
+                      (cl-find base-s image-imports
                                :key (lambda (item)
-                                      (file-name-nondirectory (plist-get item :path)))
+                                      (org-astro--sanitize-filename
+                                       (file-name-sans-extension
+                                        (file-name-nondirectory (plist-get item :path)))))
                                :test #'string-equal))))))
         (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
           (message "[ox-astro][img] LINK path=%s explicit-hero=%s imports=%s match=%s"
@@ -593,11 +596,14 @@ Otherwise, use the default Markdown paragraph transcoding."
                              (or (cl-find path image-imports
                                           :key (lambda (item) (plist-get item :path))
                                           :test #'string-equal)
-                                 ;; Fallback by filename (handles Org link normalization quirks)
-                                 (let ((base (file-name-nondirectory path)))
-                                   (cl-find base image-imports
+                                 ;; Fallback by sanitized filename (handles underscore→hyphen sanitation)
+                                 (let* ((base (file-name-nondirectory path))
+                                        (base-s (org-astro--sanitize-filename (file-name-sans-extension base))))
+                                   (cl-find base-s image-imports
                                             :key (lambda (item)
-                                                   (file-name-nondirectory (plist-get item :path)))
+                                                   (org-astro--sanitize-filename
+                                                    (file-name-sans-extension
+                                                     (file-name-nondirectory (plist-get item :path)))))
                                             :test #'string-equal))))))
           (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
             (message "[ox-astro][img] PARA path=%s explicit-hero=%s imports=%s match=%s"
