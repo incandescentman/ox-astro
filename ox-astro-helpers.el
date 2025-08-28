@@ -405,9 +405,7 @@ If no explicit cover image is specified, use the first body image as hero."
                                     org-astro--current-body-images-imports))
              (explicit-hero (or (plist-get info :astro-image)
                                 (plist-get info :cover-image)))
-             (image-imports (if (and (not explicit-hero) image-imports-raw)
-                                (cdr image-imports-raw)
-                              image-imports-raw))
+             (image-imports image-imports-raw)
              (image-data
               (when image-imports
                 (or (cl-find path image-imports
@@ -424,13 +422,17 @@ If no explicit cover image is specified, use the first body image as hero."
                    path (and explicit-hero t) (length image-imports)
                    (and image-data (plist-get image-data :var-name))))
         (cond
+         ;; Suppress only the very first occurrence of the implicit hero at top
+         ((and (not explicit-hero)
+               image-imports-raw
+               (string-equal path (plist-get (car image-imports-raw) :path))
+               (not (plist-get info :astro-hero-skipped-top)))
+          (plist-put info :astro-hero-skipped-top t)
+          "")
          (image-data
           (let* ((var-name (plist-get image-data :var-name))
                  (alt-text (or desc (org-astro--filename-to-alt-text path) "Image")))
             (format "<Image src={%s} alt=\"%s\" />" var-name alt-text)))
-         ;; If hero image appears again as a link, drop it from body
-         ((and image-imports-raw (string-equal path (plist-get (car image-imports-raw) :path)))
-          "")
          ;; Unmatched: fall back to normal Markdown link instead of dropping
          (t
           (let ((md (when (fboundp 'org-md-link)
@@ -621,14 +623,8 @@ Otherwise, use the default Markdown paragraph transcoding."
 If the text contains raw image paths on their own lines, convert them to <img> tags.
 If the text contains raw URLs on their own lines, convert them to LinkPeek components."
   (let* ((lines (split-string text "\n"))
-         (image-imports-raw (or (plist-get info :astro-body-images-imports)
-                                org-astro--current-body-images-imports))
-         ;; Apply same logic as other filters - exclude first image when it's used as hero
-         (explicit-hero (or (plist-get info :astro-image)
-                            (plist-get info :cover-image)))
-         (image-imports (if (and (not explicit-hero) image-imports-raw)
-                            (cdr image-imports-raw)
-                            image-imports-raw))
+         (image-imports (or (plist-get info :astro-body-images-imports)
+                            org-astro--current-body-images-imports))
          (has-linkpeek nil)
          (processed-lines
           (mapcar

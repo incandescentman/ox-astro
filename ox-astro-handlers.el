@@ -152,16 +152,8 @@ preprocessing has already been completed and we skip the processing."
                            (format "{/* Source org: %s */}\n" source-path)))
          ;; --- Handle All Imports ---
          ;; 1. Body image imports (collected by our filter)
-         (body-images-imports-raw (or (plist-get info :astro-body-images-imports)
-                                      org-astro--current-body-images-imports))
-         ;; Check if first image is being used as hero (no explicit hero specified)
-         (explicit-hero (or (plist-get info :astro-image)
-                            (plist-get info :cover-image)))
-         (body-images-imports (if (and (not explicit-hero) body-images-imports-raw)
-                                  ;; Exclude first image when it's used as hero
-                                  (cdr body-images-imports-raw)
-                                  ;; Use all images when there's an explicit hero
-                                  body-images-imports-raw))
+         (body-images-imports (or (plist-get info :astro-body-images-imports)
+                                  org-astro--current-body-images-imports))
          (body-imports-string
           (when body-images-imports
             (mapconcat
@@ -174,8 +166,8 @@ preprocessing has already been completed and we skip the processing."
          ;; 2. Hero image import (if first body image is being used as hero)
          (posts-folder (or (plist-get info :destination-folder)
                            (plist-get info :astro-posts-folder)))
-         (hero-import (when (and (not explicit-hero) body-images-imports-raw posts-folder)
-                        (let ((first-image (car body-images-imports-raw)))
+         (hero-import (when (and (not explicit-hero) body-images-imports posts-folder)
+                        (let ((first-image (car body-images-imports)))
                           (format "import hero from '%s';"
                                   (plist-get first-image :astro-path)))))
          ;; 3. Manual imports from #+ASTRO_IMPORTS
