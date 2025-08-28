@@ -138,8 +138,8 @@ preprocessing has already been completed and we skip the processing."
           (setq tree (org-element-parse-buffer))
           ;; Also update the info plist so downstream phases see the latest tree
           (plist-put info :parse-tree tree))))
-      ;; Return the potentially updated tree
-      tree)))
+    ;; Return the potentially updated tree
+    tree))
 
 (defun org-astro-body-filter (body _backend info)
   "Add front-matter, source comment, and imports to BODY."
