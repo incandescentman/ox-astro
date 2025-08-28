@@ -34,7 +34,10 @@
       "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
       "Bash(chmod:*)",
       "Bash(./run-export.sh)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

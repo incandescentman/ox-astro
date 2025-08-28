@@ -26,7 +26,8 @@ Uses Astro's alias, which maps to the project's src/ directory."
 
 (defcustom org-astro-known-posts-folders
   '(("blog" . "~/projects/my-astro-site/src/content/blog")
-    ("docs" . "~/projects/my-docs-site/src/content/docs"))
+    ("docs" . "~/projects/my-docs-site/src/content/docs")
+    ("jaydocs" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog"))
   "An alist of known directories for exporting Astro posts.
 Each element is a cons cell of the form (NICKNAME . PATH).
 

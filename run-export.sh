@@ -7,5 +7,5 @@ emacs --batch \
   --eval "(load \"/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-helpers.el\")" \
   --eval "(load \"/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-handlers.el\")" \
   --eval "(load \"/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro.el\")" \
-  --eval "(find-file \"/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/test-underscore-minimal.org\")" \
+  --eval "(find-file \"/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/20250827235900-massimo_dutti.org\")" \
   --eval "(let ((completing-read-function (lambda (prompt collection &rest args) \"jaydocs\"))) (org-astro-export-to-mdx))"

@@ -2,13 +2,15 @@
 :ID:       20250828T015823.215292
 :END:
 #+TITLE: Massimo Dutti
-#+FILETAGS: :memoir:
+#+FILETAGS: :memoir: 
+
+
 
 #
-# Generated: 2025-08-28 10:24:18
+# Generated: 2025-08-28 11:35:00
 # Suggested replacements (old → new). Use alias for MDX.
 #
-# Generated: 2025-08-28 11:29:01
+# Generated: 2025-08-28 11:39:14
 # Suggested replacements (old → new). Use alias for MDX.
 # BEGIN ASTRO IMAGE PATH SUGGESTIONS
 # - old: /Users/jay/Downloads/2017021468194489.webp
@@ -23,17 +25,17 @@
 #   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/Rachide-News-01-1-.jpg
 #   alias: ~/assets/images/posts/massimo-dutti/Rachide-News-01-1-.jpg
 #
-# - old: /Users/jay/Downloads/502963633_24533456719590617_6999624331092055355_n.jpg
-#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/502963633-24533456719590617-6999624331092055355-n.jpg
-#   alias: ~/assets/images/posts/massimo-dutti/502963633-24533456719590617-6999624331092055355-n.jpg
+# - old: /Users/jay/Downloads/imag50296363324533456719590617_6999624331092055355n.jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/imag50296363324533456719590617-6999624331092055355n.jpg
+#   alias: ~/assets/images/posts/massimo-dutti/imag50296363324533456719590617-6999624331092055355n.jpg
 #
-# - old: /Users/jay/Downloads/502610958_24533456482923974_1694898706627993310_n.jpg
-#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/502610958-24533456482923974-1694898706627993310-n.jpg
-#   alias: ~/assets/images/posts/massimo-dutti/502610958-24533456482923974-1694898706627993310-n.jpg
+# - old: /Users/jay/Downloads/imag502610958_245334564829239741694898706627993310n.jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/imag502610958-245334564829239741694898706627993310n.jpg
+#   alias: ~/assets/images/posts/massimo-dutti/imag502610958-245334564829239741694898706627993310n.jpg
 #
-# - old: /Users/jay/Downloads/106910784_3615490375147223_8376969077115059792_n.jpg
-#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/106910784-3615490375147223-8376969077115059792-n.jpg
-#   alias: ~/assets/images/posts/massimo-dutti/106910784-3615490375147223-8376969077115059792-n.jpg
+# - old: /Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/imag106910784-3615490375147223-8376969077115059792n.jpg
+#   alias: ~/assets/images/posts/massimo-dutti/imag106910784-3615490375147223-8376969077115059792n.jpg
 #
 # END ASTRO IMAGE PATH SUGGESTIONS
 - Links ::
@@ -43,7 +45,7 @@
 #+SLUG: massimo-dutti
 
 #+TITLE: Massimo Dutti
-#+DESTINATION_FOLDER: jaydocs
+#+DESTINATION_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog
 
 #+PUBLISH_DATE: [2025-08-28 Thu 01:59]
 #+EXCERPT: Here's what people are saying about Massimo Dutti, particularly in the realm of men's clothing:
@@ -157,20 +159,14 @@ Let me know if you'd like to compare MD more directly to Zara, COS, or other "qu
 
 
 * Images
-/Users/jay/Downloads/106910784_3615490375147223_8376969077115059792_n.jpg 
 
-ok
 
-/Users/jay/Downloads/502610958_24533456482923974_1694898706627993310_n.jpg
+/Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg
 
-OK
+/Users/jay/Downloads/imag502610958_245334564829239741694898706627993310n.jpg
 
-/Users/jay/Downloads/502963633_24533456719590617_6999624331092055355_n.jpg
-
-ok
+/Users/jay/Downloads/imag50296363324533456719590617_6999624331092055355n.jpg
 
 /Users/jay/Downloads/Rachide-News-01(1).jpg
-
-OK
 
 /Users/jay/Downloads/2017021468194489.webp 
