@@ -30,10 +30,14 @@ The ox-astro image handling has been improved, but a few gaps remain:
 - ➖ Org file still contains original Downloads paths in content, but
   - ✅ A suggestions comment block is added at the top with old → new → alias mappings for easy manual replacement
 
-*MDX Results:*
+*MDX Results (Observed):*
 - Hero image: `106910784_3615490375147223_8376969077115059792_n.jpg` (implicit cover)
-- Body content: Shows all remaining images as `<Image>` components
-- Imports: All 6 images imported correctly
+- Body content under `# Images`:
+  - ✅ Included: `Rachide-News-01(1).jpg` → `RachideNews011`
+  - ✅ Included: `2017021468194489.webp` → `img2017021468194489`
+  - ❌ Missing: `502610958_24533456482923974_1694898706627993310_n.jpg`
+  - ❌ Missing: `502963633_24533456719590617_6999624331092055355_n.jpg`
+- Imports: All 6 images imported correctly at top of MDX
 
 ** Desired Behavior
 
@@ -47,11 +51,14 @@ The ox-astro image handling has been improved, but a few gaps remain:
 - In-place rewrites during export were fragile (buffer context, narrowing, temp buffers), leading to non-persistent edits.
 - Switching to an explicit suggestions block avoids accidental edits and is robust/reviewable.
 
-** Issue 2: Incomplete Image Display (Fixed)
+** Issue 2: Incomplete Image Display (Partially Fixed)
 
-- File image links are now converted in `org-astro-link` to `<Image>` using imports.
+- File image links are converted in `org-astro-link` to `<Image>` using imports.
 - Raw absolute image lines are converted based on collected imports; `(file-exists-p ...)` checks removed.
-- Hero exclusion logic is applied consistently; all non-hero images render in body.
+- Hero exclusion logic is applied consistently.
+- Remaining problem: Body images with underscores in filenames (e.g., `..._n.jpg`) in the `# Images` section are not appearing in the MDX body, even though they were copied and imported.
+  - Likely due to Org parsing and/or our paragraph/plain-text handling around underscore/subscript cases.
+  - Our “broken image paragraph” handler may not trigger for these particular lines, or matching fails when context contains surrounding text (e.g., adjacent `ok`/`OK` lines).
 
 * Implementation Attempts and Results
 
@@ -99,10 +106,11 @@ The ox-astro image handling has been improved, but a few gaps remain:
 - MDX import generation for all detected images
 - Filename sanitization and variable name generation
 - Post-specific folder organization using slugs
-- Conversion of file links and raw absolute paths to `<Image>` components
+- Conversion of file links and most raw absolute paths to `<Image>` components
 - Suggestions block inserted for manual path updates
 
 ** Remaining Gaps ❌
+- Underscore-named images in the `# Images` section: two are missing from MDX body despite being imported and copied. Needs targeted fix in paragraph/plain-text image conversion logic.
 - No automatic in-place path rewriting during export (by design); manual replacement or a one-off “apply replacements” command is required.
 - Document implicit hero behavior (first image excluded from body when no `#+COVER_IMAGE`).
 
@@ -113,7 +121,11 @@ The ox-astro image handling has been improved, but a few gaps remain:
 - Keep suggestions block as the default review-first workflow.
 
 ** Priority 2: Image Display 
-- Broaden tests across more link variants (e.g., `[[file:...][desc]]`) and mixed paragraphs. Currently working for standard cases.
+- Fix underscore cases in `# Images` section:
+  - Ensure paragraphs with a single absolute image path are always converted, regardless of underscores.
+  - Make filename-based matching robust when surrounding lines like `ok`/`OK` are present.
+  - Add logging in `org-astro-paragraph`/`org-astro-plain-text` for unmatched image lines.
+- Broaden tests across more link variants (e.g., `[[file:...][desc]]`) and mixed paragraphs.
 
 ** Priority 3: Integration Testing
 - Create comprehensive test cases
