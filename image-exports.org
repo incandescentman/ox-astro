@@ -2,6 +2,62 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-28
 
+
+
+* Current state
+we are close, but there's a problem. maybe it is just a problem with the sequence?
+
+** here is the intial state of the source file (i will show only the relevant part with the image paths) 
+
+#+BEGIN_QUOTE
+
+* Images
+/Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg 
+
+/Users/jay/Downloads/imag502610958_245334564829239741694898706627993310n.jpg 
+
+/Users/jay/Downloads/imag50296363324533456719590617_6999624331092055355n.jpg 
+
+/Users/jay/Downloads/Rachide-News-01(1).jpg 
+
+/Users/jay/Downloads/2017021468194489.webp 
+
+#+END_QUOTE
+
+
+** after I run export: 
+On the org-mode source file, it correctly adds brackets and updates the image paths to the new astro locations. perfect! 
+
+but --- on the mdx output file, many images are still missing! 
+
+#+BEGIN_QUOTE 
+# Images
+
+<Image src={RachideNews011} alt="Rachide News 01(1)" /> 
+#+END_QUOTE
+
+** but!! if I run the export AGAIN:
+
+#+BEGIN_QUOTE 
+# Images
+
+<Image src={imag10691078436154903751472238376969077115059792n} alt="Imag106910784 8376969077115059792n" />
+
+<Image src={imag502610958245334564829239741694898706627993310n} alt="Imag502610958 245334564829239741694898706627993310n" />
+
+<Image src={imag502963633245334567195906176999624331092055355n} alt="Imag50296363324533456719590617 6999624331092055355n" />
+
+<Image src={RachideNews011} alt="Rachide News 01 1" />
+
+<Image src={img2017021468194489} alt="2017021468194489" />
+#+END_QUOTE
+
+Now all the images are there! so the mdx export from the finished state of the org-mode source file works perfectly!
+
+so maybe the solution is just to run all operations on the org-mode source file BEFORE creating the mdx export?
+
+
+** Claude you can stop here 🙂 
 * Problem Summary
 
 The ox-astro image export pipeline has been significantly improved but still has a remaining transcoding issue.
