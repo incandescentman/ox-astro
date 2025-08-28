@@ -7,20 +7,18 @@
   "Global storage for body image imports to persist across export phases.")
 
 (defun org-astro-auto-wrap-image-paths-filter (tree _backend info)
-  "Pre-processing filter that automatically wraps raw image paths in [[ ]] brackets.
-This runs FIRST, before all other processing, to simulate manual bracket addition.
-Unlike other approaches, this PERSISTS changes to the source file."
-  ;; Use the working bracket wrapping function on the source file itself
+  "Pre-processing filter that completes ALL source file operations BEFORE export.
+This ensures the source file is in final state before transcoding begins."
+  ;; First: Add brackets to raw image paths
   (let ((src-file (or (plist-get info :input-file)
                       (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
     (when src-file
-      ;; Persist the bracketing to the source file - this simulates manual pre-processing
+      ;; Step 1: Wrap raw paths in brackets and save
       (let ((count (org-astro--persist-wrap-raw-image-lines src-file)))
         (when (> count 0)
-          (message "Auto-wrapped %d raw image paths in source file" count)
-          ;; Reload the buffer with the updated content
-          (revert-buffer t t)))))
-  ;; Return tree unchanged - let normal pipeline handle the bracketed paths
+          (message "Auto-wrapped %d raw image paths in source file" count)))))
+  
+  ;; Return tree unchanged - the next filter will process the fully prepared source
   tree)
 
 (defun org-astro-prepare-images-filter (tree _backend info)
@@ -100,7 +98,14 @@ under the key `:astro-body-images-imports`."
       (let ((final-data (nreverse image-imports-data)))
         ;; Store in both places for data persistence across export phases
         (setq org-astro--current-body-images-imports final-data)
-        (plist-put info :astro-body-images-imports final-data))))
+        (plist-put info :astro-body-images-imports final-data)))
+    
+    ;; CRITICAL: Reload buffer to get the updated content with new paths for transcoding
+    (let ((src-file (or (plist-get info :input-file)
+                        (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
+      (when (and src-file image-imports-data)
+        (message "Reloading source file with updated image paths for transcoding")
+        (revert-buffer t t))))
   ;; Return the tree, as required for a parse-tree filter.
   tree)
 
