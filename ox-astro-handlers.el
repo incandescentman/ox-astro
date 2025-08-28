@@ -129,13 +129,15 @@ preprocessing has already been completed and we skip the processing."
       (let ((src-file (or (plist-get info :input-file)
                           (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
         (when (and src-file image-imports-data)
-        (message "Forcing buffer reload and re-parse with updated image paths")
-        (when (boundp 'org-astro-debug-images)
-          (when org-astro-debug-images
-            (message "[ox-astro][img] reparse forced")))
-        ;; Force reload and return a fresh parse tree
-        (revert-buffer t t)
-        (setq tree (org-element-parse-buffer))))
+          (message "Forcing buffer reload and re-parse with updated image paths")
+          (when (boundp 'org-astro-debug-images)
+            (when org-astro-debug-images
+              (message "[ox-astro][img] reparse forced")))
+          ;; Force reload and return a fresh parse tree
+          (revert-buffer t t)
+          (setq tree (org-element-parse-buffer))
+          ;; Also update the info plist so downstream phases see the latest tree
+          (plist-put info :parse-tree tree))))
       ;; Return the potentially updated tree
       tree)))
 
