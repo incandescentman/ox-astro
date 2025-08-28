@@ -36,8 +36,15 @@ In commit 558c0fc ("almost there"), the source file path updating was working co
 - ❌ MDX export was broken (missing images)
 
 ***Now (current):***
-- ❌ Source file path updating is broken
-- ✅ MDX export works perfectly
+- ✅ Source file path updating now works (org source shows asset paths)
+- ❌ MDX export still missing some images on first export
+- ✅ Re-running export immediately a second time makes missing images appear
+
+** Current Reality (2025-08-28, after latest fixes)
+
+1. Org-mode source buffer updating image paths now works (paths rewritten to assets)
+2. Images are still missing from MDX export after a single export run
+3. Missing images do appear in MDX if the export is run a second time (sequencing issue)
 
 ** Root Cause Analysis (might be wrong)
 
@@ -62,4 +69,3 @@ emacs --batch --eval "(progn (add-to-list 'load-path \".\") (require 'ox-astro) 
 # Expected output: "Auto-wrapped 6 raw image paths in source file"
 # Expected result: All 6 images should appear as <Image> components in MDX output
 ```
-
