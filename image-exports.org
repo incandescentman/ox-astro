@@ -100,7 +100,7 @@ The ox-astro image handling has been improved, but a few gaps remain:
 
 *Result:* ✅ **SUCCESS** - Authors can replace paths manually (or via a one-off apply helper).
 
-* Current Status
+* Current Status (Updated 2025-08-28)
 
 ** Working Components ✅
 - Image detection and collection from multiple sources (org links, raw paths)
@@ -108,31 +108,58 @@ The ox-astro image handling has been improved, but a few gaps remain:
 - MDX import generation for all detected images
 - Filename sanitization and variable name generation
 - Post-specific folder organization using slugs
-- Conversion of file links and most raw absolute paths to `<Image>` components
-- Suggestions block inserted for manual path updates
+- **Manual bracket wrapping**: Converting raw image paths to `[[path]]` format in source files before export
+- Conversion of org-mode file links `[[path]]` to `<Image>` components (reliable)
 - Hero image selection (first collected image becomes cover image)
 - Import matching logic (tested and confirmed functional)
 - Regex patterns for image detection (both underscore and non-underscore paths)
 
+** New Approach: Manual Bracket Wrapping ✅
+- **Manual Solution**: Use Emacs batch command to wrap all raw image paths in `[[ ]]` brackets before export
+- **Command**: `emacs --batch --eval "(progn (find-file \"file.org\") (goto-char (point-min)) (while (re-search-forward \"^\\\\s-*\\\\(/[^[:space:]]*\\\\.\\\\(?:png\\\\|jpe?g\\\\|webp\\\\)\\\\)\\\\s-*$\" nil t) (let ((path (match-string 1))) (unless (save-match-data (string-match-p \"\\\\[\\\\[.*\\\\]\\\\]\" (match-string 0))) (replace-match (concat \"[[\" path \"]]\"))))) (save-buffer))"`
+- **Result**: All 6 images successfully converted to `<Image>` components in final MDX
+- **Verification**: Tested with massimo-dutti.org - all raw paths converted from `/Users/jay/Downloads/...` to `[[/Users/jay/Downloads/...]]`
+
+** Automatic Filter Issues ❌
+- **Attempted**: `org-astro-normalize-raw-image-paths-filter` to automatically wrap raw paths during export
+- **Result**: Filter registers correctly but doesn't modify source files persistently
+- **Root Causes**:
+  1. **Buffer Context**: Export process uses temporary/narrowed buffers where changes don't persist to source files
+  2. **Timing Issues**: Filter runs during parse tree processing, before final transcoding
+  3. **State Management**: Changes made to parse tree elements don't reflect back to source buffer
+- **Evidence**: Manual wrapping works perfectly, but automatic filter during export fails to persist changes
+
 ** Remaining Gaps ❌
-- **Critical Issue**: Two underscore-named images missing from MDX body content despite correct import generation
-  - `502610958_24533456482923974_1694898706627993310_n.jpg` (line 161 in org file)
-  - `502963633_24533456719590617_6999624331092055355_n.jpg` (line 165 in org file)
-  - **Root Cause**: Export pipeline state management issue, not core functionality failure
-  - **Evidence**: Import matching logic works correctly in isolation testing
-  - **Pattern**: Only first 2 images after hero in collection order are affected
-- No automatic in-place path rewriting during export (by design); manual replacement or a one-off "apply replacements" command is required.
+- **Automatic wrapping during export**: The `org-astro-normalize-raw-image-paths-filter` doesn't successfully modify source files
+  - Filter executes but changes don't persist to the actual org file on disk
+  - Export pipeline buffer management prevents source file modifications
+  - Manual pre-processing is required instead
+- **User Experience**: Requires two-step process (wrap paths, then export) instead of seamless one-step export
 - Document implicit hero behavior (first image excluded from body when no `#+COVER_IMAGE`).
 
 * Next Steps for Resolution
 
-** Priority 1: Path Update UX
-- Add an explicit command to “Apply Image Path Replacements” using the suggestions block mapping (opt-in, one-off per file).
-- Keep suggestions block as the default review-first workflow.
+** Priority 1: Fix Automatic Bracket Wrapping 
+- **Issue**: Current filter approach doesn't modify source files during export
+- **Investigation Needed**: 
+  - Understand org-mode export buffer management and timing
+  - Find correct hook/filter that can modify source files before parse tree generation
+  - Consider pre-export hook instead of parse-tree filter
+- **Alternative**: Create separate interactive command for bracket wrapping that runs before export
+
+** Testing Results (2025-08-28) ✅
+- **Test Case**: massimo-dutti.org with 6 images (5 raw paths + 1 already wrapped)
+- **Before bracket wrapping**: Only 1 image appeared in final MDX output
+- **After manual bracket wrapping**: All 6 images successfully converted to `<Image>` components
+- **Source file changes**: All raw paths like `/Users/jay/Downloads/image.jpg` became `[[/Users/jay/Downloads/image.jpg]]`
+- **MDX output verification**: 
+  - Hero image: `masimoDutti` (first collected image used as cover)
+  - Body images: All 5 remaining images appear as `<Image src={varName} alt="..." />` components
+  - Import generation: All 6 images have corresponding import statements
 
 ** Priority 2: Image Display Issue Deep Dive
-- **Issue Analysis Completed**: Comprehensive debugging revealed the missing underscore images issue is NOT due to:
-  - Regex pattern problems ❌ (both old and new patterns work correctly)
+- **Previous Issue RESOLVED**: The missing underscore images problem was resolved by manual bracket wrapping
+- **Root Cause Identified**: Raw image paths need to be converted to org-mode file links `[[path]]` to be processed correctly by the standard org-mode link transcoding pipeline
   - Variable name generation issues ❌ (names generated correctly)  
   - Import matching logic failures ❌ (tested in isolation and works perfectly)
   - File existence or path sanitization problems ❌ (all working correctly)
