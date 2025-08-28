@@ -676,16 +676,14 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
           (dolist (line lines)
             (let ((text (org-trim line)))
               (when (and text
-                         (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" text)
-                         (file-exists-p text))
+                         (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" text))
                 (push text images)))))))
     ;; 3. Collect from paragraphs that contain subscript elements (broken up image paths)
     (org-element-map tree 'paragraph
       (lambda (paragraph)
         (let ((reconstructed-path (org-astro--extract-image-path-from-paragraph paragraph)))
           (when (and reconstructed-path
-                     (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" reconstructed-path)
-                     (file-exists-p reconstructed-path))
+                     (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" reconstructed-path))
             (push reconstructed-path images)))))
     ;; Return a list with no duplicates
     (delete-dups (nreverse images))))
@@ -698,8 +696,7 @@ This catches paths with underscores that would be broken by subscript parsing."
       (goto-char (point-min))
       (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
         (let ((path (string-trim (match-string 0))))
-          (when (file-exists-p path)
-            (push path images)))))
+          (push path images))))
     images))
 
 (defun org-astro--extract-image-path-from-paragraph (paragraph)
