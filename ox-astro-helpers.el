@@ -773,6 +773,16 @@ This updates:
       (message "DEBUG: Buffer update complete. Changes made: %s" changes-made)
       changes-made)))
 
+(defun org-astro--update-image-path-in-file (file old-path new-path)
+  "Open FILE, replace OLD-PATH with NEW-PATH using the same rules as buffer updater, and save.
+Returns non-nil if any changes were made."
+  (when (and (stringp file) (file-exists-p file)
+             (stringp old-path) (stringp new-path))
+    (with-current-buffer (find-file-noselect file)
+      (let ((changed (org-astro--update-image-path-in-buffer old-path new-path)))
+        (when changed (save-buffer))
+        changed))))
+
 (defun org-astro--update-source-buffer-image-path (old-path new-path)
   "Update image path in the original source buffer, not the export copy.
 This function finds the source buffer and modifies it directly."

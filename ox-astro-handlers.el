@@ -17,7 +17,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
       (let ((count (org-astro--persist-wrap-raw-image-lines src-file)))
         (when (> count 0)
           (message "Auto-wrapped %d raw image paths in source file" count)))))
-  
+
   ;; Return tree unchanged
   tree)
 
@@ -48,7 +48,7 @@ preprocessing has already been completed and we skip the processing."
                         ;; If we found it in known folders, use that path
                         (resolved-posts-folder resolved-posts-folder)
                         ;; If posts-folder-raw exists and looks like an absolute path, use it directly
-                        ((and posts-folder-raw 
+                        ((and posts-folder-raw
                               (file-name-absolute-p posts-folder-raw)
                               (file-directory-p (expand-file-name posts-folder-raw)))
                          posts-folder-raw)
@@ -86,33 +86,45 @@ preprocessing has already been completed and we skip the processing."
           (when (and astro-path var-name)
             (push `(:path ,path :var-name ,var-name :astro-path ,astro-path :target-path ,target-abs)
                   image-imports-data))))
-      ;; Note: Source buffer saving is handled by org-astro--update-source-buffer-image-path
       (when image-imports-data
         (message "DEBUG: Processed %d images for import" (length image-imports-data))
-        ;; Insert or update a suggestions block with new image paths in the source org buffer
-        (ignore-errors
-          (let ((src (or (plist-get info :input-file)
-                         (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
+        (let ((src (or (plist-get info :input-file)
+                       (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
+          ;; 1) Persist suggestions block
+          (ignore-errors
             (when src
-              (org-astro--upsert-image-paths-comment-into-file src image-imports-data))))
-        ))
-    ;; Store the collected data in the info plist for other functions to use.
-    (when image-imports-data
-      (let ((final-data (nreverse image-imports-data)))
-        ;; Store in both places for data persistence across export phases
-        (setq org-astro--current-body-images-imports final-data)
-        (plist-put info :astro-body-images-imports final-data)))
-    
-    ;; CRITICAL: Force re-parse of the tree with the updated content
-    (let ((src-file (or (plist-get info :input-file)
-                        (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
-      (when (and src-file image-imports-data)
-        (message "Forcing buffer reload and re-parse with updated image paths")
-        ;; Force reload and return a fresh parse tree
-        (revert-buffer t t)
-        (setq tree (org-element-parse-buffer)))))
-  ;; Return the potentially updated tree
-  tree)
+              (org-astro--upsert-image-paths-comment-into-file src image-imports-data)))
+          ;; 2) Actively update source file paths old→new (bracketed and raw forms)
+          (ignore-errors
+            (when src
+              (with-current-buffer (find-file-noselect src)
+                (let ((changes 0))
+                  (dolist (it image-imports-data)
+                    (let ((old (plist-get it :path))
+                          (new (plist-get it :target-path)))
+                      (when (and old new)
+                        (when (org-astro--update-image-path-in-buffer old new)
+                          (setq changes (1+ changes))))))
+                  (when (> changes 0)
+                    (save-buffer)
+                    (message "DEBUG: Updated %d image path(s) in source file" changes))))))))
+      ;; Store the collected data in the info plist for other functions to use.
+      (when image-imports-data
+        (let ((final-data (nreverse image-imports-data)))
+          ;; Store in both places for data persistence across export phases
+          (setq org-astro--current-body-images-imports final-data)
+          (plist-put info :astro-body-images-imports final-data)))
+
+      ;; CRITICAL: Force re-parse of the tree with the updated content
+      (let ((src-file (or (plist-get info :input-file)
+                          (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
+        (when (and src-file image-imports-data)
+          (message "Forcing buffer reload and re-parse with updated image paths")
+          ;; Force reload and return a fresh parse tree
+          (revert-buffer t t)
+          (setq tree (org-element-parse-buffer))))
+      ;; Return the potentially updated tree
+      tree)))
 
 (defun org-astro-body-filter (body _backend info)
   "Add front-matter, source comment, and imports to BODY."
@@ -135,8 +147,8 @@ preprocessing has already been completed and we skip the processing."
          (body-images-imports (if (and (not explicit-hero) body-images-imports-raw)
                                   ;; Exclude first image when it's used as hero
                                   (cdr body-images-imports-raw)
-                                ;; Use all images when there's an explicit hero
-                                body-images-imports-raw))
+                                  ;; Use all images when there's an explicit hero
+                                  body-images-imports-raw))
          (body-imports-string
           (when body-images-imports
             (mapconcat
@@ -195,8 +207,8 @@ preprocessing has already been completed and we skip the processing."
            (image-imports (if (and (not explicit-hero) image-imports-raw)
                               ;; Exclude first image when it's used as hero
                               (cdr image-imports-raw)
-                            ;; Use all images when there's an explicit hero
-                            image-imports-raw)))
+                              ;; Use all images when there's an explicit hero
+                              image-imports-raw)))
       (when image-imports
         (setq s (replace-regexp-in-string
                  "!\[\([^]]*\)\](\(/[^)]+\.\(?:png\|jpe?g\|webp\)\))"
@@ -210,7 +222,7 @@ preprocessing has already been completed and we skip the processing."
                          (let ((var-name (plist-get image-data :var-name))
                                (alt-text (or (org-astro--filename-to-alt-text path) alt "Image")))
                            (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
-                       match)))
+                         match)))
                  s))))
     ;; Indented blocks to blockquotes
     (let* ((lines (split-string s "\n"))
@@ -218,7 +230,7 @@ preprocessing has already been completed and we skip the processing."
             (mapcar (lambda (line)
                       (if (string-prefix-p "    " line)
                           (concat "> " (substring line 4))
-                        line))
+                          line))
                     lines)))
       (setq s (mapconcat 'identity processed-lines "\n")))
     s))
