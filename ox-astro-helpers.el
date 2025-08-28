@@ -389,17 +389,32 @@ If no explicit cover image is specified, use the first body image as hero."
                                 (plist-get info :cover-image)))
              (image-imports (if (and (not explicit-hero) image-imports-raw)
                                 (cdr image-imports-raw)
-                                image-imports-raw))
-             (image-data (when image-imports
-                           (cl-find path image-imports
-                                    :key (lambda (item) (plist-get item :path))
-                                    :test #'string-equal))))
-        (if image-data
-            (let* ((var-name (plist-get image-data :var-name))
-                   (alt-text (or desc (org-astro--filename-to-alt-text path) "Image")))
-              (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
-          ;; If it's the hero (excluded) or unmatched, drop from body
-          "")))
+                              image-imports-raw))
+             (image-data
+              (when image-imports
+                (or (cl-find path image-imports
+                             :key (lambda (item) (plist-get item :path))
+                             :test #'string-equal)
+                    ;; Fallback: match by filename if absolute path comparison fails
+                    (let ((base (file-name-nondirectory path)))
+                      (cl-find base image-imports
+                               :key (lambda (item)
+                                      (file-name-nondirectory (plist-get item :path)))
+                               :test #'string-equal))))))
+        (cond
+         (image-data
+          (let* ((var-name (plist-get image-data :var-name))
+                 (alt-text (or desc (org-astro--filename-to-alt-text path) "Image")))
+            (format "<Image src={%s} alt=\"%s\" />" var-name alt-text)))
+         ;; If hero image appears again as a link, drop it from body
+         ((and image-imports-raw (string-equal path (plist-get (car image-imports-raw) :path)))
+          "")
+         ;; Unmatched: fall back to normal Markdown link instead of dropping
+         (t
+          (let ((md (when (fboundp 'org-md-link)
+                      (ignore-errors (org-md-link link desc info)))))
+            (or md (or (org-element-property :raw-link link)
+                       (concat (or type "file") ":" path))))))))
      ;; If the description is already a Markdown link, preserve it unchanged.
      ((and desc (org-astro--contains-markdown-link-p desc))
       desc)
@@ -551,9 +566,15 @@ Otherwise, use the default Markdown paragraph transcoding."
                                   (cdr image-imports-raw)
                                   image-imports-raw))
                (image-data (when image-imports
-                             (cl-find path image-imports
-                                      :key (lambda (item) (plist-get item :path))
-                                      :test #'string-equal))))
+                             (or (cl-find path image-imports
+                                          :key (lambda (item) (plist-get item :path))
+                                          :test #'string-equal)
+                                 ;; Fallback by filename (handles Org link normalization quirks)
+                                 (let ((base (file-name-nondirectory path)))
+                                   (cl-find base image-imports
+                                            :key (lambda (item)
+                                                   (file-name-nondirectory (plist-get item :path)))
+                                            :test #'string-equal))))))
           (if image-data
               (let ((var-name (plist-get image-data :var-name))
                     (alt-text (or (org-astro--filename-to-alt-text path) "Image")))
