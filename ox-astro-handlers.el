@@ -6,6 +6,37 @@
 (defvar org-astro--current-body-images-imports nil
   "Global storage for body image imports to persist across export phases.")
 
+(defun org-astro-normalize-raw-image-paths-filter (tree _backend _info)
+  "Convert raw image paths to org-mode file links before processing.
+This filter runs first, wrapping standalone image paths in [[ ]] brackets
+so they get handled by the standard org-mode link processing pipeline."
+  (org-element-map tree 'plain-text
+    (lambda (text-element)
+      (let* ((text (org-element-property :value text-element))
+             (lines (when text (split-string text "\n")))
+             (modified-lines
+              (mapcar
+               (lambda (line)
+                 (let ((trimmed (string-trim line)))
+                   ;; If this line is just a raw image path, wrap it in [[ ]]
+                   (if (and trimmed
+                            (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" trimmed)
+                            ;; Make sure it's not already a link
+                            (not (string-match-p "\\[\\[.*\\]\\]" line)))
+                       (replace-regexp-in-string 
+                        (concat "^\\s-*" (regexp-quote trimmed) "\\s-*$")
+                        (concat "[[" trimmed "]]")
+                        line)
+                     line)))
+               lines)))
+        ;; Only modify if we actually made changes
+        (unless (equal lines modified-lines)
+          (org-element-put-property text-element :value 
+                                    (mapconcat 'identity modified-lines "\n")))))
+    nil nil t)
+  ;; Return tree unchanged (modifications were done in-place)
+  tree)
+
 (defun org-astro-prepare-images-filter (tree _backend info)
   "Find all local images, process them, and store import data in INFO.
 This filter runs on the parse TREE before transcoding. It collects
