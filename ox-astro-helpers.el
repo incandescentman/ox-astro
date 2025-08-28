@@ -843,15 +843,19 @@ and are not already an Org link. Returns number of lines changed."
       (save-restriction
         (narrow-to-region beg end)
         (goto-char (point-min))
+        ;; Look for lines that contain ONLY a raw image path (with optional whitespace)
         (while (re-search-forward "^\\s-*\\(/[^[:space:]]*\\.\\(?:png\\|jpe?g\\|webp\\)\\)\\s-*$" nil t)
-          (let* ((path (match-string 1))  ; Extract just the path part
-                 (line-content (buffer-substring-no-properties (line-beginning-position)
-                                                               (line-end-position))))
-            (unless (string-match-p "\\[\\[.*\\]\\]" line-content)
-              (let ((wrapped (format "[[%s]]" path)))
-                (delete-region (line-beginning-position) (line-end-position))
-                (insert wrapped)
-                (setq count (1+ count))))))))
+          (let ((path (match-string 1))
+                (line-start (line-beginning-position))
+                (line-end (line-end-position)))
+            ;; Double-check this line isn't already a bracketed link
+            (save-excursion
+              (goto-char line-start)
+              (unless (looking-at ".*\\[\\[.*\\]\\]")
+                (let ((wrapped (format "[[%s]]" path)))
+                  (delete-region line-start line-end)
+                  (insert wrapped)
+                  (setq count (1+ count)))))))))
     count))
 
 (defun org-astro--persist-wrap-raw-image-lines (file)
