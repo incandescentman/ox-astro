@@ -60,14 +60,24 @@ under the key `:astro-body-images-imports`."
         (message "DEBUG: Processing image path: %s" path)
         ;; For each image, copy it to assets and get its new path.
         (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir t))
-               (var-name (org-astro--path-to-var-name path)))
+               (var-name (org-astro--path-to-var-name path))
+               (clean-filename (org-astro--sanitize-filename (file-name-nondirectory path)))
+               (target-abs (when astro-path
+                             (expand-file-name clean-filename (org-astro--get-assets-folder posts-folder sub-dir)))))
           (message "DEBUG: Astro path: %s, var name: %s" astro-path var-name)
           (when (and astro-path var-name)
-            (push `(:path ,path :var-name ,var-name :astro-path ,astro-path)
+            (push `(:path ,path :var-name ,var-name :astro-path ,astro-path :target-path ,target-abs)
                   image-imports-data))))
       ;; Note: Source buffer saving is handled by org-astro--update-source-buffer-image-path
       (when image-imports-data
-        (message "DEBUG: Processed %d images for import" (length image-imports-data))))
+        (message "DEBUG: Processed %d images for import" (length image-imports-data))
+        ;; Insert or update a suggestions block with new image paths in the source org buffer
+        (ignore-errors
+          (let ((src (or (plist-get info :input-file)
+                         (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
+            (when src
+              (org-astro--upsert-image-paths-comment-into-file src image-imports-data))))
+        ))
     ;; Store the collected data in the info plist for other functions to use.
     (when image-imports-data
       (let ((final-data (nreverse image-imports-data)))

@@ -3,6 +3,36 @@
 :END:
 #+TITLE: Massimo Dutti
 #+FILETAGS: :memoir:
+
+#
+# Generated: 2025-08-28 10:24:18
+# Suggested replacements (old → new). Use alias for MDX.
+# BEGIN ASTRO IMAGE PATH SUGGESTIONS
+# - old: /Users/jay/Downloads/2017021468194489.webp
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/2017021468194489.webp
+#   alias: ~/assets/images/posts/massimo-dutti/2017021468194489.webp
+#
+# - old: /Users/jay/Downloads/masimo-dutti.webp
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/masimo-dutti.webp
+#   alias: ~/assets/images/posts/massimo-dutti/masimo-dutti.webp
+#
+# - old: /Users/jay/Downloads/Rachide-News-01(1).jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/Rachide-News-01-1-.jpg
+#   alias: ~/assets/images/posts/massimo-dutti/Rachide-News-01-1-.jpg
+#
+# - old: /Users/jay/Downloads/502963633_24533456719590617_6999624331092055355_n.jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/502963633-24533456719590617-6999624331092055355-n.jpg
+#   alias: ~/assets/images/posts/massimo-dutti/502963633-24533456719590617-6999624331092055355-n.jpg
+#
+# - old: /Users/jay/Downloads/502610958_24533456482923974_1694898706627993310_n.jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/502610958-24533456482923974-1694898706627993310-n.jpg
+#   alias: ~/assets/images/posts/massimo-dutti/502610958-24533456482923974-1694898706627993310-n.jpg
+#
+# - old: /Users/jay/Downloads/106910784_3615490375147223_8376969077115059792_n.jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/106910784-3615490375147223-8376969077115059792-n.jpg
+#   alias: ~/assets/images/posts/massimo-dutti/106910784-3615490375147223-8376969077115059792-n.jpg
+#
+# END ASTRO IMAGE PATH SUGGESTIONS
 - Links ::
 - Source ::
 

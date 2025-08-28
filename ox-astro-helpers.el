@@ -820,6 +820,177 @@ This function finds the source buffer and modifies it directly."
                        (directory-file-name posts-dir))))))
       (expand-file-name (concat "assets/images/" sub-dir) src-dir))))
 
+;; ------------------------------------------------------------------
+;; Image path suggestions block (for manual replacement workflow)
+;; ------------------------------------------------------------------
+
+(defun org-astro--generate-image-paths-comment-block (items)
+  "Generate a comment block with suggested image path replacements.
+ITEMS is a list of plists containing :path (old), :target-path (abs new), :astro-path (alias)."
+  (let ((lines (list "# BEGIN ASTRO IMAGE PATH SUGGESTIONS"
+                     "# Suggested replacements (old → new). Use alias for MDX."
+                     (format "# Generated: %s" (format-time-string "%Y-%m-%d %H:%M:%S"))
+                     "#")))
+    (dolist (it items)
+      (let* ((old (plist-get it :path))
+             (new (or (plist-get it :target-path) ""))
+             (alias (or (plist-get it :astro-path) "")))
+        (push (format "# - old: %s" old) lines)
+        (push (format "#   new: %s" new) lines)
+        (push (format "#   alias: %s" alias) lines)
+        (push "#" lines)))
+    (setq lines (nreverse lines))
+    (mapconcat #'identity (append lines (list "# END ASTRO IMAGE PATH SUGGESTIONS")) "\n")))
+
+(defun org-astro--insert-or-replace-suggestions-block (block-text)
+  "Insert or replace the image suggestions comment BLOCK-TEXT near the top."
+  (save-excursion
+    (goto-char (point-min))
+    (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
+           (begin-marker (progn
+                           (save-restriction
+                             (narrow-to-region (point-min) limit)
+                             (goto-char (point-min))
+                             (re-search-forward "^# BEGIN ASTRO IMAGE PATH SUGGESTIONS$" nil t))))
+           (end-marker (when begin-marker
+                         (save-excursion
+                           (re-search-forward "^# END ASTRO IMAGE PATH SUGGESTIONS$" nil t))))
+           (insert-point
+            (unless begin-marker
+              ;; Compute where to insert: after roam preamble and keyword/comment block
+              (goto-char (point-min))
+              ;; Skip properties block
+              (when (looking-at-p "^:PROPERTIES:")
+                (forward-line 1)
+                (while (and (< (point) limit)
+                            (not (looking-at-p "^:END:")))
+                  (forward-line 1))
+                (when (looking-at-p "^:END:") (forward-line 1)))
+              ;; Skip roam preamble lines
+              (let ((roam-anchor (save-excursion
+                                   (let ((last-pos nil))
+                                     (save-restriction
+                                       (narrow-to-region (point-min) limit)
+                                       (goto-char (point-min))
+                                       (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+                                         (setq last-pos (line-end-position))))
+                                     (when last-pos
+                                       (goto-char last-pos)
+                                       (forward-line 1)
+                                       (point))))))
+                (if roam-anchor
+                    (goto-char roam-anchor)
+                  ;; Else skip existing keywords/comments/blank
+                  (while (and (< (point) limit)
+                              (or (looking-at-p "^#\\+") (looking-at-p "^#\\s-") (looking-at-p "^\\s-*$")))
+                    (forward-line 1))))
+              (point))))
+      (if begin-marker
+          (progn
+            (goto-char begin-marker)
+            (beginning-of-line)
+            (let ((start (point)))
+              (when end-marker
+                (goto-char end-marker)
+                (end-of-line)
+                (forward-char 1))
+              (delete-region start (point)))
+            (insert block-text "\n"))
+        ;; Insert new block
+        (goto-char insert-point)
+        (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
+        (insert block-text "\n")))))
+
+(defun org-astro--upsert-image-paths-comment-in-current-buffer (items)
+  "Create or update the suggestions comment block in the current buffer."
+  (let ((block (org-astro--generate-image-paths-comment-block items)))
+    (org-astro--insert-or-replace-suggestions-block block)))
+
+(defun org-astro--upsert-image-paths-comment (items)
+  "Find the source Org buffer and upsert the suggestions comment block."
+  (message "DEBUG: Upserting image suggestions block...")
+  (let ((source-buffer nil))
+    (cond
+     ((and (buffer-file-name) (not buffer-read-only))
+      (setq source-buffer (current-buffer)))
+     (t
+      (dolist (buf (buffer-list))
+        (with-current-buffer buf
+          (let ((bf (buffer-file-name)))
+            (when (and bf (not buffer-read-only)
+                       (string-match-p "\\.org$" bf))
+              (setq source-buffer buf)
+              (cl-return)))))))
+    (when source-buffer
+      (with-current-buffer source-buffer
+        (org-astro--upsert-image-paths-comment-in-current-buffer items)
+        (save-buffer)))))
+
+(defun org-astro--upsert-image-paths-comment-into-file (file items)
+  "Open FILE and upsert the image suggestions comment block, then save."
+  (when (and file (file-exists-p file))
+    (with-current-buffer (find-file-noselect file)
+      (org-astro--upsert-image-paths-comment-in-current-buffer items)
+      (save-buffer))))
+
+;; ------------------------------------------------------------------
+;; Apply suggested image path replacements (manual, explicit action)
+;; ------------------------------------------------------------------
+
+(defun org-astro--parse-image-suggestions ()
+  "Parse the suggestions block and return a list of plist items:
+Each item has :old, :new, and :alias keys.
+Returns nil if no suggestions block is found."
+  (save-excursion
+    (goto-char (point-min))
+    (let* ((begin (re-search-forward "^# BEGIN ASTRO IMAGE PATH SUGGESTIONS$" nil t))
+           (end (when begin (re-search-forward "^# END ASTRO IMAGE PATH SUGGESTIONS$" nil t))))
+      (when (and begin end)
+        (save-restriction
+          (narrow-to-region begin end)
+          (goto-char (point-min))
+          (let (items current-old current-new current-alias)
+            (while (re-search-forward "^# - old: \(.*\)$" nil t)
+              (setq current-old (org-trim (match-string 1)))
+              (when (re-search-forward "^#   new: \(.*\)$" nil t)
+                (setq current-new (org-trim (match-string 1))))
+              (when (re-search-forward "^#   alias: \(.*\)$" nil t)
+                (setq current-alias (org-trim (match-string 1))))
+              (when (and current-old (or current-new current-alias))
+                (push (list :old current-old :new current-new :alias current-alias) items))
+              (setq current-old nil current-new nil current-alias nil))
+            (nreverse items)))))))
+
+(defun org-astro-apply-image-path-replacements (&optional use-alias)
+  "Apply suggested image path replacements in the current buffer.
+When USE-ALIAS is non-nil (interactive prefix), use :alias paths; otherwise use :new absolute paths."
+  (interactive "P")
+  (let* ((items (org-astro--parse-image-suggestions))
+         (count 0)
+         (mode (if use-alias :alias :new)))
+    (if (not items)
+        (message "No image suggestions block found.")
+      (save-excursion
+        (save-restriction
+          (widen)
+          (dolist (it items)
+            (let* ((old (plist-get it :old))
+                   (rep (plist-get it mode)))
+              (when (and old rep (not (string-empty-p rep)))
+                (setq count (+ count (if (org-astro--update-image-path-in-buffer old rep) 1 0))))))
+          (when (> count 0)
+            (save-buffer)))
+      (message "Applied replacements for %d image(s) using %s paths." count (if use-alias "alias" "absolute")))))
+)
+
+(defun org-astro-apply-image-path-replacements-in-file (file &optional use-alias)
+  "Open FILE, apply replacements from its suggestions block, and save.
+When USE-ALIAS is non-nil, use :alias paths; otherwise use :new."
+  (interactive "fOrg file: \nP")
+  (with-current-buffer (find-file-noselect file)
+    (org-astro-apply-image-path-replacements use-alias)))
+
+
 (defun org-astro--sanitize-filename (filename)
   "Sanitize FILENAME by replacing underscores with hyphens and removing problematic characters."
   (let ((clean-name filename))
