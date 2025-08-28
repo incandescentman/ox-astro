@@ -20,7 +20,11 @@
       "Bash(head:*)",
       "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
       "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
-      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)"
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Bash(test:*)",
+      "Bash(for:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

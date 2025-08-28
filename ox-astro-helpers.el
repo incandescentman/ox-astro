@@ -378,6 +378,28 @@ If no explicit cover image is specified, use the first body image as hero."
   (let* ((type (org-element-property :type link))
          (path (org-element-property :path link)))
     (cond
+     ;; Local file image links → render Image component using imports
+     ((and (or (string= type "file")
+               (and (null type) path (string-prefix-p "/" path)))
+           path
+           (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path))
+      (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
+                                    org-astro--current-body-images-imports))
+             (explicit-hero (or (plist-get info :astro-image)
+                                (plist-get info :cover-image)))
+             (image-imports (if (and (not explicit-hero) image-imports-raw)
+                                (cdr image-imports-raw)
+                                image-imports-raw))
+             (image-data (when image-imports
+                           (cl-find path image-imports
+                                    :key (lambda (item) (plist-get item :path))
+                                    :test #'string-equal))))
+        (if image-data
+            (let* ((var-name (plist-get image-data :var-name))
+                   (alt-text (or desc (org-astro--filename-to-alt-text path) "Image")))
+              (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
+          ;; If it's the hero (excluded) or unmatched, drop from body
+          "")))
      ;; If the description is already a Markdown link, preserve it unchanged.
      ((and desc (org-astro--contains-markdown-link-p desc))
       desc)
@@ -516,8 +538,7 @@ Otherwise, use the default Markdown paragraph transcoding."
       (let* ((raw-text (org-element-property :value child))
              (text (when (stringp raw-text) (org-trim raw-text))))
         (when (and text
-                   (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" text)
-                   (file-exists-p text))
+                   (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" text))
           (setq is-image-path t)
           (setq path text))))
     (if is-image-path
@@ -572,20 +593,26 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                    ;; Preserve Markdown link formatting unchanged
                    line
                    (cond
-                    ;; Raw image path
+                    ;; Raw image path (trust imports rather than filesystem)
                     ((and trimmed-line
-                          (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" trimmed-line)
-                          (file-exists-p trimmed-line))
+                          (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" trimmed-line))
                      (let ((image-data (when image-imports
                                          (cl-find trimmed-line image-imports
                                                   :key (lambda (item) (plist-get item :path))
                                                   :test #'string-equal))))
+                       (message "DEBUG: Looking for image %s in %d imports" trimmed-line (length (or image-imports '())))
+                       (when image-imports
+                         (dolist (import image-imports)
+                           (message "DEBUG: Available import: %s" (plist-get import :path))))
                        (if image-data
                            (let ((var-name (plist-get image-data :var-name))
                                  (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
+                             (message "DEBUG: Converting image to component: %s -> %s" trimmed-line var-name)
                              (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
-                           ;; Fallback: if image wasn't processed, return empty string to remove the raw path
-                           "")))
+                           (progn
+                             (message "DEBUG: WARNING - Image not found in imports: %s" trimmed-line)
+                             ;; Keep the original path so we can see what's happening
+                             (format "<!-- MISSING IMAGE: %s -->" trimmed-line)))))
                     ;; Raw URL
                     ((and trimmed-line
                           (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
@@ -683,22 +710,103 @@ This catches paths with underscores that would be broken by subscript parsing."
 
 (defun org-astro--update-image-path-in-buffer (old-path new-path)
   "Replace OLD-PATH with NEW-PATH in the current buffer.
-This updates both org links [[file:old-path]] and raw image paths."
+This updates:
+- Org links [[file:OLD]][DESC] → [[file:NEW]][DESC]
+- Bare org links [[OLD]][DESC] → [[NEW]][DESC]
+- Raw lines containing only the path (ignoring surrounding whitespace)."
+  (message "DEBUG: Starting buffer update - old: %s -> new: %s" old-path new-path)
+  (message "DEBUG: Current buffer: %s (file: %s)" (buffer-name) (buffer-file-name))
+  (message "DEBUG: Buffer modified: %s, read-only: %s" (buffer-modified-p) buffer-read-only)
+  
   (save-excursion
     (goto-char (point-min))
-    (let ((changes-made nil))
-      ;; Update org-mode file links: [[file:/old/path]] -> [[file:new/path]]
-      (let ((org-link-pattern (format "\\[\\[file:%s\\]\\]" (regexp-quote old-path))))
-        (while (re-search-forward org-link-pattern nil t)
-          (replace-match (format "[[file:%s]]" new-path))
-          (setq changes-made t)))
-      ;; Reset search position for raw paths
+    (let ((changes-made nil)
+          (buffer-content-preview (buffer-substring (point-min) (min (+ (point-min) 200) (point-max)))))
+      (message "DEBUG: Buffer preview: %s..." buffer-content-preview)
+      
+      ;; 1) Update [[file:OLD]] and [[file:OLD][DESC]]
       (goto-char (point-min))
-      ;; Update raw image paths that appear on their own line
-      (while (re-search-forward (format "^%s$" (regexp-quote old-path)) nil t)
-        (replace-match new-path)
-        (setq changes-made t))
+      (while (re-search-forward "\\[\\[file:\\([^]]+\\)\\]\\(\\[[^]]*\\]\\)?\\]" nil t)
+        (let ((match-beg (match-beginning 1))
+              (match-end (match-end 1))
+              (captured (match-string 1)))
+          (message "DEBUG: Found file link: %s" captured)
+          (when (string-equal captured old-path)
+            (message "DEBUG: Updating file link match")
+            (goto-char match-beg)
+            (delete-region match-beg match-end)
+            (insert new-path)
+            (setq changes-made t))))
+
+      ;; 2) Update bare [[OLD]] and [[OLD][DESC]] (Org treats these as file links too)
+      (goto-char (point-min))
+      (while (re-search-forward "\\[\\[\\(/[^]]+\\)\\]\\(\\[[^]]*\\]\\)?\\]" nil t)
+        (let ((match-beg (match-beginning 1))
+              (match-end (match-end 1))
+              (captured (match-string 1)))
+          (message "DEBUG: Found bare link: %s" captured)
+          (when (string-equal captured old-path)
+            (message "DEBUG: Updating bare link match")
+            (goto-char match-beg)
+            (delete-region match-beg match-end)
+            (insert new-path)
+            (setq changes-made t))))
+
+      ;; 3) Update raw lines containing only the path (allowing whitespace)
+      (goto-char (point-min))
+      (let ((search-pattern (format "^[\t ]*%s[\t ]*$" (regexp-quote old-path))))
+        (message "DEBUG: Searching for raw pattern: %s" search-pattern)
+        (while (re-search-forward search-pattern nil t)
+          (message "DEBUG: Found raw path match at line %d" (line-number-at-pos))
+          (replace-match new-path t t)
+          (setq changes-made t)))
+
+      (message "DEBUG: Buffer update complete. Changes made: %s" changes-made)
       changes-made)))
+
+(defun org-astro--update-source-buffer-image-path (old-path new-path)
+  "Update image path in the original source buffer, not the export copy.
+This function finds the source buffer and modifies it directly."
+  (message "DEBUG: Looking for source buffer to update path %s -> %s" old-path new-path)
+  
+  ;; Strategy 1: Check if current buffer has a file name and is writable
+  (let ((source-buffer nil))
+    (cond
+     ;; Current buffer is the source file
+     ((and (buffer-file-name) (not buffer-read-only))
+      (message "DEBUG: Using current buffer as source: %s" (buffer-name))
+      (setq source-buffer (current-buffer)))
+     
+     ;; Try to find source buffer by examining all buffers
+     (t
+      (message "DEBUG: Current buffer (%s) is not suitable, searching for source buffer..." (buffer-name))
+      (message "DEBUG: Current buffer file: %s, read-only: %s" (buffer-file-name) buffer-read-only)
+      (dolist (buf (buffer-list))
+        (with-current-buffer buf
+          (let ((buf-file (buffer-file-name))
+                (buf-readonly buffer-read-only))
+            (message "DEBUG: Checking buffer %s (file: %s, readonly: %s)" (buffer-name) buf-file buf-readonly)
+            (when (and buf-file
+                       (not buf-readonly)
+                       (string-match-p "\\.org$" buf-file)
+                       ;; Check if this buffer contains the image path
+                       (save-excursion
+                         (goto-char (point-min))
+                         (search-forward old-path nil t)))
+              (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file)
+              (setq source-buffer buf)
+              (return))))))))
+    
+    (if source-buffer
+        (progn
+          (message "DEBUG: Updating source buffer: %s" (buffer-name source-buffer))
+          (with-current-buffer source-buffer
+            (let ((changes-made (org-astro--update-image-path-in-buffer old-path new-path)))
+              (when changes-made
+                (message "DEBUG: Saving source buffer after changes")
+                (save-buffer))
+              changes-made)))
+        (message "DEBUG: WARNING - Could not find source buffer to update!"))))
 
 (defun org-astro--get-assets-folder (posts-folder sub-dir)
   "Get the assets folder based on POSTS-FOLDER and SUB-DIR."
@@ -726,25 +834,39 @@ This updates both org links [[file:old-path]] and raw image paths."
   "Process IMAGE-PATH for POSTS-FOLDER, copying to SUB-DIR if needed.
 Returns the processed path suitable for Astro imports.
 If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path."
+  (message "DEBUG: Processing image - path: %s, posts-folder: %s, sub-dir: %s, update-buffer: %s"
+           image-path posts-folder sub-dir update-buffer)
+  
   (when (and image-path posts-folder)
     (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
            (original-filename (file-name-nondirectory image-path))
            (clean-filename (org-astro--sanitize-filename original-filename))
            (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
+      
+      (message "DEBUG: Assets folder: %s, target path: %s" assets-folder target-path)
+      (message "DEBUG: Image exists: %s" (and image-path (file-exists-p image-path)))
+      
       (when (and target-path (file-exists-p image-path))
         ;; Create assets directory if it doesn't exist
         (when assets-folder
           (make-directory assets-folder t))
         ;; Copy the file
         (condition-case err
-            (copy-file image-path target-path t)
+            (progn
+              (copy-file image-path target-path t)
+              (message "DEBUG: Successfully copied %s to %s" image-path target-path))
           (error (message "Failed to copy image %s: %s" image-path err)))
+        
         ;; Update the buffer if requested and copy was successful
         (when (and update-buffer (file-exists-p target-path))
-          (org-astro--update-image-path-in-buffer image-path target-path))
+          (message "DEBUG: Attempting buffer update...")
+          (org-astro--update-source-buffer-image-path image-path target-path))
+        
         ;; Return the alias path for imports
         (when (file-exists-p target-path)
-          (concat "~/assets/images/" sub-dir clean-filename))))))
+          (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
+            (message "DEBUG: Returning astro path: %s" result)
+            result))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TABLE HANDLING

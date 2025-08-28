@@ -1,0 +1,12 @@
+#+TITLE: Test Buffer Update
+#+AUTHOR: Jay Dixit
+
+* Test Content
+
+/Users/jay/Downloads/masimo-dutti.webp
+
+Some text here.
+
+[[file:/Users/jay/Downloads/106910784_3615490375147223_8376969077115059792_n.jpg]]
+
+More content.

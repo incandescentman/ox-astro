@@ -1,0 +1,61 @@
+#+TITLE: Debug Instructions for Image Export Issues
+#+DATE: 2025-08-28
+
+* Quick Test Instructions
+
+** Step 1: Reload the updated code
+In Emacs, run:
+#+begin_src emacs-lisp
+(load-file "/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-helpers.el")
+(load-file "/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-handlers.el")
+#+end_src
+
+** Step 2: Test with the problematic file
+Open `/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/20250827235900-massimo_dutti.org`
+
+Run the export: `M-x org-astro-export-to-mdx`
+
+** Step 3: Check the *Messages* buffer
+Look for DEBUG messages that will show:
+- Whether images are being detected
+- Whether buffer updates are being attempted
+- Whether source buffers are found
+- Whether image imports are being created correctly
+
+** What the fixes should accomplish
+
+*** Fix 1: Source Buffer Updates
+- The new `org-astro--update-source-buffer-image-path` function explicitly finds the source buffer
+- It searches through all buffers to find the one containing the original org file
+- Updates are made directly to that buffer, not a temporary export buffer
+
+*** Fix 2: Missing Image Display
+- Added comprehensive debugging to see why images aren't appearing in content
+- Changed fallback behavior from empty string to visible comment showing missing images
+- This will help identify whether the issue is with import matching or path processing
+
+** Expected Debug Output
+
+Look for messages like:
+- `DEBUG: Processing X images in posts folder: ...`
+- `DEBUG: Looking for source buffer to update path ...`
+- `DEBUG: Found potential source buffer: ...`
+- `DEBUG: Looking for image X in Y imports`
+- `DEBUG: Converting image to component: ...`
+
+* Common Issues and Solutions
+
+** Issue: "Could not find source buffer"
+- The org file might not be open in a buffer
+- The buffer might be read-only
+- Make sure the org file is open and editable
+
+** Issue: "Image not found in imports"
+- Check if the image file actually exists at the specified path
+- Verify the path format matches exactly (whitespace, etc.)
+- Look at the available imports list in debug output
+
+** Issue: No DEBUG messages
+- The code might not be loaded properly
+- Run the load-file commands again
+- Check for Emacs Lisp errors in *Messages* buffer

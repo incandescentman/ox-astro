@@ -55,16 +55,19 @@ under the key `:astro-body-images-imports`."
          (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
          image-imports-data)
     (when posts-folder
+      (message "DEBUG: Processing %d images in posts folder: %s" (length image-paths) posts-folder)
       (dolist (path image-paths)
+        (message "DEBUG: Processing image path: %s" path)
         ;; For each image, copy it to assets and get its new path.
         (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir t))
                (var-name (org-astro--path-to-var-name path)))
+          (message "DEBUG: Astro path: %s, var name: %s" astro-path var-name)
           (when (and astro-path var-name)
             (push `(:path ,path :var-name ,var-name :astro-path ,astro-path)
                   image-imports-data))))
-      ;; Save buffer if any image paths were updated
+      ;; Note: Source buffer saving is handled by org-astro--update-source-buffer-image-path
       (when image-imports-data
-        (save-buffer)))
+        (message "DEBUG: Processed %d images for import" (length image-imports-data))))
     ;; Store the collected data in the info plist for other functions to use.
     (when image-imports-data
       (let ((final-data (nreverse image-imports-data)))
