@@ -154,6 +154,9 @@ preprocessing has already been completed and we skip the processing."
          ;; 1. Body image imports (collected by our filter)
          (body-images-imports (or (plist-get info :astro-body-images-imports)
                                   org-astro--current-body-images-imports))
+         ;; Whether an explicit hero (cover) is provided in front matter
+         (explicit-hero (or (plist-get info :astro-image)
+                            (plist-get info :cover-image)))
          (body-imports-string
           (when body-images-imports
             (mapconcat
