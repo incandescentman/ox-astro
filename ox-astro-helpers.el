@@ -806,7 +806,7 @@ This function finds the source buffer and modifies it directly."
                 (message "DEBUG: Saving source buffer after changes")
                 (save-buffer))
               changes-made)))
-        (message "DEBUG: WARNING - Could not find source buffer to update!"))))
+        (message "DEBUG: WARNING - Could not find source buffer to update!")))
 
 (defun org-astro--get-assets-folder (posts-folder sub-dir)
   "Get the assets folder based on POSTS-FOLDER and SUB-DIR."

@@ -24,7 +24,8 @@
       "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
       "Bash(test:*)",
       "Bash(for:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
