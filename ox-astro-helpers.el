@@ -833,6 +833,27 @@ This function finds the source buffer and modifies it directly."
 ;; Image path suggestions block (for manual replacement workflow)
 ;; ------------------------------------------------------------------
 
+;; Preprocessing: wrap raw absolute image paths in org link brackets [[...]]
+(defun org-astro--wrap-raw-image-path-lines-in-region (beg end)
+  "Within BEG..END, wrap raw absolute image path lines with Org link brackets.
+Only wraps lines that are just an absolute image path (png/jpg/jpeg/webp),
+and are not already an Org link. Returns number of lines changed."
+  (let ((count 0))
+    (save-excursion
+      (save-restriction
+        (narrow-to-region beg end)
+        (goto-char (point-min))
+        (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+          (let* ((line (buffer-substring-no-properties (line-beginning-position)
+                                                       (line-end-position)))
+                 (trim (string-trim line)))
+            (unless (string-match-p "^\\s-*\\[\\[.*\\]\\]\\s-*$" trim)
+              (let ((wrapped (format "[[%s]]" trim)))
+                (delete-region (line-beginning-position) (line-end-position))
+                (insert wrapped)
+                (setq count (1+ count))))))))
+    count))
+
 (defun org-astro--generate-image-paths-comment-block (items)
   "Generate a comment block with suggested image path replacements.
 ITEMS is a list of plists containing :path (old), :target-path (abs new), :astro-path (alias)."

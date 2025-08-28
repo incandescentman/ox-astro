@@ -1,0 +1,52 @@
+#+TITLE: Test Raw Image Auto-Wrapping
+#+SLUG: test-raw-auto
+#+DESTINATION_FOLDER: jaydocs
+#+EXCERPT: Testing automatic wrapping of raw image paths
+
+
+#+PUBLISH_DATE: [2025-08-28 Thu 12:16]
+
+#
+# Generated: 2025-08-28 12:19:05
+# Suggested replacements (old → new). Use alias for MDX.
+# BEGIN ASTRO IMAGE PATH SUGGESTIONS
+# - old: /Users/jay/Downloads/2017021468194489.webp
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/test-raw-auto/2017021468194489.webp
+#   alias: ~/assets/images/posts/test-raw-auto/2017021468194489.webp
+#
+# - old: /Users/jay/Downloads/masimo-dutti.webp
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/test-raw-auto/masimo-dutti.webp
+#   alias: ~/assets/images/posts/test-raw-auto/masimo-dutti.webp
+#
+# - old: /Users/jay/Downloads/imag502610958_245334564829239741694898706627993310n.jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/test-raw-auto/imag502610958-245334564829239741694898706627993310n.jpg
+#   alias: ~/assets/images/posts/test-raw-auto/imag502610958-245334564829239741694898706627993310n.jpg
+#
+# - old: /Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/test-raw-auto/imag106910784-3615490375147223-8376969077115059792n.jpg
+#   alias: ~/assets/images/posts/test-raw-auto/imag106910784-3615490375147223-8376969077115059792n.jpg
+#
+# - old: /Users/jay/Downloads/Rachide-News-01(1).jpg
+#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/test-raw-auto/Rachide-News-01-1-.jpg
+#   alias: ~/assets/images/posts/test-raw-auto/Rachide-News-01-1-.jpg
+#
+# END ASTRO IMAGE PATH SUGGESTIONS
+* Test Raw Image Auto-Wrapping
+
+This should automatically wrap raw paths in [[ ]] brackets.
+
+* Images
+
+/Users/jay/Downloads/masimo-dutti.webp
+
+/Users/jay/Downloads/2017021468194489.webp
+
+Some text between images.
+
+/Users/jay/Downloads/Rachide-News-01(1).jpg
+
+This should not be touched: [[/Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg]]
+
+And this raw one should be wrapped:
+
+/Users/jay/Downloads/imag502610958_245334564829239741694898706627993310n.jpg

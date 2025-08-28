@@ -12,15 +12,10 @@
 #
 # Generated: 2025-08-28 11:39:14
 # Suggested replacements (old → new). Use alias for MDX.
+#
+# Generated: 2025-08-28 12:42:27
+# Suggested replacements (old → new). Use alias for MDX.
 # BEGIN ASTRO IMAGE PATH SUGGESTIONS
-# - old: /Users/jay/Downloads/2017021468194489.webp
-#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/2017021468194489.webp
-#   alias: ~/assets/images/posts/massimo-dutti/2017021468194489.webp
-#
-# - old: /Users/jay/Downloads/masimo-dutti.webp
-#   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/masimo-dutti.webp
-#   alias: ~/assets/images/posts/massimo-dutti/masimo-dutti.webp
-#
 # - old: /Users/jay/Downloads/Rachide-News-01(1).jpg
 #   new: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/Rachide-News-01-1-.jpg
 #   alias: ~/assets/images/posts/massimo-dutti/Rachide-News-01-1-.jpg

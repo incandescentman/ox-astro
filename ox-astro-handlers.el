@@ -9,32 +9,22 @@
 (defun org-astro-normalize-raw-image-paths-filter (tree _backend _info)
   "Convert raw image paths to org-mode file links before processing.
 This filter runs first, wrapping standalone image paths in [[ ]] brackets
-so they get handled by the standard org-mode link processing pipeline."
-  (org-element-map tree 'plain-text
-    (lambda (text-element)
-      (let* ((text (org-element-property :value text-element))
-             (lines (when text (split-string text "\n")))
-             (modified-lines
-              (mapcar
-               (lambda (line)
-                 (let ((trimmed (string-trim line)))
-                   ;; If this line is just a raw image path, wrap it in [[ ]]
-                   (if (and trimmed
-                            (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" trimmed)
-                            ;; Make sure it's not already a link
-                            (not (string-match-p "\\[\\[.*\\]\\]" line)))
-                       (replace-regexp-in-string 
-                        (concat "^\\s-*" (regexp-quote trimmed) "\\s-*$")
-                        (concat "[[" trimmed "]]")
-                        line)
-                     line)))
-               lines)))
-        ;; Only modify if we actually made changes
-        (unless (equal lines modified-lines)
-          (org-element-put-property text-element :value 
-                                    (mapconcat 'identity modified-lines "\n")))))
-    nil nil t)
-  ;; Return tree unchanged (modifications were done in-place)
+so they get handled by the standard org-mode link processing pipeline.
+Also updates the source buffer to persist these changes."
+  ;; Update the source buffer first
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward "^\\s-*\\(/[^[:space:]]*\\.\\(?:png\\|jpe?g\\|webp\\)\\)\\s-*$" nil t)
+      (let ((path (match-string 1))
+            (full-match (match-string 0)))
+        ;; Only wrap if not already wrapped
+        (unless (string-match-p "\\[\\[.*\\]\\]" full-match)
+          (replace-match (concat "[[" path "]]"))))))
+  
+  ;; Save the buffer to persist changes
+  (save-buffer)
+  
+  ;; Return tree unchanged 
   tree)
 
 (defun org-astro-prepare-images-filter (tree _backend info)
@@ -51,6 +41,12 @@ under the key `:astro-body-images-imports`."
   (plist-put info :astro-uses-linkpeek nil)
   (let* ((posts-folder-raw (or (plist-get info :destination-folder)
                                (plist-get info :astro-posts-folder)))
+         ;; Preprocessing: wrap raw absolute image path lines with [[...]]
+         (tree-beg (org-element-property :begin tree))
+         (tree-end (org-element-property :end tree))
+         (_wrapped-count (when (and tree-beg tree-end)
+                           (ignore-errors
+                             (org-astro--wrap-raw-image-path-lines-in-region tree-beg tree-end))))
          ;; Resolve the posts folder using the same logic as in ox-astro.el
          (resolved-posts-folder-raw (and posts-folder-raw
                                          (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
@@ -185,8 +181,8 @@ under the key `:astro-body-images-imports`."
          (entity-map '(("&#x2013;" . "–")
                        ("&rsquo;" . "'")
                        ("&lsquo;" . "'")
-                       ("&rdquo;" . \"\")
-                       ("&ldquo;" . \"\"))))
+                       ("&rdquo;" . "\"")
+                       ("&ldquo;" . "\""))))
     ;; Replace HTML entities
     (dolist (pair entity-map)
       (setq s (replace-regexp-in-string (car pair) (cdr pair) s t t)))
