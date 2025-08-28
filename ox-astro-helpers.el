@@ -314,7 +314,8 @@ If no explicit cover image is specified, use the first body image as hero."
   (let* ((image-raw (or (plist-get info :astro-image)
                         (plist-get info :cover-image)))
          (image (and image-raw posts-folder
-                     (org-astro--process-image-path image-raw posts-folder "posts/")))
+                     (let ((slug-path (if slug (concat "posts/" slug "/") "posts/")))
+                       (org-astro--process-image-path image-raw posts-folder slug-path))))
          ;; If no explicit image, try to use first body image as hero
          (body-images (or (plist-get info :astro-body-images-imports)
                           org-astro--current-body-images-imports))

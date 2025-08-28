@@ -56,10 +56,11 @@ Image paths are collected from the Org buffer in a pre-processing step (=org-ast
 -  *Fragmented Paths*: Paths broken by Org's subscript parser (e.g., containing underscores) are reconstructed and detected.
 
 *** 2. Asset Folder Resolution
-The destination for copied images is determined dynamically.
+The destination for copied images is determined dynamically with post-specific organization.
 -  **Function**: =org-astro--get-assets-folder=
--  **Logic**: It takes the post's destination folder (e.g., =.../src/content/blog/=) and navigates up the directory tree to find the project's =src/= directory. From there, it constructs the absolute path to =src/assets/images/posts/=.
--  **Result**: This makes the logic resilient to different project structures, as long as the content and assets folders share a common =src/= ancestor.
+-  **Logic**: It takes the post's destination folder (e.g., =.../src/content/blog/=) and navigates up the directory tree to find the project's =src/= directory. From there, it constructs the absolute path to =src/assets/images/posts/{slug}/= where =slug= is the post's unique identifier.
+-  **Post-Specific Folders**: Each blog post gets its own image subfolder using the exact slug that matches the post's URL structure. For example, a post with slug "my-awesome-post" will have images stored in =src/assets/images/posts/my-awesome-post/=.
+-  **Result**: This makes the logic resilient to different project structures while providing better organization and preventing filename collisions between posts.
 
 *** 3. File Copying and Sanitization
 -  **Function**: =org-astro--process-image-path=
@@ -72,7 +73,7 @@ The destination for copied images is determined dynamically.
 *** 4. Import Path Generation
 -  **Function**: =org-astro--process-image-path=
 -  **Format**: The function returns an Astro-friendly aliased path.
--  **Example**: A file copied to =/path/to/src/assets/images/posts/My-Image.png= will have its import path generated as =~/assets/images/posts/My-Image.png=.
+-  **Example**: A file copied to =/path/to/src/assets/images/posts/my-awesome-post/My-Image.png= will have its import path generated as =~/assets/images/posts/my-awesome-post/My-Image.png=.
 -  **Rationale**: Using the =~/= alias (which points to =/src/=) makes the imports robust and independent of the file's location within the =content/= directory.
 
 *** 5. JS Variable Name Generation
@@ -90,7 +91,7 @@ The collected data is used to assemble the final MDX output:
 1.  **Import Injection**: The generated import statement is added at the top of the file.
     #+BEGIN_SRC mdx
     import { Image } from 'astro:assets';
-    import img2025Image from '~/assets/images/posts/2025-image.png';
+    import img2025Image from '~/assets/images/posts/my-awesome-post/2025-image.png';
     #+END_SRC
 2.  **Component Transformation**: The original raw image path in the document body is replaced with an Astro =<Image>= component.
     #+BEGIN_SRC mdx

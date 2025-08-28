@@ -41,11 +41,23 @@ under the key `:astro-body-images-imports`."
          ;; Also collect from raw buffer content to catch underscore paths and fix subtree issues
          (image-paths-from-raw (org-astro--collect-raw-images-from-tree-region tree))
          (image-paths (delete-dups (append image-paths-from-tree image-paths-from-raw)))
+         ;; Get slug for post-specific folder structure
+         (title (org-astro--get-title tree info))
+         (slug (or (plist-get info :slug)
+                   (let* ((title-kw (org-element-map tree 'keyword
+                                      (lambda (k)
+                                        (when (string-equal "TITLE" (org-element-property :key k)) k))
+                                      nil 'first-match))
+                          (title-from-headline (not title-kw)))
+                     ;; Only auto-generate slug if title came from headline (not from #+TITLE keyword)
+                     (when title-from-headline
+                       (org-astro--slugify title)))))
+         (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
          image-imports-data)
     (when posts-folder
       (dolist (path image-paths)
         ;; For each image, copy it to assets and get its new path.
-        (let* ((astro-path (org-astro--process-image-path path posts-folder "posts/"))
+        (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir))
                (var-name (org-astro--path-to-var-name path)))
           (when (and astro-path var-name)
             (push `(:path ,path :var-name ,var-name :astro-path ,astro-path)

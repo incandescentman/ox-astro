@@ -2,6 +2,28 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Post-Specific Image Folders: Organize assets by slug (2025-08-28)
+
+** Summary
+- Images are now organized into post-specific subfolders using the blog post's slug.
+- Each post's images are stored in `src/assets/images/posts/{slug}/` instead of the generic `src/assets/images/posts/`.
+- This prevents filename collisions between posts and provides better asset organization.
+
+** New Behavior
+- **Explicit slug**: `#+SLUG: my-awesome-post` → images go to `src/assets/images/posts/my-awesome-post/`
+- **Auto-generated slug**: Title "My Awesome Post" → slug "my-awesome-post" → same folder structure  
+- **Fallback**: If no slug can be determined, falls back to `src/assets/images/posts/` (preserving existing behavior)
+
+** Implementation
+- Modified `org-astro-prepare-images-filter` in `ox-astro-handlers.el` to generate slug from title/SLUG keyword and use it as sub-directory path.
+- Updated cover image processing in `org-astro-helpers.el` to use the same post-specific slug folder structure.
+- Maintained backward compatibility while providing better organization for posts with images.
+
+** Files Changed
+- ox-astro-handlers.el: Added slug generation logic and modified sub-directory path to use `posts/{slug}/`
+- ox-astro-helpers.el: Updated cover image processing to use post-specific slug folder
+- design-approach.org: Updated documentation to reflect new post-specific folder structure
+
 * Visibility System Update: switch to `visibility` string (2025-08-26)
 
 ** Summary

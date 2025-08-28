@@ -1,0 +1,16 @@
+#+TITLE: Test Post-Specific Image Folders
+#+AUTHOR: Jay Dixit  
+#+DESTINATION_FOLDER: /tmp/test-astro
+#+SLUG: my-test-slug
+
+* Introduction
+
+This post has multiple images that should be organized into a post-specific folder.
+
+[[file:/Users/jay/Downloads/Volume.png]]
+
+Some text between images.
+
+[[file:/Users/jay/Downloads/another-image.jpg]]
+
+The images should be copied to: src/assets/images/posts/my-test-slug/
