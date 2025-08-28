@@ -7,9 +7,9 @@
   "Global storage for body image imports to persist across export phases.")
 
 (defun org-astro-auto-wrap-image-paths-filter (tree _backend info)
-  "Pre-processing filter that completes ALL source file operations BEFORE export.
-This ensures the source file is in final state before transcoding begins."
-  ;; First: Add brackets to raw image paths
+  "Pre-processing filter that automatically wraps raw image paths in [[ ]] brackets.
+This runs FIRST, before all other processing, to simulate manual bracket addition."
+  ;; Just wrap raw paths - keep it simple
   (let ((src-file (or (plist-get info :input-file)
                       (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
     (when src-file
@@ -18,7 +18,7 @@ This ensures the source file is in final state before transcoding begins."
         (when (> count 0)
           (message "Auto-wrapped %d raw image paths in source file" count)))))
   
-  ;; Return tree unchanged - the next filter will process the fully prepared source
+  ;; Return tree unchanged
   tree)
 
 (defun org-astro-prepare-images-filter (tree _backend info)
@@ -27,7 +27,10 @@ This filter runs on the parse TREE before transcoding. It collects
 all local image links, copies them to the Astro assets
 directory, and prepares a list of import statements to be added
 to the final MDX file. The data is stored in the INFO plist
-under the key `:astro-body-images-imports`."
+under the key `:astro-body-images-imports`.
+
+NOTE: If org-astro--current-body-images-imports is already set,
+preprocessing has already been completed and we skip the processing."
   ;; Reset any stale state from previous exports so we never carry images over.
   (setq org-astro--current-body-images-imports nil)
   (plist-put info :astro-body-images-imports nil)
@@ -100,13 +103,15 @@ under the key `:astro-body-images-imports`."
         (setq org-astro--current-body-images-imports final-data)
         (plist-put info :astro-body-images-imports final-data)))
     
-    ;; CRITICAL: Reload buffer to get the updated content with new paths for transcoding
+    ;; CRITICAL: Force re-parse of the tree with the updated content
     (let ((src-file (or (plist-get info :input-file)
                         (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
       (when (and src-file image-imports-data)
-        (message "Reloading source file with updated image paths for transcoding")
-        (revert-buffer t t))))
-  ;; Return the tree, as required for a parse-tree filter.
+        (message "Forcing buffer reload and re-parse with updated image paths")
+        ;; Force reload and return a fresh parse tree
+        (revert-buffer t t)
+        (setq tree (org-element-parse-buffer)))))
+  ;; Return the potentially updated tree
   tree)
 
 (defun org-astro-body-filter (body _backend info)

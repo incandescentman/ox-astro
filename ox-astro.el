@@ -76,6 +76,16 @@ generated and added to the Org source file."
             (buffer-modified-p nil))
         ;; Clear any stale image import state before running export filters.
         (setq org-astro--current-body-images-imports nil)
+        ;; --- PREPROCESSING: Wrap raw image paths in brackets BEFORE export ---
+        (save-excursion
+          (goto-char (point-min))
+          (let ((modified nil))
+            (while (re-search-forward "^\\(/[^[:space:]]+\\.\\(?:jpg\\|jpeg\\|png\\|gif\\|webp\\|svg\\)\\)$" nil t)
+              (let ((path (match-string 1)))
+                (replace-match (format "[[%s]]" path))
+                (setq modified t)))
+            (when modified
+              (save-buffer))))
         ;; --- Ensure essential front-matter exists, writing back if not ---
         (save-excursion
           (condition-case err
@@ -228,8 +238,7 @@ generated and added to the Org source file."
     (table-cell . org-astro-table-cell))
 
   :filters-alist
-  '((:filter-parse-tree . (org-astro-auto-wrap-image-paths-filter
-                           org-astro-prepare-images-filter))
+  '((:filter-parse-tree . (org-astro-prepare-images-filter))
     (:filter-body . org-astro-body-filter)
     (:filter-final-output . org-astro-final-output-filter))
 
