@@ -76,6 +76,51 @@ generated and added to the Org source file."
             (buffer-modified-p nil))
         ;; Clear any stale image import state before running export filters.
         (setq org-astro--current-body-images-imports nil)
+        ;; --- PREPROCESSING: Process and update all image paths BEFORE export ---
+        (let* ((tree (org-element-parse-buffer))
+               (posts-folder-raw (or (plist-get info :destination-folder)
+                                     (plist-get info :astro-posts-folder)))
+               ;; Resolve the posts folder using the same logic as in handlers
+               (resolved-posts-folder-raw (and posts-folder-raw
+                                               (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+               (resolved-posts-folder (and resolved-posts-folder-raw
+                                           (string-trim resolved-posts-folder-raw)))
+               (posts-folder (cond
+                              (resolved-posts-folder resolved-posts-folder)
+                              ((and posts-folder-raw
+                                    (file-name-absolute-p posts-folder-raw)
+                                    (file-directory-p (expand-file-name posts-folder-raw)))
+                               posts-folder-raw)
+                              (t nil))))
+          (when posts-folder
+            ;; Collect image paths
+            (let* ((image-paths-from-tree (org-astro--collect-images-from-tree tree))
+                   (image-paths-from-raw (org-astro--collect-raw-images-from-tree-region tree))
+                   (image-paths (delete-dups (append image-paths-from-tree image-paths-from-raw)))
+                   ;; Get slug for post-specific folder structure
+                   (title (org-astro--get-title tree info))
+                   (slug (or (plist-get info :slug)
+                             (let* ((title-kw (org-element-map tree 'keyword
+                                                (lambda (k)
+                                                  (when (string-equal "TITLE" (org-element-property :key k)) k))
+                                                nil 'first-match))
+                                    (title-from-headline (not title-kw)))
+                               (when title-from-headline
+                                 (org-astro--slugify title)))))
+                   (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
+                   (updated-paths nil))
+              ;; Process each image and update source buffer paths immediately
+              (dolist (path image-paths)
+                (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir t))
+                       (clean-filename (org-astro--sanitize-filename (file-name-nondirectory path)))
+                       (target-abs (when astro-path
+                                     (expand-file-name clean-filename (org-astro--get-assets-folder posts-folder sub-dir)))))
+                  (when target-abs
+                    (push target-abs updated-paths))))
+              ;; If we updated any paths, force a buffer reload before continuing with export
+              (when updated-paths
+                (revert-buffer t t)
+                (setq info (org-export-get-environment 'astro subtreep))))))
         ;; --- Ensure essential front-matter exists, writing back if not ---
         (save-excursion
           (condition-case err

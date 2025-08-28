@@ -104,20 +104,7 @@ preprocessing has already been completed and we skip the processing."
           (ignore-errors
             (when src
               (org-astro--upsert-image-paths-comment-into-file src image-imports-data)))
-          ;; 2) Actively update source file paths old→new (bracketed and raw forms)
-          (ignore-errors
-            (when src
-              (with-current-buffer (find-file-noselect src)
-                (let ((changes 0))
-                  (dolist (it image-imports-data)
-                    (let ((old (plist-get it :path))
-                          (new (plist-get it :target-path)))
-                      (when (and old new)
-                        (when (org-astro--update-image-path-in-buffer old new)
-                          (setq changes (1+ changes))))))
-                  (when (> changes 0)
-                    (save-buffer)
-                    (message "DEBUG: Updated %d image path(s) in source file" changes))))))))
+))
       ;; Store the collected data in the info plist for other functions to use.
       (when image-imports-data
         (let ((final-data (nreverse image-imports-data)))
@@ -125,19 +112,6 @@ preprocessing has already been completed and we skip the processing."
           (setq org-astro--current-body-images-imports final-data)
           (plist-put info :astro-body-images-imports final-data)))
 
-      ;; CRITICAL: Force re-parse of the tree with the updated content
-      (let ((src-file (or (plist-get info :input-file)
-                          (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
-        (when (and src-file image-imports-data)
-          (message "Forcing buffer reload and re-parse with updated image paths")
-          (when (boundp 'org-astro-debug-images)
-            (when org-astro-debug-images
-              (message "[ox-astro][img] reparse forced")))
-          ;; Force reload and return a fresh parse tree
-          (revert-buffer t t)
-          (setq tree (org-element-parse-buffer))
-          ;; Also update the info plist so downstream phases see the latest tree
-          (plist-put info :parse-tree tree))))
     ;; Return the potentially updated tree
     tree))
 
