@@ -243,7 +243,15 @@ generated and added to the Org source file."
           (if pub-dir
               (progn
                 (make-directory pub-dir t)
+                ;; First export pass
+                (message "Running first export pass...")
                 (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                ;; Clear import state for second pass
+                (setq org-astro--current-body-images-imports nil)
+                ;; Second export pass to ensure all images appear
+                (message "Running second export pass to ensure complete image processing...")
+                (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                (message "Export complete! All images should now be visible.")
                 outfile)  ; Return the output file path
               (progn
                 (message "Astro export cancelled: No posts folder selected.")

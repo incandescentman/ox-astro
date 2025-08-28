@@ -102,10 +102,7 @@ preprocessing has already been completed and we skip the processing."
               (message "[ox-astro][img] import-entry: %s" it))))
         (let ((src (or (plist-get info :input-file)
                        (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
-          ;; 1) Persist suggestions block
-          (ignore-errors
-            (when src
-              (org-astro--upsert-image-paths-comment-into-file src image-imports-data))))))
+)))
     ;; Store the collected data in the info plist for other functions to use.
     (when image-imports-data
       (let ((final-data (nreverse image-imports-data)))
