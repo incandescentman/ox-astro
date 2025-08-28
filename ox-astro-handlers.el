@@ -6,25 +6,21 @@
 (defvar org-astro--current-body-images-imports nil
   "Global storage for body image imports to persist across export phases.")
 
-(defun org-astro-normalize-raw-image-paths-filter (tree _backend _info)
-  "Convert raw image paths to org-mode file links before processing.
-This filter runs first, wrapping standalone image paths in [[ ]] brackets
-so they get handled by the standard org-mode link processing pipeline.
-Also updates the source buffer to persist these changes."
-  ;; Update the source buffer first
-  (save-excursion
-    (goto-char (point-min))
-    (while (re-search-forward "^\\s-*\\(/[^[:space:]]*\\.\\(?:png\\|jpe?g\\|webp\\)\\)\\s-*$" nil t)
-      (let ((path (match-string 1))
-            (full-match (match-string 0)))
-        ;; Only wrap if not already wrapped
-        (unless (string-match-p "\\[\\[.*\\]\\]" full-match)
-          (replace-match (concat "[[" path "]]"))))))
-  
-  ;; Save the buffer to persist changes
-  (save-buffer)
-  
-  ;; Return tree unchanged 
+(defun org-astro-auto-wrap-image-paths-filter (tree _backend info)
+  "Pre-processing filter that automatically wraps raw image paths in [[ ]] brackets.
+This runs FIRST, before all other processing, to simulate manual bracket addition.
+Unlike other approaches, this PERSISTS changes to the source file."
+  ;; Use the working bracket wrapping function on the source file itself
+  (let ((src-file (or (plist-get info :input-file)
+                      (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
+    (when src-file
+      ;; Persist the bracketing to the source file - this simulates manual pre-processing
+      (let ((count (org-astro--persist-wrap-raw-image-lines src-file)))
+        (when (> count 0)
+          (message "Auto-wrapped %d raw image paths in source file" count)
+          ;; Reload the buffer with the updated content
+          (revert-buffer t t)))))
+  ;; Return tree unchanged - let normal pipeline handle the bracketed paths
   tree)
 
 (defun org-astro-prepare-images-filter (tree _backend info)
@@ -41,17 +37,6 @@ under the key `:astro-body-images-imports`."
   (plist-put info :astro-uses-linkpeek nil)
   (let* ((posts-folder-raw (or (plist-get info :destination-folder)
                                (plist-get info :astro-posts-folder)))
-         ;; Try to persistently wrap raw image lines in the source file as well,
-         ;; so authors can see [[...]] in their Org files.
-         (src-file (or (plist-get info :input-file)
-                       (and (buffer-file-name) (expand-file-name (buffer-file-name)))))
-         (_persist-wrap-count (ignore-errors (org-astro--persist-wrap-raw-image-lines src-file)))
-         ;; Preprocessing: wrap raw absolute image path lines with [[...]]
-         (tree-beg (org-element-property :begin tree))
-         (tree-end (org-element-property :end tree))
-         (_wrapped-count (when (and tree-beg tree-end)
-                           (ignore-errors
-                             (org-astro--wrap-raw-image-path-lines-in-region tree-beg tree-end))))
          ;; Resolve the posts folder using the same logic as in ox-astro.el
          (resolved-posts-folder-raw (and posts-folder-raw
                                          (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))

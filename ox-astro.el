@@ -228,7 +228,7 @@ generated and added to the Org source file."
     (table-cell . org-astro-table-cell))
 
   :filters-alist
-  '((:filter-parse-tree . (org-astro-normalize-raw-image-paths-filter
+  '((:filter-parse-tree . (org-astro-auto-wrap-image-paths-filter
                            org-astro-prepare-images-filter))
     (:filter-body . org-astro-body-filter)
     (:filter-final-output . org-astro-final-output-filter))
