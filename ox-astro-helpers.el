@@ -843,12 +843,12 @@ and are not already an Org link. Returns number of lines changed."
       (save-restriction
         (narrow-to-region beg end)
         (goto-char (point-min))
-        (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
-          (let* ((line (buffer-substring-no-properties (line-beginning-position)
-                                                       (line-end-position)))
-                 (trim (string-trim line)))
-            (unless (string-match-p "^\\s-*\\[\\[.*\\]\\]\\s-*$" trim)
-              (let ((wrapped (format "[[%s]]" trim)))
+        (while (re-search-forward "^\\s-*\\(/[^[:space:]]*\\.\\(?:png\\|jpe?g\\|webp\\)\\)\\s-*$" nil t)
+          (let* ((path (match-string 1))  ; Extract just the path part
+                 (line-content (buffer-substring-no-properties (line-beginning-position)
+                                                               (line-end-position))))
+            (unless (string-match-p "\\[\\[.*\\]\\]" line-content)
+              (let ((wrapped (format "[[%s]]" path)))
                 (delete-region (line-beginning-position) (line-end-position))
                 (insert wrapped)
                 (setq count (1+ count))))))))
