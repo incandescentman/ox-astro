@@ -24,6 +24,11 @@ Uses Astro's alias, which maps to the project's src/ directory."
   :group 'org-export-astro
   :type 'string)   ;; treat it as raw front-matter text, not a local file
 
+(defcustom org-astro-debug-images nil
+  "When non-nil, log detailed image-handling diagnostics and emit MDX comments."
+  :group 'org-export-astro
+  :type 'boolean)
+
 (defcustom org-astro-known-posts-folders
   '(("blog" . "~/projects/my-astro-site/src/content/blog")
     ("docs" . "~/projects/my-docs-site/src/content/docs")

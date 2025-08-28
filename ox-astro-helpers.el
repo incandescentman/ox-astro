@@ -8,6 +8,24 @@
 (defvar org-astro--current-body-images-imports nil
   "Global storage for body image imports to persist across export phases.")
 
+;; Debug helpers
+(defun org-astro--dbg-log (info fmt &rest args)
+  "Append a formatted debug message to INFO plist when image debugging is enabled."
+  (when (boundp 'org-astro-debug-images)
+    (when org-astro-debug-images
+      (let* ((msg (apply #'format fmt args))
+             (existing (plist-get info :astro-debug-log)))
+        (plist-put info :astro-debug-log (cons msg existing))
+        (message "[ox-astro][img] %s" msg)))))
+
+(defun org-astro--dbg-mdx-comments (info)
+  "Return MDX comments string for any collected debug messages in INFO."
+  (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+    (let ((log (plist-get info :astro-debug-log)))
+      (when log
+        (concat (mapconcat (lambda (s) (format "{/* %s */}" s)) (nreverse log) "\n")
+                "\n\n")))))
+
 ;; Insert or replace a #+KEY: VALUE line in the top keyword block.
 (defun org-astro--upsert-keyword (key value)
   "Upsert #+KEY: VALUE near the top of the buffer or narrowed region.
@@ -401,6 +419,10 @@ If no explicit cover image is specified, use the first body image as hero."
                                :key (lambda (item)
                                       (file-name-nondirectory (plist-get item :path)))
                                :test #'string-equal))))))
+        (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+          (message "[ox-astro][img] LINK path=%s explicit-hero=%s imports=%s match=%s"
+                   path (and explicit-hero t) (length image-imports)
+                   (and image-data (plist-get image-data :var-name))))
         (cond
          (image-data
           (let* ((var-name (plist-get image-data :var-name))
@@ -575,6 +597,10 @@ Otherwise, use the default Markdown paragraph transcoding."
                                             :key (lambda (item)
                                                    (file-name-nondirectory (plist-get item :path)))
                                             :test #'string-equal))))))
+          (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+            (message "[ox-astro][img] PARA path=%s explicit-hero=%s imports=%s match=%s"
+                     path (and explicit-hero t) (length image-imports)
+                     (and image-data (plist-get image-data :var-name))))
           (if image-data
               (let ((var-name (plist-get image-data :var-name))
                     (alt-text (or (org-astro--filename-to-alt-text path) "Image")))
