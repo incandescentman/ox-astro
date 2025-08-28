@@ -77,15 +77,10 @@ generated and added to the Org source file."
         ;; Clear any stale image import state before running export filters.
         (setq org-astro--current-body-images-imports nil)
         ;; --- PREPROCESSING: Wrap raw image paths in brackets BEFORE export ---
-        (save-excursion
-          (goto-char (point-min))
-          (let ((modified nil))
-            (while (re-search-forward "^\\(/[^[:space:]]+\\.\\(?:jpg\\|jpeg\\|png\\|gif\\|webp\\|svg\\)\\)$" nil t)
-              (let ((path (match-string 1)))
-                (replace-match (format "[[%s]]" path))
-                (setq modified t)))
-            (when modified
-              (save-buffer))))
+        (let ((count (org-astro--wrap-raw-image-path-lines-in-region (point-min) (point-max))))
+          (when (> count 0)
+            (save-buffer)
+            (message "Auto-wrapped %d raw image paths in source file" count)))
         ;; --- Ensure essential front-matter exists, writing back if not ---
         (save-excursion
           (condition-case err
