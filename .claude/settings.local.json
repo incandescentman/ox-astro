@@ -17,7 +17,9 @@
       "Read(//Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/**)",
       "Bash(grep:*)",
       "Read(//Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog/**)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

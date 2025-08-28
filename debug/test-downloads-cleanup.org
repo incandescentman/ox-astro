@@ -1,0 +1,16 @@
+#+TITLE: Test Downloads Cleanup
+#+AUTHOR: Jay Dixit
+#+DESTINATION_FOLDER: /tmp/test-astro
+#+SLUG: downloads-cleanup-test
+
+* Introduction
+
+This post tests the cleanup of Downloads folder references.
+
+/Users/jay/Downloads/screenshot.png
+
+Some text here.
+
+[[file:/Users/jay/Downloads/another-test.jpg]]
+
+After export, these paths should be updated to point to the copied files.

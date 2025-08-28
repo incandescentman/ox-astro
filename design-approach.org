@@ -86,7 +86,13 @@ The destination for copied images is determined dynamically with post-specific o
 -  **Problem**: Image data collected in the initial filter phase was being lost before the final transcoding phase.
 -  **Solution**: A dual-storage pattern is used. A global variable (=org-astro--current-body-images-imports=) acts as a reliable fallback if the image data is purged from the exporter's internal =info= plist between phases. This is critical for the feature's stability.
 
-*** 7. Final MDX Output
+*** 7. Source File Cleanup
+After successfully copying images, the original org file is automatically updated to prevent Downloads folder accumulation:
+-  **Path Replacement**: Raw image paths and org links are updated to point to the copied files' absolute paths
+-  **Auto-save**: The buffer is automatically saved after updates
+-  **Scope**: Updates paths that were present during the export process
+
+*** 8. Final MDX Output
 The collected data is used to assemble the final MDX output:
 1.  **Import Injection**: The generated import statement is added at the top of the file.
     #+BEGIN_SRC mdx

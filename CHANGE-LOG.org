@@ -2,6 +2,29 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Automatic Source File Cleanup: Update org files after image copying (2025-08-28)
+
+** Summary
+- After copying images to assets folders, the original org file is automatically updated to reference the new absolute paths.
+- This prevents accumulation of images in Downloads folder and keeps source files clean.
+- Original references like `/Users/jay/Downloads/image.png` are replaced with absolute paths to copied files.
+
+** New Behavior
+- **Automatic path updating**: After successful image copy, org file is updated in-place
+- **Multiple formats supported**: Both raw image paths and `[[file:path]]` org links are updated
+- **Auto-save**: Buffer is automatically saved after path updates
+- **Source cleanup**: No more orphaned files in Downloads folder
+
+** Implementation
+- Added `org-astro--update-image-path-in-buffer` function to replace image paths in current buffer
+- Modified `org-astro--process-image-path` to accept optional `update-buffer` parameter
+- Updated both body image and cover image processing to enable buffer updating
+- Integrated auto-save functionality after image path updates
+
+** Files Changed
+- ox-astro-helpers.el: Added buffer updating function and modified image processing to update source files
+- ox-astro-handlers.el: Enabled buffer updating for body images and added auto-save
+
 * Post-Specific Image Folders: Organize assets by slug (2025-08-28)
 
 ** Summary

@@ -315,7 +315,7 @@ If no explicit cover image is specified, use the first body image as hero."
                         (plist-get info :cover-image)))
          (image (and image-raw posts-folder
                      (let ((slug-path (if slug (concat "posts/" slug "/") "posts/")))
-                       (org-astro--process-image-path image-raw posts-folder slug-path))))
+                       (org-astro--process-image-path image-raw posts-folder slug-path t))))
          ;; If no explicit image, try to use first body image as hero
          (body-images (or (plist-get info :astro-body-images-imports)
                           org-astro--current-body-images-imports))
@@ -681,6 +681,25 @@ This catches paths with underscores that would be broken by subscript parsing."
 ;; IMAGE HANDLING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun org-astro--update-image-path-in-buffer (old-path new-path)
+  "Replace OLD-PATH with NEW-PATH in the current buffer.
+This updates both org links [[file:old-path]] and raw image paths."
+  (save-excursion
+    (goto-char (point-min))
+    (let ((changes-made nil))
+      ;; Update org-mode file links: [[file:/old/path]] -> [[file:new/path]]
+      (let ((org-link-pattern (format "\\[\\[file:%s\\]\\]" (regexp-quote old-path))))
+        (while (re-search-forward org-link-pattern nil t)
+          (replace-match (format "[[file:%s]]" new-path))
+          (setq changes-made t)))
+      ;; Reset search position for raw paths
+      (goto-char (point-min))
+      ;; Update raw image paths that appear on their own line
+      (while (re-search-forward (format "^%s$" (regexp-quote old-path)) nil t)
+        (replace-match new-path)
+        (setq changes-made t))
+      changes-made)))
+
 (defun org-astro--get-assets-folder (posts-folder sub-dir)
   "Get the assets folder based on POSTS-FOLDER and SUB-DIR."
   (when posts-folder
@@ -703,9 +722,10 @@ This catches paths with underscores that would be broken by subscript parsing."
     (setq clean-name (replace-regexp-in-string "--+" "-" clean-name))
     clean-name))
 
-(defun org-astro--process-image-path (image-path posts-folder sub-dir)
+(defun org-astro--process-image-path (image-path posts-folder sub-dir &optional update-buffer)
   "Process IMAGE-PATH for POSTS-FOLDER, copying to SUB-DIR if needed.
-Returns the processed path suitable for Astro imports."
+Returns the processed path suitable for Astro imports.
+If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path."
   (when (and image-path posts-folder)
     (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
            (original-filename (file-name-nondirectory image-path))
@@ -719,6 +739,9 @@ Returns the processed path suitable for Astro imports."
         (condition-case err
             (copy-file image-path target-path t)
           (error (message "Failed to copy image %s: %s" image-path err)))
+        ;; Update the buffer if requested and copy was successful
+        (when (and update-buffer (file-exists-p target-path))
+          (org-astro--update-image-path-in-buffer image-path target-path))
         ;; Return the alias path for imports
         (when (file-exists-p target-path)
           (concat "~/assets/images/" sub-dir clean-filename))))))
