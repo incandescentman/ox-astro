@@ -25,10 +25,9 @@
 
 ** Historical Context: What Was Working in Commit 558c0fc
 
-In commit 558c0fc ("almost there"), the source file path updating was working correctly:
+In commit 558c0fc ("almost there"), the source file path updating was working correctly!! (Although the mdx export wasn't working on the first pass (missing images in output), it required me to export a second time and then it worked.)
 - Raw paths would get bracketed: `/Users/jay/Downloads/image.jpg` → `[[/Users/jay/Downloads/image.jpg]]`
-- **AND** paths would get updated: `[[/Users/jay/Downloads/image.jpg]]` → `[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/image.jpg]]`
-- However, the MDX export was broken (missing images in output)
+- **AND** paths would get updated: `[[/Users/jay/Downloads/image.jpg]]` → `[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/image.jpg]]` 
 
 ** The Current Tradeoff
 
@@ -40,7 +39,7 @@ In commit 558c0fc ("almost there"), the source file path updating was working co
 - ❌ Source file path updating is broken
 - ✅ MDX export works perfectly
 
-** Root Cause Analysis
+** Root Cause Analysis (might be wrong)
 
 The path updating logic is in `org-astro--update-source-buffer-image-path`, called from `org-astro--process-image-path` with `update-buffer: t`. The function should:
 
@@ -52,133 +51,7 @@ This worked in 558c0fc but is failing now, likely due to:
 - Buffer context changes from our recent fixes
 - Timing issues in the export pipeline
 - Search logic not finding the correct patterns in the source buffer 
-* Problem Summary
 
-The ox-astro image export pipeline has been significantly improved but still has a remaining transcoding issue.
-
-** What's Working ✅
-1. **Automatic Bracket Wrapping**: Raw image paths are automatically wrapped in `[[...]]` brackets during export
-2. **Image Collection & Processing**: All images are detected, copied to assets, and imports are generated
-3. **Hero Image Logic**: First image correctly becomes cover image and appears in body content
-4. **Asset Organization**: Images are organized into post-specific folders (`posts/{slug}/`)
-5. **Path Suggestions**: Suggestions block helps users replace paths manually if needed
-
-** What's Still Broken ❌
-1. **Incomplete Image Transcoding**: Only 2 of 6 images appear in final MDX despite all 6 being imported
-   - 1 hero image appears in body ✅
-   - Only 1 of 5 Images section images appears as `<Image>` component ❌
-   - 4 images are imported but not transcoded to `<Image>` components
-
-* Current Test Case Analysis
-
-**Source File**: `/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/20250827235900-massimo_dutti.org`
-**Output File**: `/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/massimo-dutti.mdx`
-
-** Current State (After Automatic Bracketing)
-
-***Source File Content:***
-- Line 18: `[[/Users/jay/Downloads/masimo-dutti.webp]]` ✅ (becomes hero + body image)
-- Lines 126-134: All 5 Images section paths wrapped in brackets:
-  - `[[/Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg]]`
-  - `[[/Users/jay/Downloads/imag502610958_245334564829239741694898706627993310n.jpg]]`
-  - `[[/Users/jay/Downloads/imag50296363324533456719590617_6999624331092055355n.jpg]]`
-  - `[[/Users/jay/Downloads/Rachide-News-01(1).jpg]]`
-  - `[[/Users/jay/Downloads/2017021468194489.webp]]`
-
-***MDX Output Analysis:***
-- **Import Statements (Lines 12-18)**: All 6 images correctly imported ✅
-  - `hero from '~/assets/.../imag106910784-...jpg'` (hero image)
-  - `masimoDutti from '~/assets/.../masimo-dutti.webp'` (body image)
-  - `imag502610958245334564829239741694898706627993310n from '...'`
-  - `imag502963633245334567195906176999624331092055355n from '...'`
-  - `RachideNews011 from '...'`
-  - `img2017021468194489 from '...'`
-
-- **Body Content**: 
-  - Line 23: `<Image src={masimoDutti} alt="Masimo Dutti" />` ✅ (first image appears)
-  - Line 131: `<Image src={img2017021468194489} alt="2017021468194489" />` ✅ (only 1 of 5 Images section)
-
-- **Missing**: 4 images imported but not appearing in body:
-  - `imag502610958245334564829239741694898706627993310n` ❌
-  - `imag502963633245334567195906176999624331092055355n` ❌  
-  - `RachideNews011` ❌
-  - Hero image (used as cover, excluded from Images section by design) ✅
-
-* Root Cause Investigation
-
-The issue is **NOT** with:
-- ❌ Image detection/collection (working)
-- ❌ Bracket wrapping (working)
-- ❌ Import generation (working)  
-- ❌ File copying (working)
-
-The issue **IS** with:
-- ✅ **Transcoding from `[[path]]` to `<Image>` components** in the Images section
-
-** Hypothesis: org-astro-link Function Issue
-
-The `org-astro-link` function is responsible for converting org-mode file links `[[path]]` to MDX `<Image>` components. Since imports are generated correctly but only some images appear, the issue is likely:
-
-1. **Inconsistent Link Processing**: Some `[[path]]` links aren't being processed by `org-astro-link`
-2. **Import Matching Logic**: The function may not be correctly matching all imported images to their variable names
-3. **Context-Dependent Failures**: Images in certain positions (Images section) may not be getting processed
-
-** Next Steps for Investigation
-
-1. **Debug org-astro-link function**: Add logging to see which links are being processed
-2. **Check org-mode parsing**: Verify all `[[path]]` links in Images section are being parsed as link elements
-3. **Import matching logic**: Ensure all imported images can be matched to their variable names
-4. **Position-specific issues**: Check if Images section has different processing than body content
-
-* Implementation History
-
-** ✅ SOLVED: Single-Pass Export (2025-08-28)
-
-***Problem:*** Export required two passes - first pass would add brackets/update paths, second pass would generate correct MDX
-
-***Solution:*** Fixed the export pipeline to work in a single pass:
-- Bracket wrapping happens first in the filter chain
-- Image processing and MDX generation follow properly
-- All images now appear correctly in generated MDX
-
-***Result:*** 
-- Single export now generates complete, working MDX with all images ✅
-- No longer requires running export twice ✅
-- All 6 images appear as proper `<Image>` components ✅
-
-** ✅ SOLVED: Automatic Bracket Wrapping (2025-08-28)
-
-***Problem:*** Raw image paths like `/Users/jay/Downloads/image.jpg` weren't being processed as org-mode links
-
-***Solution:*** `org-astro-auto-wrap-image-paths-filter` runs first and wraps raw paths in brackets
-
-***Result:*** 
-- All raw paths automatically get bracketed ✅
-- Export pipeline processes bracketed paths correctly ✅
-
-** ✅ SOLVED: Bracket Wrapping Function Bugs
-
-***Issues Fixed:***
-1. **Empty Brackets Bug**: Function was creating `[[]]` instead of `[[path]]`
-2. **Duplicate Lines Bug**: Function was creating both raw and bracketed versions
-3. **Text Corruption Bug**: Complex two-pass approach was corrupting file content
-
-***Final Working Implementation:***
-- Simple single-pass approach with `cond` structure for different line types
-- Direct path extraction using regex capture groups: `match-string 1`
-- Clean replacement logic: `delete-region` + `insert`
-- Skip already-bracketed lines to prevent duplicates
-
-** ❌ REMAINING: Source File Path Updating Issue
-
-***Current Status:*** Org-mode source file paths are not getting updated from Downloads to astro paths
-***Impact:*** Medium - MDX works perfectly, but source file retains original paths
-***Priority:*** Medium - improves workflow but doesn't break functionality
-
-***Details:***
-- Paths remain: `[[/Users/jay/Downloads/masimo-dutti.webp]]`
-- Should become: `[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/masimo-dutti.webp]]`
-- This worked in commit 558c0fc but broke when we fixed the MDX export
 
 * Test Commands
 
@@ -190,11 +63,3 @@ emacs --batch --eval "(progn (add-to-list 'load-path \".\") (require 'ox-astro) 
 # Expected result: All 6 images should appear as <Image> components in MDX output
 ```
 
-* Files Modified
-
-- `ox-astro-handlers.el`: Added `org-astro-auto-wrap-image-paths-filter`
-- `ox-astro-helpers.el`: Fixed `org-astro--wrap-raw-image-path-lines-in-region`
-- `ox-astro.el`: Updated filters-alist to include auto-wrap filter first
-- `ox-astro-config.el`: Added jaydocs folder mapping
-
-The automatic bracket wrapping solution is working perfectly. The remaining transcoding issue requires investigation of the `org-astro-link` function and related transcoding logic.
