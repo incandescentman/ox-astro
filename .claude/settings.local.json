@@ -25,7 +25,15 @@
       "Bash(test:*)",
       "Bash(for:*)",
       "Bash(done)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
+      "Bash(chmod:*)",
+      "Bash(./run-export.sh)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

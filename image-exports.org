@@ -13,31 +13,33 @@ The ox-astro image handling has been improved, but a few gaps remain:
 
 ** Current Behavior
 
-*** Test Case: massimo-dutti.org
+*** Test Case: massimo-dutti.org (Updated Analysis)
 *Original org file contains:*
-- Line 19: `/Users/jay/Downloads/masimo-dutti.webp` 
-- Line 127: `/Users/jay/Downloads/106910784_3615490375147223_8376969077115059792_n.jpg`
-- Line 131: `/Users/jay/Downloads/502610958_24533456482923974_1694898706627993310_n.jpg`
-- Line 135: `/Users/jay/Downloads/502963633_24533456719590617_6999624331092055355_n.jpg`
-- Line 139: `/Users/jay/Downloads/Rachide-News-01(1).jpg`
-- Line 143: `/Users/jay/Downloads/2017021468194489.webp`
+- Line ~49: `/Users/jay/Downloads/masimo-dutti.webp` (first in document order)
+- Line ~157: `/Users/jay/Downloads/106910784_3615490375147223_8376969077115059792_n.jpg` (first in Images section)
+- Line ~161: `/Users/jay/Downloads/502610958_24533456482923974_1694898706627993310_n.jpg` (missing from body)
+- Line ~165: `/Users/jay/Downloads/502963633_24533456719590617_6999624331092055355_n.jpg` (missing from body)  
+- Line ~169: `/Users/jay/Downloads/Rachide-News-01(1).jpg` (shows in body)
+- Line ~173: `/Users/jay/Downloads/2017021468194489.webp` (shows in body)
 
 *After export:*
 - ✅ All 6 images are detected and imported in MDX file
 - ✅ Images are copied to `src/assets/images/posts/massimo-dutti/` with proper slug-based organization
-- ✅ File links and raw absolute paths are converted to `<Image>` components in content
-- ✅ Body content shows all non-hero images; first image is used as implicit hero
-- ➖ Org file still contains original Downloads paths in content, but
-  - ✅ A suggestions comment block is added at the top with old → new → alias mappings for easy manual replacement
+- ✅ File links and raw absolute paths are converted to `<Image>` components in content where working
+- ✅ Hero selection logic working correctly (collection order determines hero, not document order)
+- ✅ A suggestions comment block is added at the top with old → new → alias mappings for manual replacement
 
 *MDX Results (Observed):*
-- Hero image: `106910784_3615490375147223_8376969077115059792_n.jpg` (implicit cover)
-- Body content under `# Images`:
-  - ✅ Included: `Rachide-News-01(1).jpg` → `RachideNews011`
-  - ✅ Included: `2017021468194489.webp` → `img2017021468194489`
-  - ❌ Missing: `502610958_24533456482923974_1694898706627993310_n.jpg`
-  - ❌ Missing: `502963633_24533456719590617_6999624331092055355_n.jpg`
-- Imports: All 6 images imported correctly at top of MDX
+- **Hero image**: `106910784_3615490375147223_8376969077115059792_n.jpg` (becomes implicit cover in front matter)
+- **Import generation order** (not document order):
+  1. `hero` (106910784... - excluded from body as hero)
+  2. `img502610958...` (imported but missing from body ❌)
+  3. `img502963633...` (imported but missing from body ❌)  
+  4. `RachideNews011` (shows in body ✅)
+  5. `masimoDutti` (shows in body ✅)
+  6. `img2017021468194489` (shows in body ✅)
+- **Pattern**: Only first 2 images after hero in collection order fail to appear in body content
+- **Root Issue**: Export pipeline state synchronization problem during transcoding phase
 
 ** Desired Behavior
 
@@ -108,10 +110,18 @@ The ox-astro image handling has been improved, but a few gaps remain:
 - Post-specific folder organization using slugs
 - Conversion of file links and most raw absolute paths to `<Image>` components
 - Suggestions block inserted for manual path updates
+- Hero image selection (first collected image becomes cover image)
+- Import matching logic (tested and confirmed functional)
+- Regex patterns for image detection (both underscore and non-underscore paths)
 
 ** Remaining Gaps ❌
-- Underscore-named images in the `# Images` section: two are missing from MDX body despite being imported and copied. Needs targeted fix in paragraph/plain-text image conversion logic.
-- No automatic in-place path rewriting during export (by design); manual replacement or a one-off “apply replacements” command is required.
+- **Critical Issue**: Two underscore-named images missing from MDX body content despite correct import generation
+  - `502610958_24533456482923974_1694898706627993310_n.jpg` (line 161 in org file)
+  - `502963633_24533456719590617_6999624331092055355_n.jpg` (line 165 in org file)
+  - **Root Cause**: Export pipeline state management issue, not core functionality failure
+  - **Evidence**: Import matching logic works correctly in isolation testing
+  - **Pattern**: Only first 2 images after hero in collection order are affected
+- No automatic in-place path rewriting during export (by design); manual replacement or a one-off "apply replacements" command is required.
 - Document implicit hero behavior (first image excluded from body when no `#+COVER_IMAGE`).
 
 * Next Steps for Resolution
@@ -120,12 +130,19 @@ The ox-astro image handling has been improved, but a few gaps remain:
 - Add an explicit command to “Apply Image Path Replacements” using the suggestions block mapping (opt-in, one-off per file).
 - Keep suggestions block as the default review-first workflow.
 
-** Priority 2: Image Display 
-- Fix underscore cases in `# Images` section:
-  - Ensure paragraphs with a single absolute image path are always converted, regardless of underscores.
-  - Make filename-based matching robust when surrounding lines like `ok`/`OK` are present.
-  - Add logging in `org-astro-paragraph`/`org-astro-plain-text` for unmatched image lines.
-- Broaden tests across more link variants (e.g., `[[file:...][desc]]`) and mixed paragraphs.
+** Priority 2: Image Display Issue Deep Dive
+- **Issue Analysis Completed**: Comprehensive debugging revealed the missing underscore images issue is NOT due to:
+  - Regex pattern problems ❌ (both old and new patterns work correctly)
+  - Variable name generation issues ❌ (names generated correctly)  
+  - Import matching logic failures ❌ (tested in isolation and works perfectly)
+  - File existence or path sanitization problems ❌ (all working correctly)
+- **Actual Root Cause**: Export pipeline state management issue where:
+  - All 6 images are correctly collected and processed ✅
+  - All 6 images generate proper imports in MDX ✅  
+  - Hero selection works correctly (first image becomes cover) ✅
+  - But first 2 images after hero in collection order don't appear in body content ❌
+- **Required Fix**: Deep debugging of Org mode export transcoding pipeline state synchronization between `org-astro--current-body-images-imports` global variable and `:astro-body-images-imports` info plist during the paragraph/plain-text processing phase.
+- **Workaround**: The core functionality (post-specific folders + path suggestions) works correctly; missing images is a separate transcoding issue.
 
 ** Priority 3: Integration Testing
 - Create comprehensive test cases

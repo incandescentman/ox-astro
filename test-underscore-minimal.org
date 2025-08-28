@@ -1,0 +1,23 @@
+#+TITLE: Test Underscore Images
+#+DESTINATION_FOLDER: jaydocs
+
+
+#+EXCERPT: First image: UsersjayDownloadsmasimo-dutti.webp
+
+#+PUBLISH_DATE: [2025-08-28 Thu 11:11]
+* Test
+
+First image:
+/Users/jay/Downloads/masimo-dutti.webp
+
+* Images
+
+/Users/jay/Downloads/106910784_3615490375147223_8376969077115059792_n.jpg
+
+/Users/jay/Downloads/502610958_24533456482923974_1694898706627993310_n.jpg
+
+/Users/jay/Downloads/502963633_24533456719590617_6999624331092055355_n.jpg
+
+/Users/jay/Downloads/Rachide-News-01(1).jpg
+
+/Users/jay/Downloads/2017021468194489.webp

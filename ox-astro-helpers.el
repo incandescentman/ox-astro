@@ -538,7 +538,7 @@ Otherwise, use the default Markdown paragraph transcoding."
       (let* ((raw-text (org-element-property :value child))
              (text (when (stringp raw-text) (org-trim raw-text))))
         (when (and text
-                   (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" text))
+                   (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" text))
           (setq is-image-path t)
           (setq path text))))
     (if is-image-path
@@ -557,7 +557,7 @@ Otherwise, use the default Markdown paragraph transcoding."
           (if image-data
               (let ((var-name (plist-get image-data :var-name))
                     (alt-text (or (org-astro--filename-to-alt-text path) "Image")))
-                (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
+                (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
               ;; Fallback: if image wasn't processed by the filter, just output the original contents.
               contents))
         ;; Check if this paragraph contains broken image path (subscripts)
@@ -580,9 +580,7 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
          (explicit-hero (or (plist-get info :astro-image)
                             (plist-get info :cover-image)))
          (image-imports (if (and (not explicit-hero) image-imports-raw)
-                            ;; Exclude first image when it's used as hero
                             (cdr image-imports-raw)
-                            ;; Use all images when there's an explicit hero
                             image-imports-raw))
          (has-linkpeek nil)
          (processed-lines
@@ -595,24 +593,17 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                    (cond
                     ;; Raw image path (trust imports rather than filesystem)
                     ((and trimmed-line
-                          (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" trimmed-line))
+                          (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" trimmed-line))
                      (let ((image-data (when image-imports
                                          (cl-find trimmed-line image-imports
                                                   :key (lambda (item) (plist-get item :path))
                                                   :test #'string-equal))))
-                       (message "DEBUG: Looking for image %s in %d imports" trimmed-line (length (or image-imports '())))
-                       (when image-imports
-                         (dolist (import image-imports)
-                           (message "DEBUG: Available import: %s" (plist-get import :path))))
                        (if image-data
                            (let ((var-name (plist-get image-data :var-name))
                                  (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
-                             (message "DEBUG: Converting image to component: %s -> %s" trimmed-line var-name)
-                             (format "<Image src={%s} alt=\" %s \" />" var-name alt-text))
-                           (progn
-                             (message "DEBUG: WARNING - Image not found in imports: %s" trimmed-line)
-                             ;; Keep the original path so we can see what's happening
-                             (format "<!-- MISSING IMAGE: %s -->" trimmed-line)))))
+                             (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
+                           ;; Fallback: if image wasn't processed by the filter, output as plain text.
+                           line)))
                     ;; Raw URL
                     ((and trimmed-line
                           (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
@@ -664,7 +655,7 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
           (dolist (line lines)
             (let ((text (org-trim line)))
               (when (and text
-                         (string-match-p "^/.*\\.\(png\\|jpe?g\\|webp\)$" text)
+                         (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" text)
                          (file-exists-p text))
                 (push text images)))))))
     ;; 3. Collect from paragraphs that contain subscript elements (broken up image paths)
