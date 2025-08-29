@@ -110,7 +110,9 @@ generated and added to the Org source file."
                    (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
                    (updated-paths nil))
               ;; Process each image and update source buffer paths immediately
+              (message "DEBUG: Processing %d initial images" (length image-paths))
               (dolist (path image-paths)
+                (message "DEBUG: Processing initial image: %s" path)
                 (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir t))
                        (clean-filename (org-astro--sanitize-filename (file-name-nondirectory path)))
                        (target-abs (when astro-path

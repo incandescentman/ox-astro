@@ -498,6 +498,9 @@ If no explicit cover image is specified, use the first body image as hero."
              (explicit-hero (or (plist-get info :astro-image)
                                 (plist-get info :cover-image)))
              (image-imports image-imports-raw)
+             (_ (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+                  (message "[ox-astro][img] LINK processing path=%s, imports count=%d"
+                           path (length image-imports-raw))))
              (image-data
               (when image-imports
                 (or (cl-find path image-imports
