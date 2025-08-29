@@ -1285,7 +1285,8 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
 
        ;; Handle remote URLs (both full https:// and protocol-relative //)
        ((let ((is-remote (or (string-match-p "^https?://" image-path)
-                             (string-match-p "^//[^/]+.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(?.*\\)?$" image-path))))
+                             (and (string-match-p "^//" image-path)
+                                  (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)" image-path)))))
           (message "DEBUG: Checking remote URL for %s. Is remote: %s" image-path is-remote)
           is-remote)
         (let* ((full-url (if (string-match-p "^//" image-path)
