@@ -1265,83 +1265,85 @@ Returns the processed path suitable for Astro imports.
 If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path."
   (message "DEBUG: Processing image - path: %s, posts-folder: %s, sub-dir: %s, update-buffer: %s"
            image-path posts-folder sub-dir update-buffer)
-  
+
   (when (and image-path posts-folder)
-    (cond
-     ;; Handle images already in the assets folder - just return the alias path
-     ((let ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir)))
-        (message "DEBUG: Checking if in assets - assets-folder: %s, image-path: %s" 
-                 assets-folder image-path)
-        (and assets-folder
-             (string-match-p (regexp-quote (expand-file-name assets-folder)) 
-                           (expand-file-name image-path))))
-      (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-             (relative-path (file-relative-name image-path (expand-file-name assets-folder)))
-             (filename (file-name-nondirectory image-path))
-             (result (concat "~/assets/images/" sub-dir filename)))
-        (message "DEBUG: Image already in assets folder - returning: %s" result)
-        result))
-     
-     ;; Handle remote URLs (both full https:// and protocol-relative //)
-     ((progn
-        (message "DEBUG: Checking remote URL patterns for: %s" image-path)
-        (or (string-match-p "^https?://" image-path)
-            (string-match-p "^//[^/]+.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" image-path)))
-      (let* ((full-url (if (string-match-p "^//" image-path)
-                           (concat "https:" image-path)
-                           image-path))
-             (downloaded-path (org-astro--download-remote-image full-url posts-folder sub-dir)))
-        (when downloaded-path
-          (let* ((clean-filename (file-name-nondirectory downloaded-path))
-                 (result (concat "~/assets/images/" sub-dir clean-filename)))
-            ;; Update the buffer to replace remote URL with local path
-            ;; For protocol-relative URLs, we need to find the original https:// version in the buffer
+    (let ((image-path (substring-no-properties image-path)))
+      (cond
+       ;; Handle images already in the assets folder - just return the alias path
+       ((let ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir)))
+          (message "DEBUG: Checking if in assets - assets-folder: %s, image-path: %s"
+                   assets-folder image-path)
+          (and assets-folder
+               (string-match-p (regexp-quote (expand-file-name assets-folder))
+                               (expand-file-name image-path))))
+        (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+               (relative-path (file-relative-name image-path (expand-file-name assets-folder)))
+               (filename (file-name-nondirectory image-path))
+               (result (concat "~/assets/images/" sub-dir filename)))
+          (message "DEBUG: Image already in assets folder - returning: %s" result)
+          result))
+
+       ;; Handle remote URLs (both full https:// and protocol-relative //)
+       ((let ((is-remote (or (string-match-p "^https?://" image-path)
+                             (string-match-p "^//[^/]+.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(?.*\\)?$" image-path))))
+          (message "DEBUG: Checking remote URL for %s. Is remote: %s" image-path is-remote)
+          is-remote)
+        (let* ((full-url (if (string-match-p "^//" image-path)
+                             (concat "https:" image-path)
+                             image-path))
+               (downloaded-path (org-astro--download-remote-image full-url posts-folder sub-dir)))
+          (when downloaded-path
+            (let* ((clean-filename (file-name-nondirectory downloaded-path))
+                   (result (concat "~/assets/images/" sub-dir clean-filename)))
+              ;; Update the buffer to replace remote URL with local path
+              ;; For protocol-relative URLs, we need to find the original https:// version in the buffer
+              (when update-buffer
+                (let ((original-url (if (string-match-p "^//" image-path)
+                                        ;; Try to find the original https:// version in the buffer
+                                        full-url
+                                        ;; Use the path as-is if it already has protocol
+                                        image-path)))
+                  (message "DEBUG: Updating buffer - remote URL %s -> local path %s" original-url downloaded-path)
+                  (org-astro--update-source-buffer-image-path original-url downloaded-path)))
+              (message "DEBUG: Remote image processed - returning astro path: %s" result)
+              result))))
+
+       ;; Handle local files
+       (t
+        (message "DEBUG: Handling local file: %s" image-path)
+        (message "DEBUG: File exists check: %s" (file-exists-p image-path))
+        (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+               (original-filename (file-name-nondirectory image-path))
+               (clean-filename (org-astro--sanitize-filename original-filename))
+               (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
+
+          (message "DEBUG: Assets folder: %s" assets-folder)
+          (message "DEBUG: Target path: %s" target-path)
+          (message "DEBUG: About to check conditions - target-path: %s, file-exists: %s"
+                   (and target-path t) (file-exists-p image-path))
+
+          (when (and target-path (file-exists-p image-path))
+            ;; Create assets directory if it doesn't exist
+            (when assets-folder
+              (make-directory assets-folder t))
+            ;; Copy the file
+            (condition-case err
+                (progn
+                  (copy-file image-path target-path t)
+                  (message "DEBUG: Successfully copied %s to %s" image-path target-path))
+              (error (message "Failed to copy image %s: %s" image-path err)))
+
+            ;; Update the buffer if requested (even if file already exists from previous run)
             (when update-buffer
-              (let ((original-url (if (string-match-p "^//" image-path)
-                                      ;; Try to find the original https:// version in the buffer
-                                      full-url 
-                                      ;; Use the path as-is if it already has protocol
-                                      image-path)))
-                (message "DEBUG: Updating buffer - remote URL %s -> local path %s" original-url downloaded-path)
-                (org-astro--update-source-buffer-image-path original-url downloaded-path)))
-            (message "DEBUG: Remote image processed - returning astro path: %s" result)
-            result))))
+              (message "DEBUG: Attempting buffer update...")
+              (org-astro--update-source-buffer-image-path image-path target-path))
 
-     ;; Handle local files
-     (t
-      (message "DEBUG: Handling local file: %s" image-path)
-      (message "DEBUG: File exists check: %s" (file-exists-p image-path))
-      (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-             (original-filename (file-name-nondirectory image-path))
-             (clean-filename (org-astro--sanitize-filename original-filename))
-             (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
+            ;; Return the alias path for imports
+            (when (file-exists-p target-path)
+              (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
+                (message "DEBUG: Returning astro path: %s" result)
+                result)))))))))
 
-        (message "DEBUG: Assets folder: %s" assets-folder)
-        (message "DEBUG: Target path: %s" target-path)
-        (message "DEBUG: About to check conditions - target-path: %s, file-exists: %s" 
-                 (and target-path t) (file-exists-p image-path))
-
-        (when (and target-path (file-exists-p image-path))
-          ;; Create assets directory if it doesn't exist
-          (when assets-folder
-            (make-directory assets-folder t))
-          ;; Copy the file
-          (condition-case err
-              (progn
-                (copy-file image-path target-path t)
-                (message "DEBUG: Successfully copied %s to %s" image-path target-path))
-            (error (message "Failed to copy image %s: %s" image-path err)))
-
-          ;; Update the buffer if requested (even if file already exists from previous run)
-          (when update-buffer
-            (message "DEBUG: Attempting buffer update...")
-            (org-astro--update-source-buffer-image-path image-path target-path))
-
-          ;; Return the alias path for imports
-          (when (file-exists-p target-path)
-            (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
-              (message "DEBUG: Returning astro path: %s" result)
-              result))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TABLE HANDLING
