@@ -1265,11 +1265,13 @@ Returns the processed path suitable for Astro imports.
 If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path."
   (message "DEBUG: Processing image - path: %s, posts-folder: %s, sub-dir: %s, update-buffer: %s"
            image-path posts-folder sub-dir update-buffer)
-
+  
   (when (and image-path posts-folder)
     (cond
      ;; Handle images already in the assets folder - just return the alias path
      ((let ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir)))
+        (message "DEBUG: Checking if in assets - assets-folder: %s, image-path: %s" 
+                 assets-folder image-path)
         (and assets-folder
              (string-match-p (regexp-quote (expand-file-name assets-folder)) 
                            (expand-file-name image-path))))
@@ -1305,6 +1307,7 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
 
      ;; Handle local files
      (t
+      (message "DEBUG: Handling local file: %s" image-path)
       (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
              (original-filename (file-name-nondirectory image-path))
              (clean-filename (org-astro--sanitize-filename original-filename))
@@ -1426,8 +1429,6 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
      ;; Default: use standard markdown export
      (t (org-md-special-block special-block contents info)))))
 
-(provide 'ox-astro-helpers)
-
 (defun org-astro--collect-raw-images-from-tree-region (tree)
   "Collect raw image paths by scanning the buffer region of a parse TREE.
 This is more robust for narrowed subtrees than relying on `plain-text` parsing."
@@ -1444,4 +1445,6 @@ This is more robust for narrowed subtrees than relying on `plain-text` parsing."
                 (when (file-exists-p path)
                   (push path images))))))))
     (nreverse images)))
+
+(provide 'ox-astro-helpers)
 ;;; ox-astro-helpers.el ends here
