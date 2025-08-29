@@ -117,9 +117,11 @@ generated and added to the Org source file."
                                      (expand-file-name clean-filename (org-astro--get-assets-folder posts-folder sub-dir)))))
                   (when target-abs
                     (push target-abs updated-paths))))
-              ;; If we updated any paths, force a buffer reload and re-process images for import generation
+              ;; If we updated any paths, save the buffer and refresh the environment
               (when updated-paths
-                (revert-buffer t t)
+                ;; Save the buffer to preserve the path updates
+                (save-buffer)
+                ;; Now refresh the export environment with the updated buffer
                 (setq info (org-export-get-environment 'astro subtreep))
                 ;; Re-process images after downloads to ensure downloaded images appear in MDX
                 (let* ((updated-tree (org-element-parse-buffer))
@@ -131,8 +133,18 @@ generated and added to the Org source file."
                   (when posts-folder
                     (message "DEBUG: Re-processing %d images after downloads" (length updated-image-paths))
                     (dolist (path updated-image-paths)
-                      (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir nil)) ; Don't update buffer again
+                      (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+                             ;; Check if this is already an asset path and convert it
+                             (astro-path (cond
+                                          ;; If it's already in the assets folder, construct the alias path
+                                          ((and assets-folder
+                                                (string-match-p (regexp-quote (expand-file-name assets-folder))
+                                                              (expand-file-name path)))
+                                           (concat "~/assets/images/" sub-dir (file-name-nondirectory path)))
+                                          ;; Otherwise, process it normally
+                                          (t (org-astro--process-image-path path posts-folder sub-dir nil))))
                              (var-name (when astro-path (org-astro--path-to-var-name (file-name-nondirectory astro-path)))))
+                        (message "DEBUG: Path: %s -> Astro: %s -> Var: %s" path astro-path var-name)
                         (when (and astro-path var-name)
                           (push (list :path path :astro-path astro-path :var-name var-name) updated-image-imports-data)))))
                   ;; Update the info with the new image data

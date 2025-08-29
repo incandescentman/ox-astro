@@ -742,7 +742,8 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                    (cond
                     ;; Raw image path (trust imports rather than filesystem)
                     ((and trimmed-line
-                          (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" trimmed-line))
+                          (or (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" trimmed-line)
+                              (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" trimmed-line)))
                      (let ((image-data (when image-imports
                                          (cl-find trimmed-line image-imports
                                                   :key (lambda (item) (plist-get item :path))
@@ -817,14 +818,17 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
           (dolist (line lines)
             (let ((text (org-trim line)))
               (when (and text
-                         (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" text))
+                         ;; Match absolute paths OR paths containing "assets/images"
+                         (or (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" text)
+                             (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" text)))
                 (push text images)))))))
     ;; 3. Collect from paragraphs that contain subscript elements (broken up image paths)
     (org-element-map tree 'paragraph
       (lambda (paragraph)
         (let ((reconstructed-path (org-astro--extract-image-path-from-paragraph paragraph)))
           (when (and reconstructed-path
-                     (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" reconstructed-path))
+                     (or (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" reconstructed-path)
+                         (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" reconstructed-path)))
             (push reconstructed-path images)))))
     ;; 4. Collect remote image URLs from plain-text elements
     (org-element-map tree 'plain-text
@@ -1260,6 +1264,18 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
 
   (when (and image-path posts-folder)
     (cond
+     ;; Handle images already in the assets folder - just return the alias path
+     ((let ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir)))
+        (and assets-folder
+             (string-match-p (regexp-quote (expand-file-name assets-folder)) 
+                           (expand-file-name image-path))))
+      (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+             (relative-path (file-relative-name image-path (expand-file-name assets-folder)))
+             (filename (file-name-nondirectory image-path))
+             (result (concat "~/assets/images/" sub-dir filename)))
+        (message "DEBUG: Image already in assets folder - returning: %s" result)
+        result))
+     
      ;; Handle remote URLs (both full https:// and protocol-relative //)
      ((or (string-match-p "^https?://" image-path)
           (string-match-p "^//[^/]+.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" image-path))
@@ -1304,8 +1320,8 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
                 (message "DEBUG: Successfully copied %s to %s" image-path target-path))
             (error (message "Failed to copy image %s: %s" image-path err)))
 
-          ;; Update the buffer if requested and copy was successful
-          (when (and update-buffer (file-exists-p target-path))
+          ;; Update the buffer if requested (even if file already exists from previous run)
+          (when update-buffer
             (message "DEBUG: Attempting buffer update...")
             (org-astro--update-source-buffer-image-path image-path target-path))
 
