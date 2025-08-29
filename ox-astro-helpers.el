@@ -10,13 +10,60 @@
 
 ;; Debug helpers
 (defun org-astro--dbg-log (info fmt &rest args)
-  "Append a formatted debug message to INFO plist when image debugging is enabled."
-  (when (boundp 'org-astro-debug-images)
-    (when org-astro-debug-images
-      (let* ((msg (apply #'format fmt args))
-             (existing (plist-get info :astro-debug-log)))
-        (plist-put info :astro-debug-log (cons msg existing))
-        (message "[ox-astro][img] %s" msg)))))
+  "Append a formatted debug message to INFO and write to debug.el when enabled."
+  (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+    (let* ((msg (apply #'format fmt args))
+           (existing (plist-get info :astro-debug-log))
+           (line (format "%s\n" (concat "[ox-astro][img] " msg)))
+           (debug-file (expand-file-name "debug.el"))
+           ;; Check if this is the first log entry
+           (first-entry (null existing)))
+      ;; Store in info for potential MDX comments or later inspection
+      (plist-put info :astro-debug-log (cons msg existing))
+      ;; Emit to Messages
+      (message "[ox-astro][img] %s" msg)
+      ;; Write header if first entry
+      (when first-entry
+        (let* ((source-file (or (plist-get info :input-file)
+                                (and (buffer-file-name) (expand-file-name (buffer-file-name)))
+                                "unknown"))
+               (posts-folder (or (plist-get info :destination-folder)
+                                 (plist-get info :astro-posts-folder)))
+               ;; Determine output file path
+               (output-file (when posts-folder
+                             (let* ((title (org-astro--get-title (plist-get info :parse-tree) info))
+                                   (slug (when title (org-astro--slugify title)))
+                                   (filename (if slug (concat slug ".mdx") "exported-file.mdx"))
+                                   (resolved-folder (cdr (assoc posts-folder org-astro-known-posts-folders))))
+                               (when resolved-folder
+                                 (expand-file-name filename resolved-folder)))))
+               (clipboard-text (format "org-mode source file: %s\n\n.mdx output: %s\n\nAnd please go ahead and access and review the debug file:\n%s\n"
+                                      source-file
+                                      (or output-file "output file path not yet determined")
+                                      debug-file))
+               (file-header (format "org-mode source file: %s\n\n.mdx output: %s\n\n"
+                                   source-file
+                                   (or output-file "output file path not yet determined"))))
+          ;; Write header to debug file
+          (condition-case _
+              (with-temp-buffer
+                (insert file-header)
+                (write-region (point-min) (point-max) debug-file nil 'silent))
+            (error nil))
+          ;; Copy clipboard text to clipboard via pbcopy
+          (let ((pbcopy (executable-find "pbcopy")))
+            (when pbcopy
+              (condition-case _
+                  (with-temp-buffer
+                    (insert clipboard-text)
+                    (call-process-region (point-min) (point-max) pbcopy nil nil nil))
+                (error nil))))))
+      ;; Append the actual log line
+      (condition-case _
+          (with-temp-buffer
+            (insert line)
+            (write-region (point-min) (point-max) debug-file t 'silent))
+        (error nil)))))
 
 (defun org-astro--dbg-mdx-comments (info)
   "Return MDX comments string for any collected debug messages in INFO."
@@ -572,6 +619,10 @@ If no explicit cover image is specified, use the first body image as hero."
   "Transcode a PARAGRAPH element.
 If the paragraph is a raw image path, convert it to an <img> tag.
 Otherwise, use the default Markdown paragraph transcoding."
+  ;; Debug: Log every paragraph we process
+  (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+    (org-astro--dbg-log info "PARAGRAPH called with contents: %s"
+                        (substring (or contents "") 0 (min 100 (length (or contents ""))))))
   (let* ((children (org-element-contents paragraph))
          (child (and (= 1 (length children)) (car children)))
          (is-image-path nil)

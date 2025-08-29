@@ -76,9 +76,7 @@ preprocessing has already been completed and we skip the processing."
          image-imports-data)
     (when posts-folder
       (message "DEBUG: Processing %d images in posts folder: %s" (length image-paths) posts-folder)
-      (when (boundp 'org-astro-debug-images)
-        (when org-astro-debug-images
-          (message "[ox-astro][img] collected=%s" image-paths)))
+      (org-astro--dbg-log info "collected=%s" image-paths)
       (dolist (path image-paths)
         (message "DEBUG: Processing image path: %s" path)
         ;; For each image, copy it to assets and get its new path.
