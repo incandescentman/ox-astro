@@ -157,9 +157,16 @@ preprocessing has already been completed and we skip the processing."
          ;; 5. LinkPeek component import (if raw URLs are used - check body for raw URL patterns)
          (linkpeek-import (when (plist-get info :astro-uses-linkpeek)
                             "import LinkPeek from '../../components/ui/LinkPeek.astro';"))
-         ;; 6. Combine all imports, filtering out nil/empty values
+         ;; 6. ImageGallery component import (if GALLERY blocks are used)
+         (has-gallery-blocks (org-element-map tree 'special-block
+                               (lambda (block)
+                                 (string-equal (org-element-property :type block) "GALLERY"))
+                               nil t))
+         (image-gallery-import (when has-gallery-blocks
+                                 "import ImageGallery from '../../components/ImageGallery.astro';"))
+         ;; 7. Combine all imports, filtering out nil/empty values
          (all-imports (mapconcat #'identity
-                                 (delq nil (list hero-import astro-image-import linkpeek-import body-imports-string manual-imports))
+                                 (delq nil (list hero-import astro-image-import linkpeek-import image-gallery-import body-imports-string manual-imports))
                                  "\n")))
     (concat front-matter-string
             (or source-comment "")

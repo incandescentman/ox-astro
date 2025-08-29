@@ -1179,6 +1179,43 @@ INFO is a plist used as a communication channel."
          (separators (mapcar (lambda (_cell) "---") cells)))
     (concat "| " (mapconcat #'identity separators " | ") " |")))
 
+(defun org-astro-special-block (special-block contents info)
+  "Transcode a SPECIAL-BLOCK element.
+Handle GALLERY blocks specially by converting them to ImageGallery components."
+  (let ((block-type (org-element-property :type special-block)))
+    (cond
+     ;; Handle GALLERY blocks
+     ((string-equal block-type "GALLERY")
+      (let* ((image-imports (plist-get info :astro-body-images-imports))
+             (gallery-id (concat "gallery-" (number-to-string (random 10000))))
+             (gallery-items nil))
+        ;; Extract image links from the block contents
+        (org-element-map special-block 'link
+          (lambda (link)
+            (when (and (string-equal (org-element-property :type link) "file")
+                       (let ((path (org-element-property :path link)))
+                         (and path (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path))))
+              (let* ((path (org-element-property :path link))
+                     (import-data (cl-find path image-imports 
+                                           :key (lambda (item) (plist-get item :path))
+                                           :test #'string-equal))
+                     (var-name (when import-data (plist-get import-data :var-name)))
+                     (alt-text (org-astro--filename-to-alt-text path)))
+                (when var-name
+                  (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))
+        ;; Generate ImageGallery component
+        (if gallery-items
+            (concat "<ImageGallery\n"
+                    "  images={[\n"
+                    (mapconcat #'identity (reverse gallery-items) ",\n")
+                    "\n  ]}\n"
+                    "  galleryId=\"" gallery-id "\"\n"
+                    "/>")
+          ;; Fallback if no images found
+          contents)))
+     ;; Default: use standard markdown export
+     (t (org-md-special-block special-block contents info)))))
+
 (provide 'ox-astro-helpers)
 
 (defun org-astro--collect-raw-images-from-tree-region (tree)
