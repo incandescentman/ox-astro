@@ -215,13 +215,29 @@ preprocessing has already been completed and we skip the processing."
                            (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
                          match)))
                  s))))
-    ;; Indented blocks to blockquotes
+    ;; Indented blocks to blockquotes (but skip JSX components)
     (let* ((lines (split-string s "\n"))
+           (in-jsx-component nil)
            (processed-lines
             (mapcar (lambda (line)
-                      (if (string-prefix-p "    " line)
-                          (concat "> " (substring line 4))
-                          line))
+                      ;; Track if we're inside a JSX component
+                      (cond
+                       ((string-match-p "<[A-Z][^>]*$" line)  ; Opening JSX tag
+                        (setq in-jsx-component t)
+                        line)
+                       ((string-match-p "^[^<]*/>$" line)     ; Self-closing JSX tag end
+                        (setq in-jsx-component nil)
+                        line)
+                       ((string-match-p "^[^<]*>$" line)      ; JSX tag end
+                        (setq in-jsx-component nil)
+                        line)
+                       ;; Don't convert indented lines inside JSX components
+                       ((and in-jsx-component (string-prefix-p "    " line))
+                        line)
+                       ;; Convert regular indented lines to blockquotes
+                       ((string-prefix-p "    " line)
+                        (concat "> " (substring line 4)))
+                       (t line)))
                     lines)))
       (setq s (mapconcat 'identity processed-lines "\n")))
     s))
