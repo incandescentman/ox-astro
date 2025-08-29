@@ -117,10 +117,29 @@ generated and added to the Org source file."
                                      (expand-file-name clean-filename (org-astro--get-assets-folder posts-folder sub-dir)))))
                   (when target-abs
                     (push target-abs updated-paths))))
-              ;; If we updated any paths, force a buffer reload before continuing with export
+              ;; If we updated any paths, force a buffer reload and re-process images for import generation
               (when updated-paths
                 (revert-buffer t t)
-                (setq info (org-export-get-environment 'astro subtreep))))))
+                (setq info (org-export-get-environment 'astro subtreep))
+                ;; Re-process images after downloads to ensure downloaded images appear in MDX
+                (let* ((updated-tree (org-element-parse-buffer))
+                       (updated-image-paths-from-tree (org-astro--collect-images-from-tree updated-tree))
+                       (updated-image-paths-from-raw (org-astro--collect-raw-images-from-tree-region updated-tree))
+                       (updated-image-paths (delete-dups (append updated-image-paths-from-tree updated-image-paths-from-raw)))
+                       (updated-image-imports-data nil))
+                  ;; Process the updated paths for import generation
+                  (when posts-folder
+                    (message "DEBUG: Re-processing %d images after downloads" (length updated-image-paths))
+                    (dolist (path updated-image-paths)
+                      (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir nil)) ; Don't update buffer again
+                             (var-name (when astro-path (org-astro--path-to-var-name (file-name-nondirectory astro-path)))))
+                        (when (and astro-path var-name)
+                          (push (list :path path :astro-path astro-path :var-name var-name) updated-image-imports-data)))))
+                  ;; Update the info with the new image data
+                  (when updated-image-imports-data
+                    (plist-put info :astro-body-images-imports (nreverse updated-image-imports-data))
+                    (setq org-astro--current-body-images-imports (nreverse updated-image-imports-data))
+                    (message "DEBUG: Updated image imports with %d processed images" (length updated-image-imports-data)))))))
         ;; --- Ensure essential front-matter exists, writing back if not ---
         (save-excursion
           (condition-case err
@@ -240,15 +259,16 @@ generated and added to the Org source file."
                      (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
                (outfile (expand-file-name final-filename out-dir)))
 
+          ;; Update debug system with actual output file path now that we know it
+          (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+            (org-astro--dbg-update-output-file info outfile))
+
           (if pub-dir
               (progn
                 (make-directory pub-dir t)
                 ;; First export pass
                 (message "Running first export pass...")
                 (org-export-to-file 'astro outfile async subtreep visible-only body-only)
-                ;; Update debug system with actual output file path
-                (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-                  (org-astro--dbg-update-output-file info outfile))
                 ;; Clear import state for second pass
                 (setq org-astro--current-body-images-imports nil)
                 ;; Second export pass to ensure all images appear
@@ -258,7 +278,7 @@ generated and added to the Org source file."
                 outfile)  ; Return the output file path
               (progn
                 (message "Astro export cancelled: No posts folder selected.")
-                nil))))));;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                nil)))))));
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

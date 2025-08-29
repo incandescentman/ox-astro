@@ -44,7 +44,10 @@
       "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
       "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
       "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/**)",
-      "Read(/Users/jay/Downloads/**)"
+      "Read(/Users/jay/Downloads/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/vibecoding/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/notes/**)",
+      "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/notes/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
