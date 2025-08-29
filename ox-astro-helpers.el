@@ -15,7 +15,7 @@
     (let* ((msg (apply #'format fmt args))
            (existing (plist-get info :astro-debug-log))
            (line (format "%s\n" (concat "[ox-astro][img] " msg)))
-           (debug-file (expand-file-name "debug.el"))
+           (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/debug.el"))
            ;; Check if this is the first log entry
            (first-entry (null existing)))
       ;; Store in info for potential MDX comments or later inspection
@@ -491,7 +491,8 @@ If no explicit cover image is specified, use the first body image as hero."
      ((and (or (string= type "file")
                (and (null type) path (string-prefix-p "/" path)))
            path
-           (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path))
+           (or (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path)
+               (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" path)))
       (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
                                     org-astro--current-body-images-imports))
              (explicit-hero (or (plist-get info :astro-image)

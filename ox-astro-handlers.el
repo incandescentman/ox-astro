@@ -118,6 +118,14 @@ preprocessing has already been completed and we skip the processing."
   (let* ((tree (plist-get info :parse-tree))  ; Use the already-parsed tree from export
          (front-matter-data (org-astro--get-front-matter-data tree info))
          (front-matter-string (org-astro--gen-yaml-front-matter front-matter-data))
+         ;; Copy frontmatter to clipboard
+         (_ (let ((pbcopy (executable-find "pbcopy")))
+              (when (and pbcopy front-matter-string)
+                (condition-case _
+                    (with-temp-buffer
+                      (insert front-matter-string)
+                      (call-process-region (point-min) (point-max) pbcopy nil nil nil))
+                  (error nil)))))
          ;; Add an HTML comment noting the source .org file path, placed
          ;; after the frontmatter (frontmatter should remain at top-of-file).
          (source-path (or (plist-get info :input-file)
