@@ -619,10 +619,15 @@ If no explicit cover image is specified, use the first body image as hero."
   "Transcode a PARAGRAPH element.
 If the paragraph is a raw image path, convert it to an <img> tag.
 Otherwise, use the default Markdown paragraph transcoding."
-  ;; Debug: Log every paragraph we process
+  ;; Debug: Log paragraphs that might contain raw image paths
   (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-    (org-astro--dbg-log info "PARAGRAPH called with contents: %s"
-                        (substring (or contents "") 0 (min 100 (length (or contents ""))))))
+    (let* ((children (org-element-contents paragraph))
+           (child (and (= 1 (length children)) (car children))))
+      (when (and child (eq 'plain-text (org-element-type child)))
+        (let* ((raw-text (org-element-property :value child))
+               (text (when (stringp raw-text) (org-trim raw-text))))
+          (when (and text (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" text))
+            (org-astro--dbg-log info "PARAGRAPH processing raw image path: %s" text))))))
   (let* ((children (org-element-contents paragraph))
          (child (and (= 1 (length children)) (car children)))
          (is-image-path nil)
@@ -1237,6 +1242,7 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
     (cond
      ;; Handle GALLERY blocks
      ((string-equal block-type "GALLERY")
+      (org-astro--dbg-log info "Processing GALLERY block")
       (let* ((image-imports (plist-get info :astro-body-images-imports))
              (gallery-id (concat "gallery-" (number-to-string (random 10000))))
              (gallery-items nil))
@@ -1253,8 +1259,10 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
                      (var-name (when import-data (plist-get import-data :var-name)))
                      (alt-text (org-astro--filename-to-alt-text path)))
                 (when var-name
+                  (org-astro--dbg-log info "GALLERY found image: %s -> %s" path var-name)
                   (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))
         ;; Generate ImageGallery component
+        (org-astro--dbg-log info "GALLERY generating component with %d images" (length gallery-items))
         (if gallery-items
             (concat "<ImageGallery\n"
                     "  images={[\n"
