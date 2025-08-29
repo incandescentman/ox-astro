@@ -747,7 +747,20 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
                              (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
                            ;; Fallback: if image wasn't processed by the filter, output as plain text.
                            line)))
-                    ;; Raw URL
+                    ;; Remote image URL
+                    ((and trimmed-line
+                          (string-match-p "^https?://.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" trimmed-line))
+                     (let ((image-data (when image-imports
+                                         (cl-find trimmed-line image-imports
+                                                  :key (lambda (item) (plist-get item :path))
+                                                  :test #'string-equal))))
+                       (if image-data
+                           (let ((var-name (plist-get image-data :var-name))
+                                 (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
+                             (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
+                           ;; Fallback: if image wasn't processed by the filter, output as plain text.
+                           line)))
+                    ;; Regular remote URL (non-image)
                     ((and trimmed-line
                           (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
                      (setq has-linkpeek t)
@@ -807,6 +820,16 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
           (when (and reconstructed-path
                      (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" reconstructed-path))
             (push reconstructed-path images)))))
+    ;; 4. Collect remote image URLs from plain-text elements
+    (org-element-map tree 'plain-text
+      (lambda (text-element)
+        (let* ((raw-text (org-element-property :value text-element))
+               (lines (when (stringp raw-text) (split-string raw-text "\n"))))
+          (dolist (line lines)
+            (let ((text (org-trim line)))
+              (when (and text
+                         (string-match-p "^https?://.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" text))
+                (push text images)))))))
     ;; Return a list with no duplicates
     (delete-dups (nreverse images))))
 
@@ -1184,43 +1207,97 @@ When USE-ALIAS is non-nil, use :alias paths; otherwise use :new."
     (setq clean-name (replace-regexp-in-string "--+" "-" clean-name))
     clean-name))
 
+(defun org-astro--download-remote-image (url posts-folder sub-dir)
+  "Download remote image from URL to assets folder.
+Returns the local file path if successful, nil otherwise."
+  (when (and url posts-folder (string-match-p "^https?://" url))
+    (let* ((url-parts (url-generic-parse-url url))
+           (path (url-filename url-parts))
+           ;; Extract filename from URL path, handling query parameters
+           (raw-filename (if (string-match "\\([^/?]+\\)\\(\\?.*\\)?$" path)
+                             (match-string 1 path)
+                           "downloaded-image"))
+           ;; Ensure we have an image extension
+           (filename (if (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)$" raw-filename)
+                         raw-filename
+                       (concat raw-filename ".jpg")))
+           (clean-filename (org-astro--sanitize-filename filename))
+           (assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+           (target-path (when assets-folder 
+                          (expand-file-name clean-filename assets-folder))))
+      
+      (when (and target-path assets-folder)
+        ;; Create assets directory if it doesn't exist
+        (make-directory assets-folder t)
+        
+        ;; Download the image
+        (condition-case err
+            (progn
+              (message "Downloading remote image: %s" url)
+              (org-astro--dbg-log nil "REMOTE downloading: %s" url)
+              (url-copy-file url target-path t)
+              (when (file-exists-p target-path)
+                (message "Successfully downloaded: %s -> %s" url target-path)
+                (org-astro--dbg-log nil "REMOTE downloaded: %s -> %s" url clean-filename)
+                target-path))
+          (error 
+           (message "Failed to download image %s: %s" url err)
+           (org-astro--dbg-log nil "REMOTE failed: %s - %s" url err)
+           nil))))))
+
 (defun org-astro--process-image-path (image-path posts-folder sub-dir &optional update-buffer)
-  "Process IMAGE-PATH for POSTS-FOLDER, copying to SUB-DIR if needed.
+  "Process IMAGE-PATH for POSTS-FOLDER, copying local files or downloading remote URLs to SUB-DIR.
 Returns the processed path suitable for Astro imports.
 If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path."
   (message "DEBUG: Processing image - path: %s, posts-folder: %s, sub-dir: %s, update-buffer: %s"
            image-path posts-folder sub-dir update-buffer)
   
   (when (and image-path posts-folder)
-    (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-           (original-filename (file-name-nondirectory image-path))
-           (clean-filename (org-astro--sanitize-filename original-filename))
-           (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
-      
-      (message "DEBUG: Assets folder: %s, target path: %s" assets-folder target-path)
-      (message "DEBUG: Image exists: %s" (and image-path (file-exists-p image-path)))
-      
-      (when (and target-path (file-exists-p image-path))
-        ;; Create assets directory if it doesn't exist
-        (when assets-folder
-          (make-directory assets-folder t))
-        ;; Copy the file
-        (condition-case err
-            (progn
-              (copy-file image-path target-path t)
-              (message "DEBUG: Successfully copied %s to %s" image-path target-path))
-          (error (message "Failed to copy image %s: %s" image-path err)))
+    (cond
+     ;; Handle remote URLs
+     ((string-match-p "^https?://" image-path)
+      (let ((downloaded-path (org-astro--download-remote-image image-path posts-folder sub-dir)))
+        (when downloaded-path
+          (let* ((clean-filename (file-name-nondirectory downloaded-path))
+                 (result (concat "~/assets/images/" sub-dir clean-filename)))
+            ;; Update the buffer to replace remote URL with local path
+            (when update-buffer
+              (message "DEBUG: Updating buffer - remote URL %s -> local path %s" image-path downloaded-path)
+              (org-astro--update-source-buffer-image-path image-path downloaded-path))
+            (message "DEBUG: Remote image processed - returning astro path: %s" result)
+            result))))
+     
+     ;; Handle local files
+     (t
+      (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+             (original-filename (file-name-nondirectory image-path))
+             (clean-filename (org-astro--sanitize-filename original-filename))
+             (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
         
-        ;; Update the buffer if requested and copy was successful
-        (when (and update-buffer (file-exists-p target-path))
-          (message "DEBUG: Attempting buffer update...")
-          (org-astro--update-source-buffer-image-path image-path target-path))
+        (message "DEBUG: Assets folder: %s, target path: %s" assets-folder target-path)
+        (message "DEBUG: Image exists: %s" (and image-path (file-exists-p image-path)))
         
-        ;; Return the alias path for imports
-        (when (file-exists-p target-path)
-          (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
-            (message "DEBUG: Returning astro path: %s" result)
-            result))))))
+        (when (and target-path (file-exists-p image-path))
+          ;; Create assets directory if it doesn't exist
+          (when assets-folder
+            (make-directory assets-folder t))
+          ;; Copy the file
+          (condition-case err
+              (progn
+                (copy-file image-path target-path t)
+                (message "DEBUG: Successfully copied %s to %s" image-path target-path))
+            (error (message "Failed to copy image %s: %s" image-path err)))
+          
+          ;; Update the buffer if requested and copy was successful
+          (when (and update-buffer (file-exists-p target-path))
+            (message "DEBUG: Attempting buffer update...")
+            (org-astro--update-source-buffer-image-path image-path target-path))
+          
+          ;; Return the alias path for imports
+          (when (file-exists-p target-path)
+            (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
+              (message "DEBUG: Returning astro path: %s" result)
+              result)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TABLE HANDLING
