@@ -27,16 +27,19 @@
         (let* ((source-file (or (plist-get info :input-file)
                                 (and (buffer-file-name) (expand-file-name (buffer-file-name)))
                                 "unknown"))
+               ;; Try to get actual output file from info if available, otherwise estimate
+               (actual-output-file (plist-get info :astro-actual-output-file))
                (posts-folder (or (plist-get info :destination-folder)
                                  (plist-get info :astro-posts-folder)))
-               ;; Determine output file path
-               (output-file (when posts-folder
-                             (let* ((title (org-astro--get-title (plist-get info :parse-tree) info))
-                                   (slug (when title (org-astro--slugify title)))
-                                   (filename (if slug (concat slug ".mdx") "exported-file.mdx"))
-                                   (resolved-folder (cdr (assoc posts-folder org-astro-known-posts-folders))))
-                               (when resolved-folder
-                                 (expand-file-name filename resolved-folder)))))
+               ;; Determine output file path (will be updated later with actual path)
+               (output-file (or actual-output-file
+                                (when posts-folder
+                                  (let* ((title (org-astro--get-title (plist-get info :parse-tree) info))
+                                        (slug (when title (org-astro--slugify title)))
+                                        (filename (if slug (concat slug ".mdx") "exported-file.mdx"))
+                                        (resolved-folder (cdr (assoc posts-folder org-astro-known-posts-folders))))
+                                    (when resolved-folder
+                                      (expand-file-name filename resolved-folder))))))
                (clipboard-text (format "org-mode source file: %s\n\n.mdx output: %s\n\nAnd please go ahead and access and review the debug file:\n%s\n"
                                       source-file
                                       (or output-file "output file path not yet determined")
@@ -44,6 +47,8 @@
                (file-header (format "org-mode source file: %s\n\n.mdx output: %s\n\n"
                                    source-file
                                    (or output-file "output file path not yet determined"))))
+          ;; Store header info for potential updates
+          (plist-put info :astro-debug-header-info (list :source source-file :output output-file :debug debug-file))
           ;; Write header to debug file
           (condition-case _
               (with-temp-buffer
@@ -64,6 +69,39 @@
             (insert line)
             (write-region (point-min) (point-max) debug-file t 'silent))
         (error nil)))))
+
+(defun org-astro--dbg-update-output-file (info actual-output-file)
+  "Update the debug file header with the actual output file path."
+  (when (and (boundp 'org-astro-debug-images) org-astro-debug-images actual-output-file)
+    (let* ((debug-file (expand-file-name "debug.el"))
+           (header-info (plist-get info :astro-debug-header-info)))
+      (when header-info
+        (let* ((source-file (plist-get header-info :source))
+               (clipboard-text (format "org-mode source file: %s\n\n.mdx output: %s\n\nAnd please go ahead and access and review the debug file:\n%s\n"
+                                      source-file actual-output-file debug-file))
+               (file-header (format "org-mode source file: %s\n\n.mdx output: %s\n\n"
+                                   source-file actual-output-file)))
+          ;; Update the debug file header
+          (condition-case _
+              (when (file-exists-p debug-file)
+                (with-temp-file debug-file
+                  (insert-file-contents debug-file)
+                  (goto-char (point-min))
+                  ;; Replace the first few lines (the header) with updated header
+                  (when (re-search-forward "^\\[ox-astro\\]" nil t)
+                    (beginning-of-line)
+                    (delete-region (point-min) (point))
+                    (goto-char (point-min))
+                    (insert file-header))))
+            (error nil))
+          ;; Update clipboard
+          (let ((pbcopy (executable-find "pbcopy")))
+            (when pbcopy
+              (condition-case _
+                  (with-temp-buffer
+                    (insert clipboard-text)
+                    (call-process-region (point-min) (point-max) pbcopy nil nil nil))
+                (error nil))))))))))
 
 (defun org-astro--dbg-mdx-comments (info)
   "Return MDX comments string for any collected debug messages in INFO."

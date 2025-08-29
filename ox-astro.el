@@ -246,6 +246,9 @@ generated and added to the Org source file."
                 ;; First export pass
                 (message "Running first export pass...")
                 (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                ;; Update debug system with actual output file path
+                (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+                  (org-astro--dbg-update-output-file info outfile))
                 ;; Clear import state for second pass
                 (setq org-astro--current-body-images-imports nil)
                 ;; Second export pass to ensure all images appear
