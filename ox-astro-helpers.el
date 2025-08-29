@@ -283,11 +283,17 @@ If the generated name starts with a number, it is prefixed with 'img'."
     (let* ((original-filename (file-name-sans-extension (file-name-nondirectory path)))
            ;; Use the sanitized filename for variable generation
            (clean-filename (org-astro--sanitize-filename original-filename))
-           (parts (split-string clean-filename "[-]"))
-           (var-name (if (null parts)
-                         ""
-                         (concat (car parts)
-                                 (mapconcat #'capitalize (cdr parts) "")))))
+           ;; Remove periods, underscores and other invalid characters for JS variable names
+           (js-safe-filename (replace-regexp-in-string "[^a-zA-Z0-9-]" "" clean-filename))
+           ;; Split on hyphens for camelCase conversion
+           (parts (split-string js-safe-filename "[-]"))
+           ;; Filter out empty parts
+           (non-empty-parts (seq-filter (lambda (s) (> (length s) 0)) parts))
+           (var-name (if (null non-empty-parts)
+                         "image"
+                         (concat (downcase (car non-empty-parts))
+                                 (mapconcat #'capitalize (cdr non-empty-parts) "")))))
+      ;; Ensure it starts with a letter (prefix with 'img' if starts with number)
       (if (and (> (length var-name) 0) (string-match-p "^[0-9]" var-name))
           (concat "img" var-name)
           var-name))))
@@ -1254,16 +1260,26 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
 
   (when (and image-path posts-folder)
     (cond
-     ;; Handle remote URLs
-     ((string-match-p "^https?://" image-path)
-      (let ((downloaded-path (org-astro--download-remote-image image-path posts-folder sub-dir)))
+     ;; Handle remote URLs (both full https:// and protocol-relative //)
+     ((or (string-match-p "^https?://" image-path)
+          (string-match-p "^//[^/]+.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" image-path))
+      (let* ((full-url (if (string-match-p "^//" image-path)
+                           (concat "https:" image-path)
+                           image-path))
+             (downloaded-path (org-astro--download-remote-image full-url posts-folder sub-dir)))
         (when downloaded-path
           (let* ((clean-filename (file-name-nondirectory downloaded-path))
                  (result (concat "~/assets/images/" sub-dir clean-filename)))
             ;; Update the buffer to replace remote URL with local path
+            ;; For protocol-relative URLs, we need to find the original https:// version in the buffer
             (when update-buffer
-              (message "DEBUG: Updating buffer - remote URL %s -> local path %s" image-path downloaded-path)
-              (org-astro--update-source-buffer-image-path image-path downloaded-path))
+              (let ((original-url (if (string-match-p "^//" image-path)
+                                      ;; Try to find the original https:// version in the buffer
+                                      full-url 
+                                      ;; Use the path as-is if it already has protocol
+                                      image-path)))
+                (message "DEBUG: Updating buffer - remote URL %s -> local path %s" original-url downloaded-path)
+                (org-astro--update-source-buffer-image-path original-url downloaded-path)))
             (message "DEBUG: Remote image processed - returning astro path: %s" result)
             result))))
 
