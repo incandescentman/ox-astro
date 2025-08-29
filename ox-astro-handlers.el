@@ -220,13 +220,16 @@ preprocessing has already been completed and we skip the processing."
             (mapcar (lambda (line)
                       ;; Track if we're inside a JSX component
                       (cond
-                       ((string-match-p "<[A-Z][^>]*$" line)  ; Opening JSX tag
+                       ;; Opening JSX component tag (like <ImageGallery)
+                       ((string-match-p "^\\s-*<[A-Z]" line)
                         (setq in-jsx-component t)
                         line)
-                       ((string-match-p "^[^<]*/>$" line)     ; Self-closing JSX tag end
+                       ;; Self-closing tag end (like />)
+                       ((and in-jsx-component (string-match-p "/>\\s-*$" line))
                         (setq in-jsx-component nil)
                         line)
-                       ((string-match-p "^[^<]*>$" line)      ; JSX tag end
+                       ;; JSX component closing tag (like >)
+                       ((and in-jsx-component (string-match-p "^\\s-*>\\s-*$" line))
                         (setq in-jsx-component nil)
                         line)
                        ;; Don't convert indented lines inside JSX components
