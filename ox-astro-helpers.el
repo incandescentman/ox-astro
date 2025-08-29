@@ -73,7 +73,7 @@
 (defun org-astro--dbg-update-output-file (info actual-output-file)
   "Update the debug file header with the actual output file path."
   (when (and (boundp 'org-astro-debug-images) org-astro-debug-images actual-output-file)
-    (let* ((debug-file (expand-file-name "debug.el"))
+    (let* ((debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/debug.el"))
            (header-info (plist-get info :astro-debug-header-info)))
       (when header-info
         (let* ((source-file (plist-get header-info :source))
@@ -84,15 +84,16 @@
           ;; Update the debug file header
           (condition-case _
               (when (file-exists-p debug-file)
-                (with-temp-file debug-file
+                (with-temp-buffer
                   (insert-file-contents debug-file)
                   (goto-char (point-min))
                   ;; Replace the first few lines (the header) with updated header
-                  (when (re-search-forward "^\\[ox-astro\\]" nil t)
+                  (when (re-search-forward "^[[ox-astro]]" nil t)
                     (beginning-of-line)
                     (delete-region (point-min) (point))
                     (goto-char (point-min))
-                    (insert file-header))))
+                    (insert file-header))
+                  (write-region (point-min) (point-max) debug-file nil 'silent)))
             (error nil))
           ;; Update clipboard
           (let ((pbcopy (executable-find "pbcopy")))
