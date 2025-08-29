@@ -35,18 +35,18 @@
                (output-file (or actual-output-file
                                 (when posts-folder
                                   (let* ((title (org-astro--get-title (plist-get info :parse-tree) info))
-                                        (slug (when title (org-astro--slugify title)))
-                                        (filename (if slug (concat slug ".mdx") "exported-file.mdx"))
-                                        (resolved-folder (cdr (assoc posts-folder org-astro-known-posts-folders))))
+                                         (slug (when title (org-astro--slugify title)))
+                                         (filename (if slug (concat slug ".mdx") "exported-file.mdx"))
+                                         (resolved-folder (cdr (assoc posts-folder org-astro-known-posts-folders))))
                                     (when resolved-folder
                                       (expand-file-name filename resolved-folder))))))
                (clipboard-text (format "org-mode source file: %s\n\n.mdx output: %s\n\nAnd please go ahead and access and review the debug file:\n%s\n"
-                                      source-file
-                                      (or output-file "output file path not yet determined")
-                                      debug-file))
+                                       source-file
+                                       (or output-file "output file path not yet determined")
+                                       debug-file))
                (file-header (format "org-mode source file: %s\n\n.mdx output: %s\n\n"
-                                   source-file
-                                   (or output-file "output file path not yet determined"))))
+                                    source-file
+                                    (or output-file "output file path not yet determined"))))
           ;; Store header info for potential updates
           (plist-put info :astro-debug-header-info (list :source source-file :output output-file :debug debug-file))
           ;; Write header to debug file
@@ -78,9 +78,9 @@
       (when header-info
         (let* ((source-file (plist-get header-info :source))
                (clipboard-text (format "org-mode source file: %s\n\n.mdx output: %s\n\nAnd please go ahead and access and review the debug file:\n%s\n"
-                                      source-file actual-output-file debug-file))
+                                       source-file actual-output-file debug-file))
                (file-header (format "org-mode source file: %s\n\n.mdx output: %s\n\n"
-                                   source-file actual-output-file)))
+                                    source-file actual-output-file)))
           ;; Update the debug file header
           (condition-case _
               (when (file-exists-p debug-file)
@@ -101,7 +101,7 @@
                   (with-temp-buffer
                     (insert clipboard-text)
                     (call-process-region (point-min) (point-max) pbcopy nil nil nil))
-                (error nil))))))))))
+                (error nil)))))))))
 
 (defun org-astro--dbg-mdx-comments (info)
   "Return MDX comments string for any collected debug messages in INFO."
@@ -871,13 +871,13 @@ This updates:
   (message "DEBUG: Starting buffer update - old: %s -> new: %s" old-path new-path)
   (message "DEBUG: Current buffer: %s (file: %s)" (buffer-name) (buffer-file-name))
   (message "DEBUG: Buffer modified: %s, read-only: %s" (buffer-modified-p) buffer-read-only)
-  
+
   (save-excursion
     (goto-char (point-min))
     (let ((changes-made nil)
           (buffer-content-preview (buffer-substring (point-min) (min (+ (point-min) 200) (point-max)))))
       (message "DEBUG: Buffer preview: %s..." buffer-content-preview)
-      
+
       ;; 1) Update [[file:OLD]] and [[file:OLD][DESC]]
       (goto-char (point-min))
       (while (re-search-forward "\\[\\[file:\\([^]]+\\)\\]\\(\\[[^]]*\\]\\)?\\]" nil t)
@@ -932,7 +932,7 @@ Returns non-nil if any changes were made."
   "Update image path in the original source buffer, not the export copy.
 This function finds the source buffer and modifies it directly."
   (message "DEBUG: Looking for source buffer to update path %s -> %s" old-path new-path)
-  
+
   ;; Strategy 1: Check if current buffer has a file name and is writable
   (let ((source-buffer nil))
     (cond
@@ -940,7 +940,7 @@ This function finds the source buffer and modifies it directly."
      ((and (buffer-file-name) (not buffer-read-only))
       (message "DEBUG: Using current buffer as source: %s" (buffer-name))
       (setq source-buffer (current-buffer)))
-     
+
      ;; Try to find source buffer by examining all buffers
      (t
       (message "DEBUG: Current buffer (%s) is not suitable, searching for source buffer..." (buffer-name))
@@ -961,7 +961,7 @@ This function finds the source buffer and modifies it directly."
               (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file)
               (setq source-buffer buf)
               (return)))))))
-    
+
     ;; Now use the source-buffer within the same let binding
     (if source-buffer
         (progn
@@ -1085,10 +1085,10 @@ ITEMS is a list of plists containing :path (old), :target-path (abs new), :astro
                                        (point))))))
                 (if roam-anchor
                     (goto-char roam-anchor)
-                  ;; Else skip existing keywords/comments/blank
-                  (while (and (< (point) limit)
-                              (or (looking-at-p "^#\\+") (looking-at-p "^#\\s-") (looking-at-p "^\\s-*$")))
-                    (forward-line 1))))
+                    ;; Else skip existing keywords/comments/blank
+                    (while (and (< (point) limit)
+                                (or (looking-at-p "^#\\+") (looking-at-p "^#\\s-") (looking-at-p "^\\s-*$")))
+                      (forward-line 1))))
               (point))))
       (if begin-marker
           (progn
@@ -1101,10 +1101,10 @@ ITEMS is a list of plists containing :path (old), :target-path (abs new), :astro
                 (forward-char 1))
               (delete-region start (point)))
             (insert block-text "\n"))
-        ;; Insert new block
-        (goto-char insert-point)
-        (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
-        (insert block-text "\n")))))
+          ;; Insert new block
+          (goto-char insert-point)
+          (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
+          (insert block-text "\n")))))
 
 (defun org-astro--upsert-image-paths-comment-in-current-buffer (items)
   "Create or update the suggestions comment block in the current buffer."
@@ -1175,18 +1175,18 @@ When USE-ALIAS is non-nil (interactive prefix), use :alias paths; otherwise use 
          (mode (if use-alias :alias :new)))
     (if (not items)
         (message "No image suggestions block found.")
-      (save-excursion
-        (save-restriction
-          (widen)
-          (dolist (it items)
-            (let* ((old (plist-get it :old))
-                   (rep (plist-get it mode)))
-              (when (and old rep (not (string-empty-p rep)))
-                (setq count (+ count (if (org-astro--update-image-path-in-buffer old rep) 1 0))))))
-          (when (> count 0)
-            (save-buffer)))
-      (message "Applied replacements for %d image(s) using %s paths." count (if use-alias "alias" "absolute")))))
-)
+        (save-excursion
+          (save-restriction
+            (widen)
+            (dolist (it items)
+              (let* ((old (plist-get it :old))
+                     (rep (plist-get it mode)))
+                (when (and old rep (not (string-empty-p rep)))
+                  (setq count (+ count (if (org-astro--update-image-path-in-buffer old rep) 1 0))))))
+            (when (> count 0)
+              (save-buffer)))
+          (message "Applied replacements for %d image(s) using %s paths." count (if use-alias "alias" "absolute")))))
+  )
 
 (defun org-astro-apply-image-path-replacements-in-file (file &optional use-alias)
   "Open FILE, apply replacements from its suggestions block, and save.
@@ -1216,20 +1216,20 @@ Returns the local file path if successful, nil otherwise."
            ;; Extract filename from URL path, handling query parameters
            (raw-filename (if (string-match "\\([^/?]+\\)\\(\\?.*\\)?$" path)
                              (match-string 1 path)
-                           "downloaded-image"))
+                             "downloaded-image"))
            ;; Ensure we have an image extension
            (filename (if (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)$" raw-filename)
                          raw-filename
-                       (concat raw-filename ".jpg")))
+                         (concat raw-filename ".jpg")))
            (clean-filename (org-astro--sanitize-filename filename))
            (assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-           (target-path (when assets-folder 
+           (target-path (when assets-folder
                           (expand-file-name clean-filename assets-folder))))
-      
+
       (when (and target-path assets-folder)
         ;; Create assets directory if it doesn't exist
         (make-directory assets-folder t)
-        
+
         ;; Download the image
         (condition-case err
             (progn
@@ -1240,7 +1240,7 @@ Returns the local file path if successful, nil otherwise."
                 (message "Successfully downloaded: %s -> %s" url target-path)
                 (org-astro--dbg-log nil "REMOTE downloaded: %s -> %s" url clean-filename)
                 target-path))
-          (error 
+          (error
            (message "Failed to download image %s: %s" url err)
            (org-astro--dbg-log nil "REMOTE failed: %s - %s" url err)
            nil))))))
@@ -1251,7 +1251,7 @@ Returns the processed path suitable for Astro imports.
 If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path."
   (message "DEBUG: Processing image - path: %s, posts-folder: %s, sub-dir: %s, update-buffer: %s"
            image-path posts-folder sub-dir update-buffer)
-  
+
   (when (and image-path posts-folder)
     (cond
      ;; Handle remote URLs
@@ -1266,17 +1266,17 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
               (org-astro--update-source-buffer-image-path image-path downloaded-path))
             (message "DEBUG: Remote image processed - returning astro path: %s" result)
             result))))
-     
+
      ;; Handle local files
      (t
       (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
              (original-filename (file-name-nondirectory image-path))
              (clean-filename (org-astro--sanitize-filename original-filename))
              (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
-        
+
         (message "DEBUG: Assets folder: %s, target path: %s" assets-folder target-path)
         (message "DEBUG: Image exists: %s" (and image-path (file-exists-p image-path)))
-        
+
         (when (and target-path (file-exists-p image-path))
           ;; Create assets directory if it doesn't exist
           (when assets-folder
@@ -1287,17 +1287,17 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
                 (copy-file image-path target-path t)
                 (message "DEBUG: Successfully copied %s to %s" image-path target-path))
             (error (message "Failed to copy image %s: %s" image-path err)))
-          
+
           ;; Update the buffer if requested and copy was successful
           (when (and update-buffer (file-exists-p target-path))
             (message "DEBUG: Attempting buffer update...")
             (org-astro--update-source-buffer-image-path image-path target-path))
-          
+
           ;; Return the alias path for imports
           (when (file-exists-p target-path)
             (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
               (message "DEBUG: Returning astro path: %s" result)
-              result)))))))
+              result))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TABLE HANDLING
@@ -1368,7 +1368,7 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
                        (let ((path (org-element-property :path link)))
                          (and path (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path))))
               (let* ((path (org-element-property :path link))
-                     (import-data (cl-find path image-imports 
+                     (import-data (cl-find path image-imports
                                            :key (lambda (item) (plist-get item :path))
                                            :test #'string-equal))
                      (var-name (when import-data (plist-get import-data :var-name)))
@@ -1385,8 +1385,8 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
                     "\n  ]}\n"
                     "  galleryId=\"" gallery-id "\"\n"
                     "/>")
-          ;; Fallback if no images found
-          contents)))
+            ;; Fallback if no images found
+            contents)))
      ;; Default: use standard markdown export
      (t (org-md-special-block special-block contents info)))))
 
