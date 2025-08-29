@@ -1283,8 +1283,10 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
         result))
      
      ;; Handle remote URLs (both full https:// and protocol-relative //)
-     ((or (string-match-p "^https?://" image-path)
-          (string-match-p "^//[^/]+.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" image-path))
+     ((progn
+        (message "DEBUG: Checking remote URL patterns for: %s" image-path)
+        (or (string-match-p "^https?://" image-path)
+            (string-match-p "^//[^/]+.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" image-path)))
       (let* ((full-url (if (string-match-p "^//" image-path)
                            (concat "https:" image-path)
                            image-path))
@@ -1308,13 +1310,16 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
      ;; Handle local files
      (t
       (message "DEBUG: Handling local file: %s" image-path)
+      (message "DEBUG: File exists check: %s" (file-exists-p image-path))
       (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
              (original-filename (file-name-nondirectory image-path))
              (clean-filename (org-astro--sanitize-filename original-filename))
              (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
 
-        (message "DEBUG: Assets folder: %s, target path: %s" assets-folder target-path)
-        (message "DEBUG: Image exists: %s" (and image-path (file-exists-p image-path)))
+        (message "DEBUG: Assets folder: %s" assets-folder)
+        (message "DEBUG: Target path: %s" target-path)
+        (message "DEBUG: About to check conditions - target-path: %s, file-exists: %s" 
+                 (and target-path t) (file-exists-p image-path))
 
         (when (and target-path (file-exists-p image-path))
           ;; Create assets directory if it doesn't exist
