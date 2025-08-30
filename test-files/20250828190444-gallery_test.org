@@ -1,0 +1,30 @@
+:PROPERTIES:
+:ID:       20250828T190440.227033
+:END:
+#+TITLE: Gallery test 
+#+FILETAGS: :document:
+- Links ::
+- Source ::
+
+#+SLUG: gallery-test
+#+DESTINATION_FOLDER: jaydocs
+
+#+PUBLISH_DATE: [2025-08-28 Thu 19:05]
+#+EXCERPT: a test of putting images in a folder!
+
+* Gallery test 
+[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/gallery-test/hero-image.webp]]
+
+Above is the hero image. It should not appear in the gallery since it is not part of a two-or-more sequence of images with no text in between.
+
+Below is another image. It should not appear in a gallery, since it is by itself:
+
+[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/gallery-test/solo-by-itself.jpg]]
+
+Here are three images in a row with no text in between. Since they are 2 or more images in a row, they should create a gallery, and should not appear as Image src tags below. If there are any Image src tags below this line, that is an error of the exporter:
+
+[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/gallery-test/gallery-1.jpg]]
+
+[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/gallery-test/gallery-2.jpg]]
+
+[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/gallery-test/gallery-3.webp]]
