@@ -1409,6 +1409,9 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
       (let* ((image-imports (plist-get info :astro-body-images-imports))
              (gallery-id (concat "gallery-" (number-to-string (random 10000))))
              (gallery-items nil))
+        ;; Debug: log what's in image-imports
+        (org-astro--dbg-log info "GALLERY image-imports: %s" 
+                            (mapcar (lambda (item) (plist-get item :path)) image-imports))
         ;; First, extract image links from the block contents
         (org-element-map special-block 'link
           (lambda (link)
@@ -1416,11 +1419,18 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
                        (let ((path (org-element-property :path link)))
                          (and path (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path))))
               (let* ((path (org-element-property :path link))
-                     (import-data (cl-find path image-imports
-                                           :key (lambda (item) (plist-get item :path))
-                                           :test #'string-equal))
+                     ;; Try to find the import data by matching the sanitized filename
+                     (filename (file-name-nondirectory path))
+                     (sanitized-filename (org-astro--sanitize-filename filename))
+                     (import-data (cl-find-if 
+                                   (lambda (item) 
+                                     (string-equal sanitized-filename 
+                                                   (file-name-nondirectory (plist-get item :path))))
+                                   image-imports))
                      (var-name (when import-data (plist-get import-data :var-name)))
                      (alt-text (org-astro--filename-to-alt-text path)))
+                (org-astro--dbg-log info "GALLERY checking link path: %s (sanitized: %s), found in imports: %s" 
+                                    path sanitized-filename (if import-data "YES" "NO"))
                 (when var-name
                   (org-astro--dbg-log info "GALLERY found image: %s -> %s" path var-name)
                   (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))
@@ -1436,11 +1446,18 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
                 ;; Look for raw image paths (absolute paths ending in image extensions)
                 (while (re-search-forward "^\\s-*/[^[:space:]]+\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
                   (let* ((raw-path (string-trim (match-string 0)))
-                         (import-data (cl-find raw-path image-imports
-                                               :key (lambda (item) (plist-get item :path))
-                                               :test #'string-equal))
+                         ;; Try to find the import data by matching the sanitized filename
+                         (filename (file-name-nondirectory raw-path))
+                         (sanitized-filename (org-astro--sanitize-filename filename))
+                         (import-data (cl-find-if 
+                                       (lambda (item) 
+                                         (string-equal sanitized-filename 
+                                                       (file-name-nondirectory (plist-get item :path))))
+                                       image-imports))
                          (var-name (when import-data (plist-get import-data :var-name)))
                          (alt-text (org-astro--filename-to-alt-text raw-path)))
+                    (org-astro--dbg-log info "GALLERY checking raw path: %s (sanitized: %s), found in imports: %s" 
+                                        raw-path sanitized-filename (if import-data "YES" "NO"))
                     (when var-name
                       (org-astro--dbg-log info "GALLERY found image: %s -> %s" raw-path var-name)
                       (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))))

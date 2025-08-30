@@ -19,15 +19,15 @@ Above is the hero image. It should not appear in the gallery since it is not par
 
 Here is another image. It should not appear in a gallery, since it is by itself:
 
-/Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg 
+[[/Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg]]
 
 Here are three more images:
 
 
 #+BEGIN_GALLERY 
-/Users/jay/Downloads/imag50296363324533456719590617_6999624331092055355n.jpg 
+[[/Users/jay/Downloads/imag50296363324533456719590617_6999624331092055355n.jpg]]
 
-/Users/jay/Downloads/Rachide-News-01(1).jpg 
+[[/Users/jay/Downloads/Rachide-News-01(1).jpg]]
 
-/Users/jay/Downloads/2017021468194489.webp 
+[[/Users/jay/Downloads/2017021468194489.webp]]
 #+END_GALLERY 
