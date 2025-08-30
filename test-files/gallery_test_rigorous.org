@@ -61,6 +61,8 @@ This section tests mixing galleries with individual images:
 
 [[/Users/jay/Downloads/jay-headshots-2-scaled.jpg]]
 
+/Users/jay/Library/CloudStorage/Dropbox/Downloads/Screenshots/SCR-20250829-jkff.png
+ 
 **Second Gallery** (3-image carousel with autoplay):
 - **EXPECTED**: Carousel/slider showing one image at a time
 - **INTERACTION**: Should auto-advance between 3 images

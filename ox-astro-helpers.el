@@ -1409,7 +1409,7 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
       (let* ((image-imports (plist-get info :astro-body-images-imports))
              (gallery-id (concat "gallery-" (number-to-string (random 10000))))
              (gallery-items nil))
-        ;; Extract image links from the block contents
+        ;; First, extract image links from the block contents
         (org-element-map special-block 'link
           (lambda (link)
             (when (and (string-equal (org-element-property :type link) "file")
@@ -1424,6 +1424,27 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
                 (when var-name
                   (org-astro--dbg-log info "GALLERY found image: %s -> %s" path var-name)
                   (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))
+        
+        ;; Also extract raw image paths from the block region
+        (let ((beg (org-element-property :begin special-block))
+              (end (org-element-property :end special-block)))
+          (when (and beg end)
+            (save-excursion
+              (save-restriction
+                (narrow-to-region beg end)
+                (goto-char (point-min))
+                ;; Look for raw image paths (absolute paths ending in image extensions)
+                (while (re-search-forward "^\\s-*/[^[:space:]]+\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+                  (let* ((raw-path (string-trim (match-string 0)))
+                         (import-data (cl-find raw-path image-imports
+                                               :key (lambda (item) (plist-get item :path))
+                                               :test #'string-equal))
+                         (var-name (when import-data (plist-get import-data :var-name)))
+                         (alt-text (org-astro--filename-to-alt-text raw-path)))
+                    (when var-name
+                      (org-astro--dbg-log info "GALLERY found image: %s -> %s" raw-path var-name)
+                      (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))))
+        
         ;; Generate ImageGallery component
         (org-astro--dbg-log info "GALLERY generating component with %d images" (length gallery-items))
         (if gallery-items
