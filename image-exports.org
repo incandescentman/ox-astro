@@ -1,0 +1,71 @@
+#+TITLE: Image Export Analysis - Current State
+#+AUTHOR: Jay Dixit & Claude
+#+DATE: 2025-08-28
+
+* Current State Analysis (Latest: 2025-08-28 17:11)
+
+** What is Working ✅
+
+1. **Automatic Bracket Wrapping**: Raw image paths are automatically wrapped in `[[...]]` brackets
+   - Raw paths like `/Users/jay/Downloads/masimo-dutti.webp` become `[[/Users/jay/Downloads/masimo-dutti.webp]]`
+   - This happens reliably in the export pipeline
+
+2. **MDX Export**: The generated MDX file works perfectly with all images
+   - All 6 images appear correctly as `<Image>` components
+   - All import statements are generated correctly
+   - Images are properly copied to assets folder
+   - Single export pass now works (no longer requires two exports)
+
+** What is Still Broken ❌
+
+**SOURCE FILE PATH UPDATING**: The org-mode source file paths are NOT getting updated from Downloads paths to astro paths.
+
+***Current State:*** Paths remain as `[[/Users/jay/Downloads/masimo-dutti.webp]]`
+***Expected State:*** Should be updated to `[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/masimo-dutti.webp]]`
+
+** Historical Context: What Was Working in Commit 558c0fc
+
+In commit 558c0fc ("almost there"), the source file path updating was working correctly!! (Although the mdx export wasn't working on the first pass (missing images in output), it required me to export a second time and then it worked.)
+- Raw paths would get bracketed: `/Users/jay/Downloads/image.jpg` → `[[/Users/jay/Downloads/image.jpg]]`
+- **AND** paths would get updated: `[[/Users/jay/Downloads/image.jpg]]` → `[[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/massimo-dutti/image.jpg]]` 
+
+** The Current Tradeoff
+
+***Then (558c0fc):***
+- ✅ Source file path updating worked
+- ❌ MDX export was broken (missing images)
+
+***Now (current):***
+- ✅ Source file path updating now works (org source shows asset paths)
+- ❌ MDX export still missing some images on first export
+- ✅ Re-running export immediately a second time makes missing images appear
+
+** Current Reality (2025-08-28, after latest fixes)
+
+1. Org-mode source buffer updating image paths now works (paths rewritten to assets)
+2. Images are still missing from MDX export after a single export run
+3. Missing images do appear in MDX if the export is run a second time (sequencing issue)
+
+** Root Cause Analysis (might be wrong)
+
+The path updating logic is in `org-astro--update-source-buffer-image-path`, called from `org-astro--process-image-path` with `update-buffer: t`. The function should:
+
+1. Find the source buffer containing the image paths
+2. Replace `[[old-path]]` with `[[new-path]]` in the source file
+3. Save the updated source file
+
+This worked in 558c0fc but is failing now, likely due to:
+- Buffer context changes from our recent fixes
+- Timing issues in the export pipeline
+- Search logic not finding the correct patterns in the source buffer 
+
+
+* Test Commands
+
+```bash
+# Test automatic bracket wrapping + export
+emacs --batch --eval "(progn (add-to-list 'load-path \".\") (require 'ox-astro) (find-file \"/Users/jay/Library/CloudStorage/Dropbox/roam/consumerist/20250827235900-massimo_dutti.org\") (org-astro-export-to-mdx))"
+
+# Expected output: "Auto-wrapped 6 raw image paths in source file"
+# Expected result: All 6 images should appear as <Image> components in MDX output
+```
