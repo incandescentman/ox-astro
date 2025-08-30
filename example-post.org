@@ -1,7 +1,7 @@
 #+TITLE: Example Blog Post with All Features
 #+AUTHOR: Jay Dixit  
 #+PUBLISH_DATE: [2025-01-26 Sun 16:00]
-#+EXCERPT: This is a comprehensive example showing all ox-astro features including images, links, formatting, and visibility options.
+#+EXCERPT: This is a comprehensive example showing all ox-astro features including images, galleries, remote downloads, links, formatting, and visibility options.
 #+TAGS: example, tutorial, markdown, astro
 #+CATEGORIES: tutorials, documentation
 #+COVER_IMAGE: ~/assets/images/posts/example-cover.jpg
@@ -47,16 +47,66 @@ The cover image is specified in the header with:
 #+COVER_IMAGE_ALT: A beautiful example cover image
 #+end_example
 
-** Inline Images
+The cover image automatically appears in the front matter and is imported as =hero=. It will NOT be duplicated in the body content.
+
+** Local Images
 You can add images in several ways:
 
 *** Using Org Links
 [[file:~/Pictures/diagram.png]]
+[[file:/Users/jay/Downloads/screenshot.jpg]]
 
 *** Using Raw Paths (automatically detected)
 /Users/jay/Pictures/screenshot.png
 
-Both methods will be converted to Astro Image components with proper imports.
+/Users/jay/Downloads/photo.jpg
+
+*** Features
+- Images are automatically copied from anywhere on your filesystem to =src/assets/images/posts/{slug}/=
+- Filenames are sanitized (underscores → hyphens, special chars removed)
+- Source org file is updated with new asset paths
+- Imports are generated with camelCase variable names
+
+** Remote Images
+Remote images are automatically downloaded and processed:
+
+*** Direct Image URLs
+https://example.com/beautiful-image.jpg
+
+https://cdn.example.com/photo.png
+
+*** Protocol-relative URLs (converted to https://)
+//cdn.example.com/image.jpg
+
+*** Features
+- Remote images are downloaded to your assets folder
+- Source file is updated to replace URLs with local paths
+- Works with query parameters: =https://example.com/image.jpg?w=800&h=600=
+- Handles complex URLs from services like Substack
+
+** Image Galleries
+Create beautiful image galleries using the GALLERY block:
+
+*** Basic Gallery
+#+BEGIN_GALLERY
+[[file:image1.jpg]]
+[[file:image2.jpg]]
+[[file:image3.jpg]]
+#+END_GALLERY
+
+*** Gallery with Attributes
+#+BEGIN_GALLERY :columns 4 :captions true
+[[file:photo1.jpg]]
+[[file:photo2.jpg]]
+[[file:photo3.jpg]]
+[[file:photo4.jpg]]
+#+END_GALLERY
+
+*** Features
+- Groups multiple images into an =<ImageGallery>= component
+- All images are automatically imported
+- Images in galleries are not duplicated as individual images
+- Supports various attributes passed to the component
 
 * Link Examples
 
@@ -66,41 +116,95 @@ Both methods will be converted to Astro Image components with proper imports.
 ** Raw URLs (converted to LinkPeek components)
 https://github.com/withastro/astro
 
+Note: Only non-image URLs are converted to LinkPeek. Image URLs are processed as images.
+
 ** Existing Markdown Links (preserved as-is)  
 [Google Search](https://google.com) - This markdown syntax is preserved.
 
 * Formatting Examples
 
-** TODO Items
+** TODO Items (converted to task lists)
 *** TODO Write more examples
 *** DONE Set up the repository
 *** TODO Review the documentation
 
-** Tables
-| Feature | Status | Notes                         |
-|---------+--------+-------------------------------|
-| Images  | ✓     | Full support with auto-import |
-| Links   | ✓     | Multiple formats supported    |
-| Tables  | ✓     | Clean markdown output         |
+These TODO items become interactive GitHub-style task lists:
+- [ ] Write more examples
+- [x] Set up the repository
+- [ ] Review the documentation
+
+** Tables (Markdown format)
+| Feature        | Status | Notes                            |
+|----------------+--------+----------------------------------|
+| Local Images   | ✓      | Auto-copy to assets              |
+| Remote Images  | ✓      | Auto-download                    |
+| Galleries      | ✓      | Manual markup with attributes    |
+| Links          | ✓      | Multiple formats supported       |
+| Tables         | ✓      | Clean markdown output            |
+| Debug System   | ✓      | Detailed logging                 |
+| Clipboard      | ✓      | Front matter auto-copied         |
 
 ** Code Blocks
 #+begin_src javascript
 import { Image } from 'astro:assets';
+import { ImageGallery } from '~/components/ImageGallery';
 import cover from '~/assets/images/posts/example-cover.jpg';
+import photo1 from '~/assets/images/posts/example-blog-post-features/photo1.jpg';
 
 export default function BlogPost() {
-  return <Image src={cover} alt="Example" />;
+  return (
+    <>
+      <Image src={cover} alt="Example" />
+      <ImageGallery images={[
+        {src: photo1, alt: "Photo 1"}
+      ]} />
+    </>
+  );
 }
+#+end_src
+
+** Special Code Block Types
+*** User/Prompt/Quote blocks (preserved with special formatting)
+#+begin_src user
+What features does ox-astro support?
+#+end_src
+
+#+begin_src prompt
+Explain the image processing pipeline.
+#+end_src
+
+#+begin_src quote
+"The best way to predict the future is to invent it." - Alan Kay
 #+end_src
 
 ** Quotes and Examples
 #+begin_quote
 This is a blockquote that will be converted to markdown format.
+It supports multiple lines and formatting.
 #+end_quote
 
 #+begin_example
 This is an example block that preserves formatting.
+   It maintains indentation
+   And literal text display.
 #+end_example
+
+* Destination Folder Options
+
+** Using Known Folder Nicknames
+#+begin_example
+#+DESTINATION_FOLDER: jaydocs
+#+DESTINATION_FOLDER: socratic
+#+DESTINATION_FOLDER: actions
+#+end_example
+
+** Using Absolute Paths
+#+begin_example
+#+DESTINATION_FOLDER: /Users/jay/projects/my-blog/src/content/posts
+#+end_example
+
+** Interactive Selection
+If no =DESTINATION_FOLDER= is specified or the value is invalid, the exporter will prompt you to select from configured folders.
 
 * Front Matter Generated
 
@@ -127,17 +231,36 @@ categories:
 ---
 #+end_src
 
+* Debug System
+
+Enable debugging to troubleshoot image processing:
+
+#+begin_src elisp
+(setq org-astro-debug-images t)
+#+end_src
+
+When enabled:
+- Debug output written to =~/Library/CloudStorage/Dropbox/github/ox-astro/debug.el=
+- Source and output paths copied to clipboard
+- Detailed logging of:
+  - Image collection from all sources
+  - Path processing and copying
+  - Import generation
+  - Gallery processing
+
 * Subtree Export Example
 
-This section demonstrates how subtrees can be exported as individual posts.
-
-#+TITLE: Subtree Blog Post
+** Subtree Blog Post
+:PROPERTIES:
+:EXPORT_TITLE: Subtree Blog Post
+:EXPORT_FILE_NAME: subtree-example
+:END:
 #+SLUG: subtree-example  
 #+EXCERPT: This subtree can be exported as its own blog post
 #+TAGS: subtree, example
 #+PUBLISH_DATE: [2025-01-26 Sun 16:30]
 
-When you narrow to this subtree and export, it will create a separate ~subtree-example.mdx~ file with its own front matter derived from these keywords.
+When you narrow to this subtree (=C-x n s=) and export, it will create a separate =subtree-example.mdx= file with its own front matter derived from these keywords.
 
 The subtree export is perfect for org-roam workflows where you have multiple blog posts as subtrees in a single file.
 
@@ -148,15 +271,48 @@ The subtree export is perfect for org-roam workflows where you have multiple blo
 - Missing excerpts are created from the first paragraph  
 - Missing dates use the current timestamp
 - Missing slugs are generated from titles
+- Missing cover images use the first image found
+
+** Source File Updates
+After processing:
+- Local image paths updated to asset folder locations
+- Remote image URLs replaced with downloaded local paths
+- Buffer automatically saved with updates
+- Original Downloads folder images can be safely deleted
 
 ** org-roam Integration
-The exporter respects org-roam file structure and places generated keywords after any existing org-roam metadata blocks.
+The exporter respects org-roam file structure:
+- Places generated keywords after =:PROPERTIES:= blocks
+- Handles narrowed buffers correctly
+- Supports subtree-specific metadata
+
+** Two-Pass Processing
+1. Initial pass: Process and copy/download images
+2. Re-collection: Find all updated paths
+3. Final export: Generate complete MDX with all imports
 
 ** Mixed Content Support  
 You can mix and match:
 - Org syntax with markdown syntax
-- Different image reference styles
+- Different image reference styles (links, raw paths, URLs)
 - Various link formats
 - Standard and custom components
+- Local and remote images in the same post
 
 This flexibility makes it easy to migrate existing content or work with mixed markdown/org workflows.
+
+* Complete Example Workflow
+
+1. Write your post in org-mode with images from anywhere
+2. Add gallery blocks for grouped images
+3. Include remote images by URL - they'll be downloaded
+4. Run =M-x org-astro-export-to-mdx=
+5. Select destination folder (or use =#+DESTINATION_FOLDER=)
+6. Export completes with:
+   - All images copied/downloaded to assets
+   - Source file updated with new paths
+   - MDX generated with proper imports
+   - Front matter copied to clipboard
+   - Debug log available if enabled
+
+The result is a production-ready MDX file with optimized image handling!

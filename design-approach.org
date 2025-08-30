@@ -54,6 +54,9 @@ Image paths are collected from the Org buffer in a pre-processing step (=org-ast
 -  *Org Links*: Standard =[[file:/path/to/image.png]]= links are parsed.
 -  *Raw Text Paths*: Absolute paths like =/Users/jay/Downloads/image.png= appearing on their own line are detected.
 -  *Fragmented Paths*: Paths broken by Org's subscript parser (e.g., containing underscores) are reconstructed and detected.
+-  *Remote URLs*: Image URLs (=https://example.com/image.jpg=) are automatically downloaded.
+-  *Protocol-relative URLs*: URLs starting with =//= are converted to =https://= and downloaded.
+-  *Asset Folder Images*: Images already in the assets folder are recognized and imported without re-copying.
 
 *** 2. Asset Folder Resolution
 The destination for copied images is determined dynamically with post-specific organization.
@@ -86,22 +89,41 @@ The destination for copied images is determined dynamically with post-specific o
 -  **Problem**: Image data collected in the initial filter phase was being lost before the final transcoding phase.
 -  **Solution**: A dual-storage pattern is used. A global variable (=org-astro--current-body-images-imports=) acts as a reliable fallback if the image data is purged from the exporter's internal =info= plist between phases. This is critical for the feature's stability.
 
-*** 7. Source File Cleanup
-After successfully copying images, the original org file is automatically updated to prevent Downloads folder accumulation:
--  **Path Replacement**: Raw image paths and org links are updated to point to the copied files' absolute paths
+*** 7. Source File Updates
+After successfully processing images, the original org file is automatically updated:
+-  **Path Replacement**: Raw image paths and org links are updated to point to the copied files' absolute paths in the assets folder
+-  **Remote URL Replacement**: Downloaded remote images have their URLs replaced with local asset paths
 -  **Auto-save**: The buffer is automatically saved after updates
 -  **Scope**: Updates paths that were present during the export process
+-  **Two-pass System**: Initial processing + re-collection ensures all updated paths are properly imported
 
-*** 8. Final MDX Output
+*** 8. Gallery Support
+Manual gallery blocks can be created using =#+BEGIN_GALLERY= blocks:
+-  **Multiple Images**: Groups multiple images into an =<ImageGallery>= component
+-  **Automatic Import**: All gallery images are automatically imported
+-  **Attributes**: Supports attributes like =columns=, =captions=, etc.
+-  **Link Suppression**: Images within galleries are not duplicated as individual images
+
+*** 9. Hero Image Handling
+-  **Cover Image**: The first image or =#+COVER_IMAGE= becomes the hero image
+-  **Deduplication**: Hero images are automatically excluded from body content to prevent duplication
+-  **Front Matter**: Hero image appears in MDX front matter with proper import
+
+*** 10. Final MDX Output
 The collected data is used to assemble the final MDX output:
 1.  **Import Injection**: The generated import statement is added at the top of the file.
     #+BEGIN_SRC mdx
     import { Image } from 'astro:assets';
+    import { ImageGallery } from '~/components/ImageGallery';  // if galleries used
     import img2025Image from '~/assets/images/posts/my-awesome-post/2025-image.png';
     #+END_SRC
 2.  **Component Transformation**: The original raw image path in the document body is replaced with an Astro =<Image>= component.
     #+BEGIN_SRC mdx
     <Image src={img2025Image} alt="2025 image" />
+    #+END_SRC
+3.  **Gallery Components**: Gallery blocks become:
+    #+BEGIN_SRC mdx
+    <ImageGallery images={[{src: img1, alt: "..."}, {src: img2, alt: "..."}]} columns={3} />
     #+END_SRC
 
 * Key Design Decisions
@@ -156,6 +178,21 @@ Tables are transcoded to Markdown syntax (instead of the default HTML) for bette
 *Problem*: Subtree exports (especially when triggered from a narrowed buffer) produced filenames derived from the parent file (e.g., date-based) rather than the subtree's slug.
 *Approach*: Detect an actively narrowed buffer via =buffer-narrowed-p= and treat it equivalently to an explicit subtree export. When exporting, search for ~#+SLUG:~ in the narrowed region first; if not found, fall back to a full-buffer search.
 *Result*: Subtree/narrowed exports now reliably produce ~slug.mdx~ using the subtree's own ~#+SLUG~. If missing, the preflight step derives ~#+TITLE~ from the subtree heading and inserts a slugified ~#+SLUG~ within the subtree before export.
+
+** Decision 11: Debug System
+*Problem*: Complex image processing pipeline needed visibility for troubleshooting.
+*Implementation*: 
+- Debug file written to =~/Library/CloudStorage/Dropbox/github/ox-astro/debug.el=
+- Source and output file paths automatically copied to clipboard via =pbcopy=
+- Detailed logging of image collection, processing, and import generation
+- Activated via =org-astro-debug-images= variable
+
+** Decision 12: Clipboard Integration
+*Rationale*: Improve workflow by automatically copying useful information.
+*Implementation*:
+- Front matter automatically copied to clipboard during export
+- Debug information formatted for easy sharing
+- Uses =pbcopy= when available on macOS
 
 * References
 
