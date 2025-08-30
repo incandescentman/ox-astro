@@ -100,7 +100,9 @@ preprocessing has already been completed and we skip the processing."
               (message "[ox-astro][img] import-entry: %s" it))))
         (let ((src (or (plist-get info :input-file)
                        (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
-)))
+          ;; Store the source file path in info for buffer updates
+          (when src
+            (plist-put info :astro-source-file src)))))
     ;; Store the collected data in the info plist for other functions to use.
     (when image-imports-data
       (let ((final-data (nreverse image-imports-data)))

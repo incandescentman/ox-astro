@@ -8,20 +8,36 @@
 (defvar org-astro--current-body-images-imports nil
   "Global storage for body image imports to persist across export phases.")
 
+;; Simple debug logging function that writes directly to file
+(defun org-astro--debug-log-direct (fmt &rest args)
+  "Write debug message directly to log file when debugging is enabled."
+  (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+    (let* ((msg (apply #'format fmt args))
+           (timestamp (format-time-string "%H:%M:%S"))
+           (line (format "[%s] %s\n" timestamp msg))
+           (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log")))
+      (condition-case _
+          (with-temp-buffer
+            (insert line)
+            (write-region (point-min) (point-max) debug-file t 'silent))
+        (error nil))
+      (message "[ox-astro] %s" msg))))
+
 ;; Debug helpers
 (defun org-astro--dbg-log (info fmt &rest args)
-  "Append a formatted debug message to INFO and write to debug.el when enabled."
+  "Append a formatted debug message to INFO and write to ox-astro-debug.log when enabled."
   (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
     (let* ((msg (apply #'format fmt args))
            (existing (plist-get info :astro-debug-log))
-           (line (format "%s\n" (concat "[ox-astro][img] " msg)))
-           (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/debug.el"))
+           (timestamp (format-time-string "%H:%M:%S"))
+           (line (format "[%s] %s\n" timestamp msg))
+           (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
            ;; Check if this is the first log entry
            (first-entry (null existing)))
       ;; Store in info for potential MDX comments or later inspection
       (plist-put info :astro-debug-log (cons msg existing))
       ;; Emit to Messages
-      (message "[ox-astro][img] %s" msg)
+      (message "[ox-astro] %s" msg)
       ;; Write header if first entry
       (when first-entry
         (let* ((source-file (or (plist-get info :input-file)
@@ -40,13 +56,14 @@
                                          (resolved-folder (cdr (assoc posts-folder org-astro-known-posts-folders))))
                                     (when resolved-folder
                                       (expand-file-name filename resolved-folder))))))
-               (clipboard-text (format "org-mode source file: %s\n\n.mdx output: %s\n\nAnd please go ahead and access and review the debug file:\n%s\n"
+               (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
                                        source-file
-                                       (or output-file "output file path not yet determined")
+                                       (or output-file "[determining...]")
                                        debug-file))
-               (file-header (format "org-mode source file: %s\n\n.mdx output: %s\n\n"
+               (file-header (format "========================================\nOX-ASTRO DEBUG LOG - %s\n========================================\nSource: %s\nOutput: %s\n========================================\n\n"
+                                    (format-time-string "%Y-%m-%d %H:%M:%S")
                                     source-file
-                                    (or output-file "output file path not yet determined"))))
+                                    (or output-file "[determining...]"))))
           ;; Store header info for potential updates
           (plist-put info :astro-debug-header-info (list :source source-file :output output-file :debug debug-file))
           ;; Write header to debug file
@@ -73,13 +90,14 @@
 (defun org-astro--dbg-update-output-file (info actual-output-file)
   "Update the debug file header with the actual output file path."
   (when (and (boundp 'org-astro-debug-images) org-astro-debug-images actual-output-file)
-    (let* ((debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/debug.el"))
+    (let* ((debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
            (header-info (plist-get info :astro-debug-header-info)))
       (when header-info
         (let* ((source-file (plist-get header-info :source))
-               (clipboard-text (format "org-mode source file: %s\n\n.mdx output: %s\n\nAnd please go ahead and access and review the debug file:\n%s\n"
+               (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
                                        source-file actual-output-file debug-file))
-               (file-header (format "org-mode source file: %s\n\n.mdx output: %s\n\n"
+               (file-header (format "========================================\nOX-ASTRO DEBUG LOG - %s\n========================================\nSource: %s\nOutput: %s\n========================================\n\n"
+                                    (format-time-string "%Y-%m-%d %H:%M:%S")
                                     source-file actual-output-file)))
           ;; Update the debug file header
           (condition-case _
@@ -947,24 +965,35 @@ Returns non-nil if any changes were made."
   "Update image path in the original source buffer, not the export copy.
 This function finds the source buffer and modifies it directly."
   (message "DEBUG: Looking for source buffer to update path %s -> %s" old-path new-path)
+  (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+    (message "[ox-astro][img] UPDATE-BUFFER: Attempting to update %s -> %s" old-path new-path)
+    (message "[ox-astro][img] UPDATE-BUFFER: Current buffer: %s, file: %s, read-only: %s" 
+             (buffer-name) (buffer-file-name) buffer-read-only))
 
   ;; Strategy 1: Check if current buffer has a file name and is writable
   (let ((source-buffer nil))
     (cond
-     ;; Current buffer is the source file
-     ((and (buffer-file-name) (not buffer-read-only))
+     ;; Current buffer is the source file (but NOT if it's a temp export buffer)
+     ((and (buffer-file-name) 
+           (not buffer-read-only)
+           (not (string-match-p "^ \\*temp\\*" (buffer-name))))
       (message "DEBUG: Using current buffer as source: %s" (buffer-name))
+      (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+        (message "[ox-astro][img] UPDATE-BUFFER: Using current buffer as source"))
       (setq source-buffer (current-buffer)))
 
      ;; Try to find source buffer by examining all buffers
      (t
       (message "DEBUG: Current buffer (%s) is not suitable, searching for source buffer..." (buffer-name))
       (message "DEBUG: Current buffer file: %s, read-only: %s" (buffer-file-name) buffer-read-only)
+      (org-astro--debug-log-direct "UPDATE-BUFFER: Searching for source buffer containing path: %s" old-path)
       (dolist (buf (buffer-list))
         (with-current-buffer buf
           (let ((buf-file (buffer-file-name))
                 (buf-readonly buffer-read-only))
-            (message "DEBUG: Checking buffer %s (file: %s, readonly: %s)" (buffer-name) buf-file buf-readonly)
+            (when (and buf-file (string-match-p "\\.org$" buf-file))
+              (org-astro--debug-log-direct "UPDATE-BUFFER: Checking buffer %s (file: %s, readonly: %s)" 
+                                          (buffer-name) buf-file buf-readonly))
             (when (and buf-file
                        (not buf-readonly)
                        (string-match-p "\\.org$" buf-file)
@@ -974,6 +1003,7 @@ This function finds the source buffer and modifies it directly."
                          (or (search-forward old-path nil t)
                              (search-forward (format "[[%s]]" old-path) nil t))))
               (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file)
+              (org-astro--debug-log-direct "UPDATE-BUFFER: FOUND source buffer: %s" (buffer-name))
               (setq source-buffer buf)
               (return)))))))
 
@@ -1338,7 +1368,9 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
             ;; Update the buffer if requested (even if file already exists from previous run)
             (when update-buffer
               (message "DEBUG: Attempting buffer update...")
-              (org-astro--update-source-buffer-image-path image-path target-path))
+              (org-astro--debug-log-direct "UPDATE: Calling buffer update for %s -> %s" image-path target-path)
+              (let ((update-result (org-astro--update-source-buffer-image-path image-path target-path)))
+                (org-astro--debug-log-direct "UPDATE: Buffer update result: %s" (if update-result "SUCCESS" "FAILED"))))
 
             ;; Return the alias path for imports
             (when (file-exists-p target-path)
@@ -1410,8 +1442,10 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
              (gallery-id (concat "gallery-" (number-to-string (random 10000))))
              (gallery-items nil))
         ;; Debug: log what's in image-imports
-        (org-astro--dbg-log info "GALLERY image-imports: %s" 
-                            (mapcar (lambda (item) (plist-get item :path)) image-imports))
+        (org-astro--dbg-log info "GALLERY: image-imports contains %d items" (length image-imports))
+        (when image-imports
+          (org-astro--dbg-log info "GALLERY: import paths: %s" 
+                              (mapcar (lambda (item) (plist-get item :path)) image-imports)))
         ;; First, extract image links from the block contents
         (org-element-map special-block 'link
           (lambda (link)
