@@ -1,0 +1,26 @@
+:PROPERTIES:
+:ID:       20250829T094134.115828
+:END:
+#+TITLE: Image Link Test
+#+FILETAGS: :note:
+- Links ::
+- Source ::
+
+#+SLUG: image-link-test
+#+DESTINATION_FOLDER: jaydocs
+
+#+PUBLISH_DATE: [2025-08-29 Fri 09:42]
+#+EXCERPT: testing local and remote images
+
+
+* Image Link Test
+
+/Users/jay/Downloads/QR1_0941.jpg
+
+
+/Users/jay/Downloads/QR1_0928.jpg 
+
+
+https://poptech.org/wp-content/uploads/2025/06/IMG_5022-scaled.jpg 
+
+https://substackcdn.com/image/fetch/$s_!lUkF!,w_1456,c_limit,f_webp,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F86802f96-125a-4386-93f5-8c4f3247b7f8_1200x800.jpeg 
