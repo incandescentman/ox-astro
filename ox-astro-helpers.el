@@ -105,11 +105,17 @@
                 (with-temp-buffer
                   (insert-file-contents debug-file)
                   (goto-char (point-min))
-                  ;; Replace the first few lines (the header) with updated header
-                  (when (re-search-forward "^[[ox-astro]]" nil t)
-                    (beginning-of-line)
-                    (delete-region (point-min) (point))
-                    (goto-char (point-min))
+                  ;; Look for the end of the header section (first log entry or empty line after header)
+                  (if (re-search-forward "^\\(\\[.*\\]\\|$\\)" nil t)
+                      (progn
+                        (beginning-of-line)
+                        ;; Delete the old header
+                        (delete-region (point-min) (point))
+                        ;; Insert the new header
+                        (goto-char (point-min))
+                        (insert file-header))
+                    ;; If no log entries found, replace everything with new header
+                    (erase-buffer)
                     (insert file-header))
                   (write-region (point-min) (point-max) debug-file nil 'silent)))
             (error nil))

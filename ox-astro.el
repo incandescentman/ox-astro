@@ -59,8 +59,10 @@
 (defun org-astro-export-as-mdx (&optional async subtreep visible-only body-only)
   "Export current buffer to an Astro-compatible MDX buffer."
   (interactive)
-  (org-export-to-buffer 'astro "*Astro MDX Export*"
-    async subtreep visible-only body-only))
+  (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
+      (message "Cannot export from an .mdx file. Run this from the source .org file.")
+    (org-export-to-buffer 'astro "*Astro MDX Export*"
+      async subtreep visible-only body-only)))
 
 ;;;###autoload
 (defun org-astro-export-to-mdx (&optional async subtreep visible-only body-only)
