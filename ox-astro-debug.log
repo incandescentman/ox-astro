@@ -1,0 +1,27 @@
+========================================
+OX-ASTRO DEBUG LOG - 2025-08-30 16:49:15
+========================================
+Source: /Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/test-files/gallery_test.org
+Output: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/untitled-post.mdx
+========================================
+
+[16:49:15] === Starting prepare-images-filter ===
+[16:49:15] Processing 5 images in posts folder: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog
+[16:49:15] Collected image paths: (/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/masimo-dutti.webp /Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg /Users/jay/Downloads/imag50296363324533456719590617_6999624331092055355n.jpg /Users/jay/Downloads/Rachide-News-01(1).jpg /Users/jay/Downloads/2017021468194489.webp)
+[16:49:15] Processing image: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/assets/images/posts/masimo-dutti.webp
+[16:49:15] Generated: var=masimoDutti astro=nil target=nil
+[16:49:15] Processing image: /Users/jay/Downloads/imag106910784_3615490375147223_8376969077115059792n.jpg
+[16:49:15] Generated: var=imag10691078436154903751472238376969077115059792n astro=nil target=nil
+[16:49:15] Processing image: /Users/jay/Downloads/imag50296363324533456719590617_6999624331092055355n.jpg
+[16:49:15] Generated: var=imag502963633245334567195906176999624331092055355n astro=nil target=nil
+[16:49:15] Processing image: /Users/jay/Downloads/Rachide-News-01(1).jpg
+[16:49:15] Generated: var=rachideNews011 astro=nil target=nil
+[16:49:15] Processing image: /Users/jay/Downloads/2017021468194489.webp
+[16:49:15] Generated: var=img2017021468194489 astro=nil target=nil
+[16:49:15] Processing GALLERY block
+[16:49:15] GALLERY: image-imports contains 0 items
+[16:49:15] GALLERY checking link path: /Users/jay/Downloads/imag50296363324533456719590617_6999624331092055355n.jpg (sanitized: imag50296363324533456719590617-6999624331092055355n.jpg), found in imports: NO
+[16:49:15] GALLERY checking link path: /Users/jay/Downloads/Rachide-News-01(1).jpg (sanitized: Rachide-News-01-1-.jpg), found in imports: NO
+[16:49:15] GALLERY checking link path: /Users/jay/Downloads/2017021468194489.webp (sanitized: 2017021468194489.webp), found in imports: NO
+[16:49:15] GALLERY generating component with 0 images
+[16:49:15] Export complete: /Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/gallery-test.mdx

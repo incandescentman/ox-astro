@@ -33,6 +33,8 @@ under the key `:astro-body-images-imports`.
 
 NOTE: If org-astro--current-body-images-imports is already set,
 preprocessing has already been completed and we skip the processing."
+  ;; Initial debug logging
+  (org-astro--dbg-log info "=== Starting prepare-images-filter ===")
   ;; Reset any stale state from previous exports so we never carry images over.
   (setq org-astro--current-body-images-imports nil)
   (plist-put info :astro-body-images-imports nil)
@@ -75,29 +77,24 @@ preprocessing has already been completed and we skip the processing."
          (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
          image-imports-data)
     (when posts-folder
-      (message "DEBUG: Processing %d images in posts folder: %s" (length image-paths) posts-folder)
-      (org-astro--dbg-log info "collected=%s" image-paths)
+      (org-astro--dbg-log info "Processing %d images in posts folder: %s" (length image-paths) posts-folder)
+      (org-astro--dbg-log info "Collected image paths: %s" image-paths)
       (dolist (path image-paths)
-        (message "DEBUG: Processing image path: %s" path)
+        (org-astro--dbg-log info "Processing image: %s" path)
         ;; For each image, copy it to assets and get its new path.
         (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir t))
                (var-name (org-astro--path-to-var-name path))
                (clean-filename (org-astro--sanitize-filename (file-name-nondirectory path)))
                (target-abs (when astro-path
                              (expand-file-name clean-filename (org-astro--get-assets-folder posts-folder sub-dir)))))
-          (message "DEBUG: Astro path: %s, var name: %s" astro-path var-name)
-          (when (boundp 'org-astro-debug-images)
-            (when org-astro-debug-images
-              (message "[ox-astro][img] import: old=%s var=%s astro=%s target=%s" path var-name astro-path target-abs)))
+          (org-astro--dbg-log info "Generated: var=%s astro=%s target=%s" var-name astro-path target-abs)
           (when (and astro-path var-name)
             (push `(:path ,path :var-name ,var-name :astro-path ,astro-path :target-path ,target-abs)
                   image-imports-data))))
       (when image-imports-data
-        (message "DEBUG: Processed %d images for import" (length image-imports-data))
-        (when (boundp 'org-astro-debug-images)
-          (when org-astro-debug-images
-            (dolist (it image-imports-data)
-              (message "[ox-astro][img] import-entry: %s" it))))
+        (org-astro--dbg-log info "Processed %d images for import" (length image-imports-data))
+        (dolist (it image-imports-data)
+          (org-astro--dbg-log info "Import entry: %s" it))
         (let ((src (or (plist-get info :input-file)
                        (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
           ;; Store the source file path in info for buffer updates

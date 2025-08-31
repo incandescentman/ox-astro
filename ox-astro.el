@@ -275,6 +275,7 @@ generated and added to the Org source file."
 
           ;; Update debug system with actual output file path now that we know it
           (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+            (org-astro--debug-log-direct "Export starting - Output file: %s" outfile)
             (org-astro--dbg-update-output-file info outfile))
 
           (if pub-dir
@@ -288,6 +289,22 @@ generated and added to the Org source file."
                 ;; Second export pass to ensure all images appear
                 (message "Running second export pass to ensure complete image processing...")
                 (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                ;; Log completion and ensure clipboard copy
+                (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+                  (org-astro--debug-log-direct "Export complete: %s" outfile)
+                  ;; Copy file paths to clipboard
+                  (let* ((source-file (buffer-file-name))
+                         (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
+                         (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
+                                                 source-file outfile debug-file))
+                         (pbcopy (executable-find "pbcopy")))
+                    (when pbcopy
+                      (condition-case _
+                          (with-temp-buffer
+                            (insert clipboard-text)
+                            (call-process-region (point-min) (point-max) pbcopy nil nil nil)
+                            (message "File paths copied to clipboard!"))
+                        (error nil)))))
                 (message "Export complete! All images should now be visible.")
                 outfile)  ; Return the output file path
               (progn
