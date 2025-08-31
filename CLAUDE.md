@@ -107,9 +107,19 @@ The `#+DESTINATION_FOLDER` keyword now supports three modes:
 - **Export Options**: `ox-astro.el` → `:options-alist` - Keyword to plist mappings
 
 #### Debugging Export Errors
-1. **Check parse tree**: `ox-astro-handlers.el` → `org-astro-prepare-images-filter` (runs first)
-2. **Check transcoding**: `ox-astro-helpers.el` → specific `org-astro-*` functions
-3. **Check final output**: `ox-astro-handlers.el` → `org-astro-final-output-filter` (runs last)
+1. **Enable debug mode**: `(setq org-astro-debug-images t)` - enables comprehensive logging
+2. **Check debug log**: `ox-astro-debug.log` in project directory - contains detailed export trace
+3. **Check clipboard**: File paths (source, output, debug) are automatically copied on export
+4. **Check parse tree**: `ox-astro-handlers.el` → `org-astro-prepare-images-filter` (runs first)
+5. **Check transcoding**: `ox-astro-helpers.el` → specific `org-astro-*` functions
+6. **Check final output**: `ox-astro-handlers.el` → `org-astro-final-output-filter` (runs last)
+
+#### Debug System Features
+- **Comprehensive Logging**: Set `org-astro-debug-images t` to enable detailed logging to `ox-astro-debug.log`
+- **Automatic Clipboard Copy**: Export automatically copies source, output, and debug file paths to clipboard
+- **Session Headers**: Each export session includes timestamp and file paths in debug log
+- **Gallery Debugging**: Detailed logging of gallery image matching and processing
+- **Image Processing Trace**: Complete trace of image collection, copying, and import generation
 
 #### Understanding Design Decisions
 - **Architecture**: `docs/design-approach.org` - Why we override certain elements, design rationale

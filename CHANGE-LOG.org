@@ -2,6 +2,48 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Debug System Enhancement: Comprehensive Logging and Clipboard Integration (2025-08-30)
+
+** Summary
+- Enhanced debug system with comprehensive logging to `ox-astro-debug.log` in the ox-astro directory
+- Added automatic file path copying to clipboard during export (source, output, debug paths)
+- Improved debug logging throughout the export pipeline with detailed image processing information
+- Gallery blocks now working correctly with both raw paths and org-mode links
+
+** New Features
+- **Debug logging**: When `org-astro-debug-images` is enabled, detailed logs are written to `ox-astro-debug.log`
+- **Clipboard integration**: File paths automatically copied to clipboard on export completion
+- **Header information**: Debug log includes export session header with timestamp and file paths
+- **Gallery debugging**: Detailed logging of gallery image matching and processing
+
+** Implementation Details
+- Added `org-astro--debug-log-direct` for immediate file writing
+- Enhanced `org-astro--dbg-log` with automatic header generation and clipboard copying
+- Added `org-astro--dbg-update-output-file` to update debug info with actual output paths
+- Integrated debug logging throughout prepare-images-filter and gallery handlers
+- Added `ox-astro-debug.log` to `.gitignore`
+
+** Debug Log Format
+```
+========================================
+OX-ASTRO DEBUG LOG - 2025-08-30 21:32:41
+========================================
+Source: /path/to/source.org
+Output: /path/to/output.mdx
+========================================
+
+[21:32:41] === Starting prepare-images-filter ===
+[21:32:41] Processing 20 images in posts folder: /path/to/posts
+[21:32:41] GALLERY: image-imports contains 20 items
+[21:32:41] GALLERY generating component with 5 images
+```
+
+** Files Changed
+- ox-astro-helpers.el: Added debug logging functions and enhanced existing debug calls
+- ox-astro-handlers.el: Added debug logging to prepare-images-filter
+- ox-astro.el: Added debug logging to export function and clipboard integration
+- .gitignore: Added ox-astro-debug.log
+
 * Automatic Source File Cleanup: Update org files after image copying (2025-08-28)
 
 ** Summary
