@@ -83,8 +83,12 @@ generated and added to the Org source file."
                (posts-folder-raw (or (plist-get info :destination-folder)
                                      (plist-get info :astro-posts-folder)))
                ;; Resolve the posts folder using the same logic as in handlers
-               (resolved-posts-folder-raw (and posts-folder-raw
-                                               (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+               (folder-config (and posts-folder-raw
+                                   (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+               ;; Extract path from config (handle both old string and new plist formats)
+               (resolved-posts-folder-raw (if (stringp folder-config)
+                                              folder-config
+                                            (plist-get folder-config :path)))
                (resolved-posts-folder (and resolved-posts-folder-raw
                                            (string-trim resolved-posts-folder-raw)))
                (posts-folder (cond
@@ -204,8 +208,19 @@ generated and added to the Org source file."
         ;; --- Original export logic continues below ---
         (let* ((posts-folder-from-file (or (plist-get info :astro-posts-folder)
                                            (plist-get info :destination-folder)))
-               (resolved-posts-folder-raw (and posts-folder-from-file
-                                               (cdr (assoc posts-folder-from-file org-astro-known-posts-folders))))
+               ;; Look up the folder config - now returns a plist
+               (folder-config (cdr (assoc posts-folder-from-file org-astro-known-posts-folders)))
+               ;; Extract path from the plist (handle both old and new formats)
+               (resolved-posts-folder-raw (if (stringp folder-config)
+                                              ;; Old format: just a string path
+                                              folder-config
+                                            ;; New format: plist with :path
+                                            (plist-get folder-config :path)))
+               ;; Extract preserve-folder-structure flag
+               (preserve-folder-structure (and (listp folder-config)
+                                               (plist-get folder-config :preserve-folder-structure)))
+               ;; Store the selected folder nickname for later use
+               (selected-folder-nickname posts-folder-from-file)
                ;; Trim whitespace from resolved path to handle configuration errors
                (resolved-posts-folder (and resolved-posts-folder-raw
                                            (string-trim resolved-posts-folder-raw)))
@@ -223,11 +238,18 @@ generated and added to the Org source file."
                   (let* ((selection (completing-read "Select a posts folder: "
                                                      org-astro-known-posts-folders
                                                      nil t posts-folder-from-file))
-                         (selected-path-raw (when selection
-                                              (cdr (assoc selection org-astro-known-posts-folders))))
+                         (selected-config (cdr (assoc selection org-astro-known-posts-folders)))
+                         ;; Handle both old and new formats
+                         (selected-path-raw (if (stringp selected-config)
+                                               selected-config
+                                             (plist-get selected-config :path)))
                          ;; Trim whitespace from selected path
                          (selected-path (and selected-path-raw
                                              (string-trim selected-path-raw))))
+                    ;; Update the variables for the selected folder
+                    (setq selected-folder-nickname selection)
+                    (setq preserve-folder-structure (and (listp selected-config)
+                                                         (plist-get selected-config :preserve-folder-structure)))
                     (when selected-path
                       ;; Add the DESTINATION_FOLDER keyword to the org file
                       (save-excursion
@@ -241,9 +263,30 @@ generated and added to the Org source file."
                             (org-astro--upsert-keyword-after-roam "DESTINATION_FOLDER" selection)))
                       (save-buffer))
                     selected-path))))
-               (pub-dir (when posts-folder
-                          (file-name-as-directory
-                           (expand-file-name (org-trim posts-folder)))))
+               (pub-dir-base (when posts-folder
+                               (file-name-as-directory
+                                (expand-file-name (org-trim posts-folder)))))
+               ;; Calculate the subdirectory if preserving folder structure for this destination
+               (preserved-subdir
+                (when (and preserve-folder-structure
+                           pub-dir-base
+                           (buffer-file-name))
+                  (let* ((source-file (expand-file-name (buffer-file-name)))
+                         (source-root (expand-file-name org-astro-source-root-folder))
+                         (relative-path nil))
+                    ;; Check if source file is under the configured source root
+                    (when (string-prefix-p source-root source-file)
+                      (setq relative-path (file-relative-name source-file source-root)))
+                    ;; Extract directory part of relative path (remove filename)
+                    (when relative-path
+                      (let ((dir (file-name-directory relative-path)))
+                        (when (and dir (not (string= dir "./")))
+                          dir))))))
+               ;; Combine base directory with preserved subdirectory
+               (pub-dir (if preserved-subdir
+                           (file-name-as-directory
+                            (expand-file-name preserved-subdir pub-dir-base))
+                         pub-dir-base))
                (default-outfile (org-export-output-file-name ".mdx" subtreep pub-dir))
                (out-dir (file-name-directory default-outfile))
                (out-filename (file-name-nondirectory default-outfile))

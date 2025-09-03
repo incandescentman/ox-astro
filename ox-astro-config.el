@@ -29,12 +29,21 @@ Uses Astro's alias, which maps to the project's src/ directory."
   :group 'org-export-astro
   :type 'boolean)
 
+(defcustom org-astro-source-root-folder
+  "~/org-files"
+  "Root directory that contains your source Org files.
+Used for calculating relative paths when preserving folder structure."
+  :group 'org-export-astro
+  :type 'directory)
+
 (defcustom org-astro-known-posts-folders
-  '(("blog" . "~/projects/my-astro-site/src/content/blog")
-    ("docs" . "~/projects/my-docs-site/src/content/docs")
-    ("jaydocs" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog"))
+  '(("blog" . (:path "~/projects/my-astro-site/src/content/blog"))
+    ("docs" . (:path "~/projects/my-docs-site/src/content/docs"))
+    )
   "An alist of known directories for exporting Astro posts.
-Each element is a cons cell of the form (NICKNAME . PATH).
+Each element is (NICKNAME . PLIST) where PLIST can contain:
+  :path - The destination directory path (required)
+  :preserve-folder-structure - When t, preserve source folder structure (optional)
 
 To customize this:
 1. Run M-x customize-group RET org-export-astro RET
@@ -42,14 +51,16 @@ To customize this:
 3. Add your project paths using nicknames you can reference in #+DESTINATION_FOLDER
 
 Example configuration:
-  ((\"blog\" . \"/path/to/my-blog/src/content/blog\")
-   (\"docs\" . \"/path/to/my-docs/src/content/docs\")
-   (\"portfolio\" . \"/path/to/portfolio/src/content/posts\"))
+  ((\"blog\" . (:path \"/path/to/my-blog/src/content/blog\"))
+   (\"docs\" . (:path \"/path/to/my-docs/src/content/docs\"))
+   (\"roam\" . (:path \"/path/to/roam/src/content\" 
+               :preserve-folder-structure t)))
 
 Then in your Org files, use: #+DESTINATION_FOLDER: blog"
   :group 'org-export-astro
   :type '(alist :key-type (string :tag "Nickname")
-                :value-type (directory :tag "Path")))
+                :value-type (plist :options ((:path directory)
+                                             (:preserve-folder-structure boolean)))))
 
 (provide 'ox-astro-config)
 
