@@ -39,13 +39,37 @@ Before using ox-astro, you need to configure your project paths:
 2. Edit the "Org Astro Known Posts Folders" setting
 3. Add your Astro project paths with memorable nicknames
 
-Example configuration:
+** Basic Configuration
+
+Example configuration for simple folder mapping:
 #+begin_src emacs-lisp
 (setq org-astro-known-posts-folders
-      '(("actions" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/actions/src/content/blog")
-        ("jaydocs" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog")
-        ("socratic" . "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog"))) 
+      '(("blog" . (:path "~/projects/my-blog/src/content/blog"))
+        ("docs" . (:path "~/projects/my-docs/src/content/docs"))))
 #+end_src
+
+** Advanced: Folder Structure Preservation
+
+You can optionally preserve your source folder structure when exporting to specific destinations. This is useful when you want to maintain the same directory organization in your Astro project as in your Org files.
+
+#+begin_src emacs-lisp
+;; Define where your source Org files are located
+(setq org-astro-source-root-folder
+      "~/org-files/roam")
+
+;; Configure destinations with optional folder structure preservation
+(setq org-astro-known-posts-folders
+      '(("blog" . (:path "~/projects/my-blog/src/content/blog"))
+        ("docs" . (:path "~/projects/my-docs/src/content/docs"))
+        ("roam-site" . (:path "~/projects/roam-site/src/content"
+                        :preserve-folder-structure t))))
+#+end_src
+
+With this configuration:
+- Files exported to "blog" or "docs" go directly into their respective folders
+- Files exported to "roam-site" preserve their directory structure:
+  - ~~/org-files/roam/journal/2025-09-03.org~ → ~~/projects/roam-site/src/content/journal/2025-09-03.mdx~
+  - ~~/org-files/roam/notes/emacs.org~ → ~~/projects/roam-site/src/content/notes/emacs.mdx~
 
 * How to Use
 

@@ -36,11 +36,22 @@
 
 ### Known Posts Folders
 ```elisp
+;; New plist format with optional folder structure preservation
 org-astro-known-posts-folders
-'(("actions" . "/path/to/actions/src/content/blog")
-  ("jaydocs" . "/path/to/jaydocs/src/content/blog")
-  ("socratic" . "/path/to/socratic/src/content/blog"))
+'(("blog" . (:path "~/projects/blog/src/content/blog"))
+  ("docs" . (:path "~/projects/docs/src/content/docs"))
+  ("roam" . (:path "~/projects/roam-site/src/content"
+             :preserve-folder-structure t)))
+
+;; Source root for calculating relative paths
+org-astro-source-root-folder
+"~/org-files/roam"
 ```
+
+When `:preserve-folder-structure t` is set for a destination:
+- The exporter calculates the relative path from `org-astro-source-root-folder` to the source file
+- Preserves that directory structure in the output destination
+- Example: `~/org-files/roam/journal/2025.org` → `~/projects/roam-site/src/content/journal/2025.mdx`
 
 ### Front Matter Mapping
 - `#+TITLE` → `title`
@@ -77,6 +88,12 @@ The `#+DESTINATION_FOLDER` keyword now supports three modes:
 1. **Nickname**: `#+DESTINATION_FOLDER: jaydocs` → looks up in `org-astro-known-posts-folders`
 2. **Absolute Path**: `#+DESTINATION_FOLDER: /full/path/to/posts/` → uses path directly if directory exists
 3. **Interactive**: If not specified or invalid, prompts user to select from known folders
+
+### Folder Structure Preservation
+Destinations can optionally preserve source folder structure:
+- Configured per-destination with `:preserve-folder-structure t` in `org-astro-known-posts-folders`
+- When enabled, maintains relative path from `org-astro-source-root-folder` to source file
+- Useful for maintaining organization when exporting large collections (e.g., org-roam databases)
 
 ## Development Reference Guide
 

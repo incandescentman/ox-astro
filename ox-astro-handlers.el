@@ -43,8 +43,12 @@ preprocessing has already been completed and we skip the processing."
   (let* ((posts-folder-raw (or (plist-get info :destination-folder)
                                (plist-get info :astro-posts-folder)))
          ;; Resolve the posts folder using the same logic as in ox-astro.el
-         (resolved-posts-folder-raw (and posts-folder-raw
-                                         (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+         (folder-config (and posts-folder-raw
+                            (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+         ;; Extract path from config (handle both old string and new plist formats)
+         (resolved-posts-folder-raw (if (stringp folder-config)
+                                        folder-config
+                                      (plist-get folder-config :path)))
          ;; Trim whitespace from resolved path to handle configuration errors
          (resolved-posts-folder (and resolved-posts-folder-raw
                                      (string-trim resolved-posts-folder-raw)))
