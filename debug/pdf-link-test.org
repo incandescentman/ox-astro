@@ -1,0 +1,21 @@
+#+TITLE: PDF Link Export Test
+#+DESTINATION_FOLDER: socraticai
+#+SLUG: pdf-link-test
+#+EXCERPT: Verify that Org PDF links export to Markdown with encoded spaces.
+
+
+#+PUBLISH_DATE: [2025-09-06 Sat 19:04]
+This file verifies PDF link handling. Both link syntaxes below should export to the same Markdown link with a %20-encoded URL.
+
+* Inputs (Org)
+
+1. With spaces in path:
+[[/pdfs/Effective Psychology-Based Strategies for Managing Urges and Impulses.pdf][Effective Psychology-Based Strategies for Managing Urges and Impulses]]
+
+2. Already encoded path:
+[[/pdfs/Effective%20Psychology-Based%20Strategies%20for%20Managing%20Urges%20and%20Impulses.pdf][Effective Psychology-Based Strategies for Managing Urges and Impulses]]
+
+* Expected Output (Markdown)
+
+[Effective Psychology-Based Strategies for Managing Urges and Impulses](/pdfs/Effective%20Psychology-Based%20Strategies%20for%20Managing%20Urges%20and%20Impulses.pdf)
+
