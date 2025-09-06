@@ -189,6 +189,22 @@ This is an example block that preserves formatting.
    And literal text display.
 #+end_example
 
+* Astro-Specific Overrides
+
+These keywords override the standard ones when present. They’re shown here in an example block so they don’t affect this file’s actual export.
+
+#+begin_example
+#+ASTRO_TAGS: advanced, custom
+#+ASTRO_CATEGORIES: advanced tutorials, astro specific
+#+ASTRO_IMAGE: ~/assets/images/posts/override-hero.jpg
+#+ASTRO_IMAGE_ALT: Override hero alt text
+#+ASTRO_AUTHOR_IMAGE: ~/assets/images/authors/jay-alt.png
+
+#+ASTRO_IMPORTS:
+import Callout from '../../components/Callout.astro';
+import YouTube from '../../components/YouTube.astro';
+#+end_example
+
 * Destination Folder Options
 
 ** Using Known Folder Nicknames
