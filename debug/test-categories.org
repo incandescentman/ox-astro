@@ -1,6 +1,6 @@
 #+TITLE: Test Categories Support
 #+AUTHOR: Jay Dixit
-#+TAGS: web development, astro
+#+TAGS: "web development", astro
 #+CATEGORIES: tutorial, programming, frontend
 #+DESTINATION_FOLDER: /tmp/test-export
 

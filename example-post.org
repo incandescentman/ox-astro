@@ -341,3 +341,15 @@ Use quotes to keep multi-word tags or categories together:
 #+TAGS: "web development", astro, "ai therapy"
 #+CATEGORIES: "long form", tutorials
 #+end_example
+
+Resulting YAML:
+
+#+begin_src yaml
+tags:
+- web development
+- astro
+- ai therapy
+categories:
+- long form
+- tutorials
+#+end_src

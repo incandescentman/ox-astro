@@ -116,6 +116,35 @@ The exporter automatically generates YAML front matter based on keywords in your
 | ~#+SLUG~               | ~slug~        | URL-friendly slug for the post.                 |
 | ~#+DESTINATION_FOLDER~ | (none)      | Specifies the export destination folder.        |
 
+** Tags & Categories
+
+- Sources: Use `#+ASTRO_TAGS` or `#+TAGS` for tags; `#+ASTRO_CATEGORIES` or `#+CATEGORIES` for categories. The `ASTRO_*` variants take precedence when both are present.
+- Separators: Commas, spaces, or newlines are all accepted between items.
+- Multi‑word items: Wrap in quotes to preserve spaces. Double or single quotes are supported; quotes are stripped.
+- Scope: Place the keyword inside the subtree you export, or at the top of the file for full‑file exports. `#+FILETAGS` is not used for MDX front matter.
+
+Examples:
+
+#+begin_src org
+#+TAGS: astro, markdown, "web development"
+#+CATEGORIES: tutorials, "long form"
+
+#+ASTRO_TAGS: 'ai therapy', productivity, "prompt engineering"
+#+ASTRO_CATEGORIES: "learning notes" "reference"
+#+end_src
+
+Resulting front matter lists:
+
+#+begin_src yaml
+tags:
+  - astro
+  - markdown
+  - web development
+categories:
+  - tutorials
+  - long form
+#+end_src
+
 **Automatic Front Matter Generation:**
 The exporter automatically adds missing front matter to your .org source file during export:
 - If ~#+TITLE~ is not found, it uses the first level-1 headline and adds it to the file.
