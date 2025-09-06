@@ -37,8 +37,9 @@ Used for calculating relative paths when preserving folder structure."
   :type 'directory)
 
 (defcustom org-astro-known-posts-folders
-  '(("blog" . (:path "~/projects/my-astro-site/src/content/blog"))
-    ("docs" . (:path "~/projects/my-docs-site/src/content/docs"))
+  '(("blog"       . (:path "~/projects/my-astro-site/src/content/blog"))
+    ("docs"       . (:path "~/projects/my-docs-site/src/content/docs"))
+    ("socraticai" . (:path "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog"))
     )
   "An alist of known directories for exporting Astro posts.
 Each element is (NICKNAME . PLIST) where PLIST can contain:
