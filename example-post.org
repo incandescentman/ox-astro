@@ -121,6 +121,20 @@ Note: Only non-image URLs are converted to LinkPeek. Image URLs are processed as
 ** Existing Markdown Links (preserved as-is)  
 [Google Search](https://google.com) - This markdown syntax is preserved.
 
+** PDF Links (Spaces Encoded on Export)
+Supported inputs:
+
+#+begin_example
+[[/pdfs/Effective Psychology-Based Strategies for Managing Urges and Impulses.pdf][Effective Psychology-Based Strategies for Managing Urges and Impulses]]
+[[file:/pdfs/Effective Psychology-Based Strategies for Managing Urges and Impulses.pdf][Effective Psychology-Based Strategies for Managing Urges and Impulses]]
+#+end_example
+
+Exports to:
+
+#+begin_example
+[Effective Psychology-Based Strategies for Managing Urges and Impulses](/pdfs/Effective%20Psychology-Based%20Strategies%20for%20Managing%20Urges%20and%20Impulses.pdf)
+#+end_example
+
 * Formatting Examples
 
 ** TODO Items (converted to task lists)

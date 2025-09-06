@@ -203,6 +203,19 @@ A bare URL without a description is automatically converted into a custom ~<Link
 
 When any ~<LinkPeek>~ is emitted, ox-astro automatically adds the necessary import to the top of the MDX file.
 
+** PDF Links**
+Export org-mode links to PDFs as clean Markdown links, with spaces URL‑encoded.
+
+- Supported inputs (either is fine):
+  - ~[[/pdfs/Effective Psychology-Based Strategies for Managing Urges and Impulses.pdf][Effective Psychology-Based Strategies for Managing Urges and Impulses]]~
+  - ~[[file:/pdfs/Effective Psychology-Based Strategies for Managing Urges and Impulses.pdf][Effective Psychology-Based Strategies for Managing Urges and Impulses]]~
+- Output (spaces encoded):
+  - ~[Effective Psychology-Based Strategies for Managing Urges and Impulses](/pdfs/Effective%20Psychology-Based%20Strategies%20for%20Managing%20Urges%20and%20Impulses.pdf)~
+- Notes:
+  - Absolute web path preferred (`/pdfs/...`). `file:/pdfs/...` also works and is normalized.
+  - If the path already contains `%20`, it is preserved as-is.
+  - Only `.pdf` is special-cased; other file types fall back to normal link handling.
+
 * Post Visibility Options
 
 ~ox-astro~ supports several options for controlling how and where posts appear on your website. These settings add metadata to the front matter that your Astro site can use to filter content appropriately.
