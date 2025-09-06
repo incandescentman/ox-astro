@@ -409,25 +409,50 @@ If the generated name starts with a number, it is prefixed with 'img'."
    ""))
 
 (defun org-astro--split-quoted-list (s)
-  "Split S on commas/whitespace, preserving items wrapped in quotes.
+  "Split S by commas/whitespace; preserve items within matching quotes.
 
-Accepts any mix of separators: commas, spaces, tabs, or newlines.
-Items containing spaces or commas can be wrapped in double or single
-quotes, e.g. \="web development\=", 'the arts'. Quotes are stripped."
+Separators are commas, spaces, tabs, or newlines. Items may be wrapped in
+single or double quotes to preserve spaces or commas. Quotes are stripped."
   (when (and s (stringp s))
-    (let ((pos 0)
-          (len (length s))
-          (results nil)
-          (rx "\\s-*\\(?:\"\([^\"\n]*\)\"\\|'\([^'\n]*\)'\\|\([^, \t\n]+\)\)\\s*[, \t\n]*"))
-      (while (and (< pos len) (string-match rx s pos))
-        (let* ((m1 (match-string 1 s))
-               (m2 (match-string 2 s))
-               (m3 (match-string 3 s))
-               (item (or m1 m2 m3)))
-          (when (and item (not (string-empty-p (org-trim item))))
-            (push (org-trim item) results)))
-        (setq pos (match-end 0)))
-      (nreverse results))))
+    (let* ((len (length s))
+           (i 0)
+           (quote-char nil)
+           (buf (list))
+           (items (list)))
+      (cl-labels ((push-char (c) (setq buf (cons c buf)))
+                  (flush-buf ()
+                    (when buf
+                      (let* ((str (apply #'string (nreverse buf)))
+                             (trimmed (org-trim str)))
+                        (when (> (length trimmed) 0)
+                          (setq items (cons trimmed items))))
+                      (setq buf nil))))
+        (while (< i len)
+          (let ((ch (aref s i)))
+            (cond
+             ;; Inside a quoted token
+             (quote-char
+              (if (= ch quote-char)
+                  (progn
+                    ;; End of quoted token; push and reset
+                    (flush-buf)
+                    (setq quote-char nil))
+                (push-char ch)))
+             ;; Not in quotes
+             (t
+              (cond
+               ;; Start of quoted token (only if buffer empty)
+               ((and (or (= ch ?") (= ch ?')) (null buf))
+                (setq quote-char ch))
+               ;; Separator
+               ((or (= ch ?,) (= ch ?\s) (= ch ?\t) (= ch ?\n))
+                (flush-buf))
+               ;; Regular character
+               (t (push-char ch))))))
+          (setq i (1+ i)))
+        ;; Flush any remaining buffer
+        (flush-buf)
+        (nreverse items)))))
 
 (defun org-astro--parse-tags (info)
   "Return a list of tags from INFO, supporting quoted multi-word items."
