@@ -637,6 +637,20 @@ If no explicit cover image is specified, use the first body image as hero."
                       (ignore-errors (org-md-link link desc info)))))
             (or md (or (org-element-property :raw-link link)
                        (concat (or type "file") ":" path))))))))
+     ;; PDF links → emit a Markdown link with URL-encoded spaces; normalize label.
+     ((and path
+           (or (string= type "file") (and (null type) (string-prefix-p "/" path)))
+           (string-match-p "\\.pdf\\(\\?\\|#\\|$\\)" path))
+      (let* ((encoded (if (string-match-p " " path)
+                          (replace-regexp-in-string " " "%20" path)
+                        path))
+             (label-raw (or desc (file-name-base path)))
+             ;; Drop any leading symbols like ▌ and normalize "PDF:" spacing
+             (label-1 (replace-regexp-in-string "^\\s-*[▌│•▪️]+" "" label-raw))
+             (label-a (replace-regexp-in-string "PDF:" "PDF: " label-1))
+             (label   (replace-regexp-in-string "PDF:  +" "PDF: " label-a)))
+        (format "[%s](%s)" label encoded)))
+
      ;; If the description is already a Markdown link, preserve it unchanged.
      ((and desc (org-astro--contains-markdown-link-p desc))
       desc)
