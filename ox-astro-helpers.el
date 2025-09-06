@@ -265,7 +265,6 @@ reference-style links like [label][ref]."
   (when (and text (stringp text))
     (or (string-match-p "\\[[^]]+\\](\\([^)]\\|\\n\\)+)" text) ; inline [..](..)
         (string-match-p "\\[[^]]+\\]\\[[^]]+\\]" text)))   ; reference [..][..]
-  )
 
 ;; Detect Markdown reference-style link definitions lines like:
 ;;   [1]: https://example.com "Title"
@@ -641,9 +640,20 @@ If no explicit cover image is specified, use the first body image as hero."
      ((and path
            (or (string= type "file") (and (null type) (string-prefix-p "/" path)))
            (string-match-p "\\.pdf\\(\\?\\|#\\|$\\)" path))
-      (let* ((encoded (if (string-match-p " " path)
-                          (replace-regexp-in-string " " "%20" path)
-                        path))
+      (let* (;; If this is an absolute local file path under a public/pdfs directory,
+             ;; rewrite it to a site path beginning with /pdfs/.
+             (site-path
+              (cond
+               ;; Already a site path
+               ((string-prefix-p "/pdfs/" path) path)
+               ;; Local absolute file path: try to detect /public/pdfs/ segment
+               ((and (string-prefix-p "/" path)
+                     (string-match "/public/pdfs/\(.*\)$" path))
+                (concat "/pdfs/" (match-string 1 path)))
+               (t path)))
+             (encoded (if (string-match-p " " site-path)
+                          (replace-regexp-in-string " " "%20" site-path)
+                        site-path))
              (label-raw (or desc (file-name-base path)))
              ;; Drop any leading symbols like ▌ and normalize "PDF:" spacing
              (label-1 (replace-regexp-in-string "^\\s-*[▌│•▪️]+" "" label-raw))
@@ -664,7 +674,7 @@ If no explicit cover image is specified, use the first body image as hero."
                 (error nil)))
              (text (or desc resolved-title path))
              (slug (org-astro--slugify text)))
-        (format "[%s](#%s)" text slug)))
+            (format "[%s](#%s)" text slug)))
 
      ;; Bare URLs with no description → LinkPeek + set import flag
      ((and (null desc) (member type '("http" "https" "ftp" "mailto")))
@@ -1621,6 +1631,67 @@ This is more robust for narrowed subtrees than relying on `plain-text` parsing."
                 (when (file-exists-p path)
                   (push path images))))))))
     (nreverse images)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PDF HANDLING
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun org-astro--get-pdfs-folder (posts-folder sub-dir)
+  "Compute the app's public/pdfs folder using POSTS-FOLDER and SUB-DIR."
+  (when posts-folder
+    (let* ((posts-dir (file-name-as-directory (expand-file-name posts-folder)))
+           ;; src dir = .../apps/<app>/src/
+           (src-dir (file-name-directory
+                     (directory-file-name
+                      (file-name-directory
+                       (directory-file-name posts-dir)))))
+           ;; app root = parent of src
+           (app-root (file-name-directory (directory-file-name src-dir))))
+      (expand-file-name (concat "public/pdfs/" sub-dir) app-root)))
+
+(defun org-astro--collect-pdfs-from-tree (tree)
+  "Collect PDF file paths from Org TREE links."
+  (let (pdfs)
+    (org-element-map tree 'link
+      (lambda (lnk)
+        (let ((type (org-element-property :type lnk))
+              (p (org-element-property :path lnk)))
+          (when (and p (or (string= type "file") (null type)))
+            (when (and (string-suffix-p ".pdf" (downcase p))
+                       ;; Accept absolute site paths and local absolute paths
+                       (or (string-prefix-p "/" p)
+                           (file-name-absolute-p p)))
+              (push p pdfs)))))
+    (delete-dups (nreverse pdfs))))
+
+(defun org-astro--process-pdf-path (pdf-path posts-folder sub-dir &optional update-buffer)
+  "Copy local PDF to app public/pdfs/SUB-DIR and optionally update source buffer.
+Returns the site path beginning with /pdfs/."
+  (when (and pdf-path posts-folder)
+    (let* ((pdf-path (substring-no-properties pdf-path))
+           ;; If already a site path, just return it
+           (site-path (when (string-prefix-p "/pdfs/" pdf-path) pdf-path))
+           (pdfs-folder (org-astro--get-pdfs-folder posts-folder sub-dir)))
+      (cond
+       (site-path site-path)
+       ;; Local file → copy
+       ((and (file-name-absolute-p pdf-path) (file-exists-p pdf-path) pdfs-folder)
+        (let* ((clean-filename (org-astro--sanitize-filename (file-name-nondirectory pdf-path)))
+               (target-dir pdfs-folder)
+               (target-path (expand-file-name clean-filename target-dir))
+               (site (concat "/pdfs/" sub-dir clean-filename)))
+          (make-directory target-dir t)
+          (condition-case err
+              (progn (copy-file pdf-path target-path t)
+                     (message "Copied PDF %s -> %s" pdf-path target-path))
+            (error (message "Failed to copy PDF %s: %s" pdf-path err)))
+          (when update-buffer
+            ;; Update source buffer from old local absolute path to new absolute target path
+            (ignore-errors (org-astro--update-source-buffer-image-path pdf-path target-path)))
+          site))
+       (t
+        ;; Unknown form; leave as-is
+        pdf-path)))))
 
 (provide 'ox-astro-helpers)
 ;;; ox-astro-helpers.el ends here

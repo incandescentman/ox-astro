@@ -114,7 +114,7 @@ generated and added to the Org source file."
                                (when title-from-headline
                                  (org-astro--slugify title)))))
                    (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
-                   (updated-paths nil))
+                  (updated-paths nil))
               ;; Process each image and update source buffer paths immediately
               (message "DEBUG: Processing %d initial images" (length image-paths))
               (dolist (path image-paths)
@@ -125,6 +125,11 @@ generated and added to the Org source file."
                                      (expand-file-name clean-filename (org-astro--get-assets-folder posts-folder sub-dir)))))
                   (when target-abs
                     (push target-abs updated-paths))))
+              ;; Process PDFs similarly: copy into public/pdfs and update buffer
+              (let ((pdf-paths (org-astro--collect-pdfs-from-tree tree)))
+                (dolist (pdf pdf-paths)
+                  (ignore-errors
+                    (org-astro--process-pdf-path pdf posts-folder sub-dir t))))
               ;; If we updated any paths, save the buffer and refresh the environment
               (when updated-paths
                 ;; Save the buffer to preserve the path updates
