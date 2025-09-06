@@ -408,21 +408,38 @@ If the generated name starts with a number, it is prefixed with 'img'."
    ;; If all else fails:
    ""))
 
+(defun org-astro--split-quoted-list (s)
+  "Split S on commas/whitespace, preserving items wrapped in quotes.
+
+Accepts any mix of separators: commas, spaces, tabs, or newlines.
+Items containing spaces or commas can be wrapped in double or single
+quotes, e.g. \="web development\=", 'the arts'. Quotes are stripped."
+  (when (and s (stringp s))
+    (let ((pos 0)
+          (len (length s))
+          (results nil)
+          (rx "\\s-*\\(?:\"\([^\"\n]*\)\"\\|'\([^'\n]*\)'\\|\([^, \t\n]+\)\)\\s*[, \t\n]*"))
+      (while (and (< pos len) (string-match rx s pos))
+        (let* ((m1 (match-string 1 s))
+               (m2 (match-string 2 s))
+               (m3 (match-string 3 s))
+               (item (or m1 m2 m3)))
+          (when (and item (not (string-empty-p (org-trim item))))
+            (push (org-trim item) results)))
+        (setq pos (match-end 0)))
+      (nreverse results))))
+
 (defun org-astro--parse-tags (info)
-  "Return a list of tags from INFO, splitting on commas/whitespace/newlines."
+  "Return a list of tags from INFO, supporting quoted multi-word items."
   (let* ((tags-raw (or (plist-get info :astro-tags)
-                       (plist-get info :tags)))
-         (tags (when (and tags-raw (stringp tags-raw))
-                 (org-split-string tags-raw "[, \t\n]+"))))
-    (delq nil (mapcar #'string-trim tags))))
+                       (plist-get info :tags))))
+    (org-astro--split-quoted-list tags-raw)))
 
 (defun org-astro--parse-categories (info)
-  "Return a list of categories from INFO, splitting on commas/whitespace/newlines."
+  "Return a list of categories from INFO, supporting quoted multi-word items."
   (let* ((categories-raw (or (plist-get info :astro-categories)
-                             (plist-get info :categories)))
-         (categories (when (and categories-raw (stringp categories-raw))
-                       (org-split-string categories-raw "[, \t\n]+"))))
-    (delq nil (mapcar #'string-trim categories))))
+                             (plist-get info :categories))))
+    (org-astro--split-quoted-list categories-raw)))
 
 (defun org-astro--get-publish-date (info)
   "Extract and format the publish date from INFO.

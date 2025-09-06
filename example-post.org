@@ -332,3 +332,12 @@ This flexibility makes it easy to migrate existing content or work with mixed ma
    - Debug log available if enabled
 
 The result is a production-ready MDX file with optimized image handling!
+
+* Tags With Spaces
+
+Use quotes to keep multi-word tags or categories together:
+
+#+begin_example
+#+TAGS: "web development", astro, "ai therapy"
+#+CATEGORIES: "long form", tutorials
+#+end_example

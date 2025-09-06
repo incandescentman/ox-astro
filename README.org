@@ -108,8 +108,8 @@ The exporter automatically generates YAML front matter based on keywords in your
 | ~#+EXCERPT~            | ~excerpt~     | A short summary of the post.                    |
 | ~#+COVER_IMAGE~        | ~image~       | Path to the post's cover image.                 |
 | ~#+COVER_IMAGE_ALT~    | ~imageAlt~    | Alt text for the cover image.                   |
-| ~#+TAGS~               | ~tags~        | A comma- or space-separated list of tags.       |
-| ~#+CATEGORIES~         | ~categories~  | A comma- or space-separated list of categories. |
+| ~#+TAGS~               | ~tags~        | A comma/space/newline-separated list of tags. Use quotes for multi-word tags: ~#+TAGS: "web development", astro~ |
+| ~#+CATEGORIES~         | ~categories~  | A comma/space/newline-separated list of categories. Quotes preserve spaces. |
 | ~#+AUTHOR_IMAGE~       | ~authorImage~ | Path to the author's image.                     |
 | ~#+VISIBILITY~         | ~visibility~  | Visibility channel for the post. Common values: ~blog~ (default), ~hidden~, ~example~; any arbitrary string is allowed. |
 | ~#+STATUS~             | ~draft~       | Set to "draft" - post files are created but marked for exclusion from production builds. |
