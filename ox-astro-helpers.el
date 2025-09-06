@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'subr-x) ; for string-trim, string-trim-right
+(require 'cl-lib)
 
 ;; Declare global variable for data persistence across export phases
 (defvar org-astro--current-body-images-imports nil
@@ -418,7 +419,8 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
            (i 0)
            (quote-char nil)
            (buf (list))
-           (items (list)))
+           (items (list))
+           (has-comma (string-match-p "," s)))
       (cl-labels ((push-char (c) (setq buf (cons c buf)))
                   (flush-buf ()
                     (when buf
@@ -441,11 +443,18 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
              ;; Not in quotes
              (t
               (cond
+               ;; Skip leading whitespace when waiting to start a token
+               ((and (null buf) (or (= ch ?\s) (= ch ?\t) (= ch ?\n)))
+                ;; ignore
+                )
                ;; Start of quoted token (only if buffer empty)
                ((and (or (= ch ?") (= ch ?')) (null buf))
                 (setq quote-char ch))
-               ;; Separator
-               ((or (= ch ?,) (= ch ?\s) (= ch ?\t) (= ch ?\n))
+               ;; Separator logic: if any comma exists in S, use comma-only separation;
+               ;; otherwise fall back to splitting on whitespace and commas.
+               ((if has-comma
+                    (= ch ?,)
+                  (or (= ch ?,) (= ch ?\s) (= ch ?\t) (= ch ?\n)))
                 (flush-buf))
                ;; Regular character
                (t (push-char ch))))))
@@ -454,15 +463,39 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
         (flush-buf)
         (nreverse items)))))
 
-(defun org-astro--parse-tags (info)
-  "Return a list of tags from INFO, supporting quoted multi-word items."
-  (let* ((tags-raw (or (plist-get info :astro-tags)
+(defun org-astro--keyword-raw-tags (tree)
+  "Return raw value for ASTRO_TAGS or TAGS keyword from TREE."
+  (org-element-map tree 'keyword
+    (lambda (k)
+      (let ((key (org-element-property :key k)))
+        (cond
+         ((string= key "ASTRO_TAGS") (org-element-property :value k))
+         ((string= key "TAGS") (org-element-property :value k)))))
+    nil 'first-match))
+
+(defun org-astro--keyword-raw-categories (tree)
+  "Return raw value for ASTRO_CATEGORIES or CATEGORIES keyword from TREE."
+  (org-element-map tree 'keyword
+    (lambda (k)
+      (let ((key (org-element-property :key k)))
+        (cond
+         ((string= key "ASTRO_CATEGORIES") (org-element-property :value k))
+         ((string= key "CATEGORIES") (org-element-property :value k)))))
+    nil 'first-match))
+
+(defun org-astro--parse-tags (tree info)
+  "Return a list of tags using raw keyword when available.
+Prefers ASTRO_TAGS over TAGS. Supports quoted multi-word items."
+  (let* ((tags-raw (or (org-astro--keyword-raw-tags tree)
+                       (plist-get info :astro-tags)
                        (plist-get info :tags))))
     (org-astro--split-quoted-list tags-raw)))
 
-(defun org-astro--parse-categories (info)
-  "Return a list of categories from INFO, supporting quoted multi-word items."
-  (let* ((categories-raw (or (plist-get info :astro-categories)
+(defun org-astro--parse-categories (tree info)
+  "Return a list of categories using raw keyword when available.
+Prefers ASTRO_CATEGORIES over CATEGORIES. Supports quoted multi-word items."
+  (let* ((categories-raw (or (org-astro--keyword-raw-categories tree)
+                             (plist-get info :astro-categories)
                              (plist-get info :categories))))
     (org-astro--split-quoted-list categories-raw)))
 
@@ -519,8 +552,8 @@ If no explicit cover image is specified, use the first body image as hero."
                        (org-astro--slugify title)))))
          (author (or (plist-get info :author) "Jay Dixit"))
          (excerpt (org-astro--get-excerpt tree info))
-         (tags (org-astro--parse-tags info))
-         (categories (org-astro--parse-categories info))
+         (tags (org-astro--parse-tags tree info))
+         (categories (org-astro--parse-categories tree info))
          (publish-date (org-astro--get-publish-date info))
          (author-image (org-astro--get-author-image info posts-folder))
          (cover-image-data (org-astro--get-cover-image info posts-folder))
