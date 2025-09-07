@@ -18,8 +18,8 @@
 
 (defun org-astro--get-pdfs-folder (posts-folder sub-dir)
   "Compute the app's public/pdfs/{slug}/ folder using POSTS-FOLDER and SUB-DIR.
-SUB-DIR for images is typically "posts/{slug}/"; for PDFs we drop the
-leading "posts/" so files land in /pdfs/{slug}/."
+SUB-DIR for images is typically \"posts/{slug}/\"; for PDFs we drop the
+leading \"posts/\" so files land in /pdfs/{slug}/."
   (when posts-folder
     (let* ((posts-dir (file-name-as-directory (expand-file-name posts-folder)))
            ;; src dir = .../apps/<app>/src/
@@ -61,7 +61,8 @@ Returns the site path beginning with /pdfs/."
                            (substring sub-dir (length "posts/"))
                            sub-dir)))
       (cond
-       (site-path site-path)
+       (site-path 
+        site-path)
        ;; Local file → copy
        ((and (file-name-absolute-p pdf-path) (file-exists-p pdf-path) pdfs-folder)
         (let* ((clean-filename (org-astro--sanitize-filename (file-name-nondirectory pdf-path)))

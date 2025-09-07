@@ -138,8 +138,9 @@ generated and added to the Org source file."
               ;; Process PDFs similarly: copy into public/pdfs and update buffer
               (let ((pdf-paths (org-astro--collect-pdfs-from-tree tree)))
                 (dolist (pdf pdf-paths)
-                  (ignore-errors
-                    (org-astro--process-pdf-path pdf posts-folder sub-dir t))))
+                  (condition-case err
+                      (org-astro--process-pdf-path pdf posts-folder sub-dir t)
+                    (error (message "ERROR processing PDF %s: %s" pdf err)))))
               ;; If we updated any paths, save the buffer and refresh the environment
               (when updated-paths
                 ;; Save the buffer to preserve the path updates

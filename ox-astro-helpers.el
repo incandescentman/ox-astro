@@ -655,12 +655,14 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
              (site-path
               (cond
                ;; Already a site path
-               ((string-prefix-p "/pdfs/" path) path)
+               ((string-prefix-p "/pdfs/" path) 
+                path)
                ;; Local absolute file path: try to detect /public/pdfs/ segment
                ((and (string-prefix-p "/" path)
-                     (string-match "/public/pdfs/\(.*\)$" path))
+                     (string-match "/public/pdfs/\\(.*\\)$" path))
                 (concat "/pdfs/" (match-string 1 path)))
-               (t path)))
+               (t 
+                path)))
              (encoded (if (string-match-p " " site-path)
                           (replace-regexp-in-string " " "%20" site-path)
                         site-path))
