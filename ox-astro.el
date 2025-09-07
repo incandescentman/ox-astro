@@ -50,6 +50,16 @@
 (require 'ox-astro-config)
 (require 'ox-astro-helpers)
 (require 'ox-astro-handlers)
+(require 'ox-astro-table-handlers)
+(require 'ox-astro-image-handlers)
+(require 'ox-astro-pdf-handlers)
+
+;; Declare functions from handler modules
+(declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
+(declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
+(declare-function org-astro--process-image-path "ox-astro-image-handlers")
+(declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
+(declare-function org-astro--process-pdf-path "ox-astro-pdf-handlers")
 
 ;; Placement helper: insert keywords after org-roam preamble (- Links :: / - Source ::)
 ;; (Placement helper removed for now — using existing insertion helper.)

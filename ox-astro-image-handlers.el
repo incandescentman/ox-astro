@@ -1,3 +1,20 @@
+;;; ox-astro-image-handlers.el --- Image handling functions for ox-astro  -*- lexical-binding: t -*-
+
+;;; Commentary:
+;; Image handling functions extracted from ox-astro-helpers.el
+
+;;; Code:
+
+(require 'org)
+(require 'ox)
+(require 'ox-astro-config)
+
+;; Declare functions from ox-astro-helpers
+(declare-function org-astro--debug-log-direct "ox-astro-helpers")
+(declare-function org-astro--dbg-log "ox-astro-helpers")
+(declare-function org-astro--get-assets-folder "ox-astro-helpers")
+(declare-function org-astro--sanitize-filename "ox-astro-helpers")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMAGE HANDLING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -502,3 +519,6 @@ This is more robust for narrowed subtrees than relying on `plain-text` parsing."
                 (when (file-exists-p path)
                   (push path images))))))))
     (nreverse images)))
+(provide 'ox-astro-image-handlers)
+
+;;; ox-astro-image-handlers.el ends here

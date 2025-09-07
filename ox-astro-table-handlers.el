@@ -1,3 +1,13 @@
+;;; ox-astro-table-handlers.el --- Table handling functions for ox-astro  -*- lexical-binding: t -*-
+
+;;; Commentary:
+;; Table handling functions extracted from ox-astro-helpers.el
+
+;;; Code:
+
+(require 'org)
+(require 'ox)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TABLE HANDLING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -145,3 +155,6 @@ This is more robust for narrowed subtrees than relying on `plain-text` parsing."
                 (when (file-exists-p path)
                   (push path images))))))))
     (nreverse images)))
+(provide 'ox-astro-table-handlers)
+
+;;; ox-astro-table-handlers.el ends here

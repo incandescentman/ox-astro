@@ -1,3 +1,17 @@
+;;; ox-astro-pdf-handlers.el --- PDF handling functions for ox-astro  -*- lexical-binding: t -*-
+
+;;; Commentary:
+;; PDF handling functions extracted from ox-astro-helpers.el
+
+;;; Code:
+
+(require 'org)
+(require 'ox)
+
+;; Declare functions from ox-astro-helpers and ox-astro-image-handlers
+(declare-function org-astro--sanitize-filename "ox-astro-helpers")
+(declare-function org-astro--update-source-buffer-image-path "ox-astro-image-handlers")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PDF HANDLING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -66,3 +80,6 @@ Returns the site path beginning with /pdfs/."
        (t
         ;; Unknown form; leave as-is
         pdf-path)))))
+(provide 'ox-astro-pdf-handlers)
+
+;;; ox-astro-pdf-handlers.el ends here

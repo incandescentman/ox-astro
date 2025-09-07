@@ -1,3 +1,28 @@
+;;; ox-astro-handlers.el --- Filter and handler functions for ox-astro  -*- lexical-binding: t -*-
+
+;;; Commentary:
+;; Filter and handler functions for ox-astro export
+
+;;; Code:
+
+(require 'org)
+(require 'ox)
+(require 'ox-astro-config)
+
+;; Declare functions from other ox-astro modules
+(declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
+(declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
+(declare-function org-astro--process-image-path "ox-astro-image-handlers")
+(declare-function org-astro--persist-wrap-raw-image-lines "ox-astro-image-handlers")
+(declare-function org-astro--get-assets-folder "ox-astro-helpers")
+(declare-function org-astro--sanitize-filename "ox-astro-helpers")
+(declare-function org-astro--path-to-var-name "ox-astro-helpers")
+(declare-function org-astro--get-front-matter-data "ox-astro-helpers")
+(declare-function org-astro--gen-yaml-front-matter "ox-astro-helpers")
+(declare-function org-astro--dbg-log "ox-astro-helpers")
+(declare-function org-astro--slugify "ox-astro-helpers")
+(declare-function org-astro--get-title "ox-astro-helpers")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Filter Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

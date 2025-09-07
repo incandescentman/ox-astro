@@ -5,6 +5,14 @@
 (require 'subr-x) ; for string-trim, string-trim-right
 (require 'cl-lib)
 
+;; Declare functions from other ox-astro modules
+(declare-function org-astro--process-image-path "ox-astro-image-handlers")
+(declare-function org-astro--process-pdf-path "ox-astro-pdf-handlers")
+(declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
+(declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
+(declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
+(declare-function org-astro--update-source-buffer-image-path "ox-astro-image-handlers")
+
 ;; Declare global variable for data persistence across export phases
 (defvar org-astro--current-body-images-imports nil
   "Global storage for body image imports to persist across export phases.")
