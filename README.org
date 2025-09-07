@@ -219,9 +219,9 @@ Export org-mode links to PDFs as clean Markdown links, with spaces URL‑encoded
 ** PDF Copying**
 Local PDF files referenced in Org are automatically copied to your app’s `public/pdfs/` folder on export.
 
-- Destination path: `public/pdfs/posts/{slug}/filename.pdf` (slug derived from the post)
+- Destination path: `public/pdfs/{slug}/filename.pdf` (slug derived from the post)
 - Org source update: the original absolute path is replaced with the new local file path in `public/pdfs/...`
-- MDX output: links are written as site-relative `/pdfs/posts/{slug}/filename.pdf` with any spaces encoded to `%20`.
+- MDX output: links are written as site-relative `/pdfs/{slug}/filename.pdf` with any spaces encoded to `%20`.
 
 * Post Visibility Options
 
