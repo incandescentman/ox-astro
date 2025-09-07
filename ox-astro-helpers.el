@@ -115,9 +115,9 @@
                         ;; Insert the new header
                         (goto-char (point-min))
                         (insert file-header))
-                    ;; If no log entries found, replace everything with new header
-                    (erase-buffer)
-                    (insert file-header))
+                      ;; If no log entries found, replace everything with new header
+                      (erase-buffer)
+                      (insert file-header))
                   (write-region (point-min) (point-max) debug-file nil 'silent)))
             (error nil))
           ;; Update clipboard
@@ -270,6 +270,7 @@ reference-style links like [label][ref]."
 ;; Detect Markdown reference-style link definitions lines like:
 ;;   [1]: https://example.com "Title"
 ;;   [label]: http://example.com
+
 (defun org-astro--markdown-link-definition-line-p (text)
   "Return non-nil if TEXT looks like a Markdown reference link definition."
   (when (and text (stringp text))
@@ -439,7 +440,7 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
                     ;; End of quoted token; push and reset
                     (flush-buf)
                     (setq quote-char nil))
-                (push-char ch)))
+                  (push-char ch)))
              ;; Not in quotes
              (t
               (cond
@@ -485,7 +486,7 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
 
 (defun org-astro--parse-tags (tree info)
   "Return a list of tags using raw keyword when available.
-Prefers ASTRO_TAGS over TAGS. Supports quoted multi-word items."
+  Prefers ASTRO_TAGS over TAGS. Supports quoted multi-word items."
   (let* ((tags-raw (or (org-astro--keyword-raw-tags tree)
                        (plist-get info :astro-tags)
                        (plist-get info :tags))))
@@ -493,7 +494,7 @@ Prefers ASTRO_TAGS over TAGS. Supports quoted multi-word items."
 
 (defun org-astro--parse-categories (tree info)
   "Return a list of categories using raw keyword when available.
-Prefers ASTRO_CATEGORIES over CATEGORIES. Supports quoted multi-word items."
+  Prefers ASTRO_CATEGORIES over CATEGORIES. Supports quoted multi-word items."
   (let* ((categories-raw (or (org-astro--keyword-raw-categories tree)
                              (plist-get info :astro-categories)
                              (plist-get info :categories))))
@@ -501,7 +502,7 @@ Prefers ASTRO_CATEGORIES over CATEGORIES. Supports quoted multi-word items."
 
 (defun org-astro--get-publish-date (info)
   "Extract and format the publish date from INFO.
-Falls back to the current time if no date is specified."
+  Falls back to the current time if no date is specified."
   (let ((date-raw (or (plist-get info :astro-publish-date)
                       (plist-get info :publish-date)
                       (plist-get info :date))))
@@ -519,7 +520,7 @@ Falls back to the current time if no date is specified."
 
 (defun org-astro--get-cover-image (info posts-folder)
   "Get the cover image path and alt text from INFO.
-If no explicit cover image is specified, use the first body image as hero."
+  If no explicit cover image is specified, use the first body image as hero."
   (let* ((image-raw (or (plist-get info :astro-image)
                         (plist-get info :cover-image)))
          (image (and image-raw posts-folder
@@ -790,8 +791,8 @@ If no explicit cover image is specified, use the first body image as hero."
 
 (defun org-astro-paragraph (paragraph contents info)
   "Transcode a PARAGRAPH element.
-If the paragraph is a raw image path, convert it to an <img> tag.
-Otherwise, use the default Markdown paragraph transcoding."
+  If the paragraph is a raw image path, convert it to an <img> tag.
+  Otherwise, use the default Markdown paragraph transcoding."
   ;; Debug: Log paragraphs that might contain raw image paths
   (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
     (let* ((children (org-element-contents paragraph))
@@ -855,8 +856,8 @@ Otherwise, use the default Markdown paragraph transcoding."
 
 (defun org-astro-plain-text (text info)
   "Transcode a plain-text element.
-If the text contains raw image paths on their own lines, convert them to <img> tags.
-If the text contains raw URLs on their own lines, convert them to LinkPeek components."
+  If the text contains raw image paths on their own lines, convert them to <img> tags.
+  If the text contains raw URLs on their own lines, convert them to LinkPeek components."
   (let* ((lines (split-string text "\n"))
          (image-imports (or (plist-get info :astro-body-images-imports)
                             org-astro--current-body-images-imports))
@@ -929,7 +930,7 @@ If the text contains raw URLs on their own lines, convert them to LinkPeek compo
 
 (defun org-astro--collect-images-from-tree (tree)
   "Collect all image paths from the parse TREE.
-This includes both `[[file:...]]` links and raw image paths on their own line."
+  This includes both `[[file:...]]` links and raw image paths on their own line."
   (let (images)
     ;; 1. Collect from `link` elements
     (org-element-map tree 'link
@@ -974,7 +975,7 @@ This includes both `[[file:...]]` links and raw image paths on their own line."
 
 (defun org-astro--collect-raw-image-paths ()
   "Collect image paths from raw buffer content, before org-mode parsing.
-This catches paths with underscores that would be broken by subscript parsing."
+  This catches paths with underscores that would be broken by subscript parsing."
   (let (images)
     (save-excursion
       (goto-char (point-min))
@@ -1003,10 +1004,10 @@ This catches paths with underscores that would be broken by subscript parsing."
 
 (defun org-astro--update-image-path-in-buffer (old-path new-path)
   "Replace OLD-PATH with NEW-PATH in the current buffer.
-This updates:
-- Org links [[file:OLD]][DESC] → [[file:NEW]][DESC]
-- Bare org links [[OLD]][DESC] → [[NEW]][DESC]
-- Raw lines containing only the path (ignoring surrounding whitespace)."
+  This updates:
+  - Org links [[file:OLD]][DESC] → [[file:NEW]][DESC]
+  - Bare org links [[OLD]][DESC] → [[NEW]][DESC]
+  - Raw lines containing only the path (ignoring surrounding whitespace)."
   (message "DEBUG: Starting buffer update - old: %s -> new: %s" old-path new-path)
   (message "DEBUG: Current buffer: %s (file: %s)" (buffer-name) (buffer-file-name))
   (message "DEBUG: Buffer modified: %s, read-only: %s" (buffer-modified-p) buffer-read-only)
@@ -1059,7 +1060,7 @@ This updates:
 
 (defun org-astro--update-image-path-in-file (file old-path new-path)
   "Open FILE, replace OLD-PATH with NEW-PATH using the same rules as buffer updater, and save.
-Returns non-nil if any changes were made."
+               Returns non-nil if any changes were made."
   (when (and (stringp file) (file-exists-p file)
              (stringp old-path) (stringp new-path))
     (with-current-buffer (find-file-noselect file)
@@ -1069,18 +1070,18 @@ Returns non-nil if any changes were made."
 
 (defun org-astro--update-source-buffer-image-path (old-path new-path)
   "Update image path in the original source buffer, not the export copy.
-This function finds the source buffer and modifies it directly."
+               This function finds the source buffer and modifies it directly."
   (message "DEBUG: Looking for source buffer to update path %s -> %s" old-path new-path)
   (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
     (message "[ox-astro][img] UPDATE-BUFFER: Attempting to update %s -> %s" old-path new-path)
-    (message "[ox-astro][img] UPDATE-BUFFER: Current buffer: %s, file: %s, read-only: %s" 
+    (message "[ox-astro][img] UPDATE-BUFFER: Current buffer: %s, file: %s, read-only: %s"
              (buffer-name) (buffer-file-name) buffer-read-only))
 
   ;; Strategy 1: Check if current buffer has a file name and is writable
   (let ((source-buffer nil))
     (cond
      ;; Current buffer is the source file (but NOT if it's a temp export buffer)
-     ((and (buffer-file-name) 
+     ((and (buffer-file-name)
            (not buffer-read-only)
            (not (string-match-p "^ \\*temp\\*" (buffer-name))))
       (message "DEBUG: Using current buffer as source: %s" (buffer-name))
@@ -1098,7 +1099,7 @@ This function finds the source buffer and modifies it directly."
           (let ((buf-file (buffer-file-name))
                 (buf-readonly buffer-read-only))
             (when (and buf-file (string-match-p "\\.org$" buf-file))
-              (org-astro--debug-log-direct "UPDATE-BUFFER: Checking buffer %s (file: %s, readonly: %s)" 
+              (org-astro--debug-log-direct "UPDATE-BUFFER: Checking buffer %s (file: %s, readonly: %s)"
                                           (buffer-name) buf-file buf-readonly))
             (when (and buf-file
                        (not buf-readonly)
@@ -1143,8 +1144,8 @@ This function finds the source buffer and modifies it directly."
 ;; Preprocessing: wrap raw absolute image paths in org link brackets [[...]]
 (defun org-astro--wrap-raw-image-path-lines-in-region (beg end)
   "Within BEG..END, wrap raw absolute image path lines with Org link brackets.
-Only wraps lines that are just an absolute image path (png/jpg/jpeg/webp),
-and are not already an Org link. Returns number of lines changed."
+               Only wraps lines that are just an absolute image path (png/jpg/jpeg/webp),
+               and are not already an Org link. Returns number of lines changed."
   (let ((count 0))
     (save-excursion
       (save-restriction
@@ -1182,7 +1183,7 @@ and are not already an Org link. Returns number of lines changed."
 
 (defun org-astro--generate-image-paths-comment-block (items)
   "Generate a comment block with suggested image path replacements.
-ITEMS is a list of plists containing :path (old), :target-path (abs new), :astro-path (alias)."
+               ITEMS is a list of plists containing :path (old), :target-path (abs new), :astro-path (alias)."
   (let ((lines (list "# BEGIN ASTRO IMAGE PATH SUGGESTIONS"
                      "# Suggested replacements (old → new). Use alias for MDX."
                      (format "# Generated: %s" (format-time-string "%Y-%m-%d %H:%M:%S"))
@@ -1295,8 +1296,8 @@ ITEMS is a list of plists containing :path (old), :target-path (abs new), :astro
 
 (defun org-astro--parse-image-suggestions ()
   "Parse the suggestions block and return a list of plist items:
-Each item has :old, :new, and :alias keys.
-Returns nil if no suggestions block is found."
+               Each item has :old, :new, and :alias keys.
+               Returns nil if no suggestions block is found."
   (save-excursion
     (goto-char (point-min))
     (let* ((begin (re-search-forward "^# BEGIN ASTRO IMAGE PATH SUGGESTIONS$" nil t))
@@ -1319,388 +1320,388 @@ Returns nil if no suggestions block is found."
 
 (defun org-astro-apply-image-path-replacements (&optional use-alias)
   "Apply suggested image path replacements in the current buffer.
-When USE-ALIAS is non-nil (interactive prefix), use :alias paths; otherwise use :new absolute paths."
-  (interactive "P")
-  (let* ((items (org-astro--parse-image-suggestions))
-         (count 0)
-         (mode (if use-alias :alias :new)))
-    (if (not items)
-        (message "No image suggestions block found.")
-        (save-excursion
-          (save-restriction
-            (widen)
-            (dolist (it items)
-              (let* ((old (plist-get it :old))
-                     (rep (plist-get it mode)))
-                (when (and old rep (not (string-empty-p rep)))
-                  (setq count (+ count (if (org-astro--update-image-path-in-buffer old rep) 1 0))))))
-            (when (> count 0)
-              (save-buffer)))
-          (message "Applied replacements for %d image(s) using %s paths." count (if use-alias "alias" "absolute")))))
-  )
+               When USE-ALIAS is non-nil (interactive prefix), use :alias paths; otherwise use :new absolute paths."
+               (interactive "P")
+               (let* ((items (org-astro--parse-image-suggestions))
+                      (count 0)
+                      (mode (if use-alias :alias :new)))
+                 (if (not items)
+                     (message "No image suggestions block found.")
+                     (save-excursion
+                       (save-restriction
+                         (widen)
+                         (dolist (it items)
+                           (let* ((old (plist-get it :old))
+                                  (rep (plist-get it mode)))
+                             (when (and old rep (not (string-empty-p rep)))
+                               (setq count (+ count (if (org-astro--update-image-path-in-buffer old rep) 1 0))))))
+                         (when (> count 0)
+                           (save-buffer)))
+                       (message "Applied replacements for %d image(s) using %s paths." count (if use-alias "alias" "absolute")))))
+               )
 
-(defun org-astro-apply-image-path-replacements-in-file (file &optional use-alias)
-  "Open FILE, apply replacements from its suggestions block, and save.
+              (defun org-astro-apply-image-path-replacements-in-file (file &optional use-alias)
+                "Open FILE, apply replacements from its suggestions block, and save.
 When USE-ALIAS is non-nil, use :alias paths; otherwise use :new."
-  (interactive "fOrg file: \nP")
-  (with-current-buffer (find-file-noselect file)
-    (org-astro-apply-image-path-replacements use-alias)))
+                (interactive "fOrg file: \nP")
+                (with-current-buffer (find-file-noselect file)
+                  (org-astro-apply-image-path-replacements use-alias)))
 
 
-(defun org-astro--sanitize-filename (filename)
-  "Sanitize FILENAME by replacing underscores with hyphens and removing problematic characters."
-  (let ((clean-name filename))
-    ;; Replace underscores with hyphens to avoid subscript parsing issues
-    (setq clean-name (replace-regexp-in-string "_" "-" clean-name))
-    ;; Remove or replace other potentially problematic characters
-    (setq clean-name (replace-regexp-in-string "[^a-zA-Z0-9.-]" "-" clean-name))
-    ;; Remove multiple consecutive hyphens
-    (setq clean-name (replace-regexp-in-string "--+" "-" clean-name))
-    clean-name))
+              (defun org-astro--sanitize-filename (filename)
+                "Sanitize FILENAME by replacing underscores with hyphens and removing problematic characters."
+                (let ((clean-name filename))
+                  ;; Replace underscores with hyphens to avoid subscript parsing issues
+                  (setq clean-name (replace-regexp-in-string "_" "-" clean-name))
+                  ;; Remove or replace other potentially problematic characters
+                  (setq clean-name (replace-regexp-in-string "[^a-zA-Z0-9.-]" "-" clean-name))
+                  ;; Remove multiple consecutive hyphens
+                  (setq clean-name (replace-regexp-in-string "--+" "-" clean-name))
+                  clean-name))
 
-(defun org-astro--download-remote-image (url posts-folder sub-dir)
-  "Download remote image from URL to assets folder.
+              (defun org-astro--download-remote-image (url posts-folder sub-dir)
+                "Download remote image from URL to assets folder.
 Returns the local file path if successful, nil otherwise."
-  (when (and url posts-folder (string-match-p "^https?://" url))
-    (let* ((url-parts (url-generic-parse-url url))
-           (path (url-filename url-parts))
-           ;; Extract filename from URL path, handling query parameters
-           (raw-filename (if (string-match "\\([^/?]+\\)\\(\\?.*\\)?$" path)
-                             (match-string 1 path)
-                             "downloaded-image"))
-           ;; Ensure we have an image extension
-           (filename (if (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)$" raw-filename)
-                         raw-filename
-                         (concat raw-filename ".jpg")))
-           (clean-filename (org-astro--sanitize-filename filename))
-           (assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-           (target-path (when assets-folder
-                          (expand-file-name clean-filename assets-folder))))
+                (when (and url posts-folder (string-match-p "^https?://" url))
+                  (let* ((url-parts (url-generic-parse-url url))
+                         (path (url-filename url-parts))
+                         ;; Extract filename from URL path, handling query parameters
+                         (raw-filename (if (string-match "\\([^/?]+\\)\\(\\?.*\\)?$" path)
+                                           (match-string 1 path)
+                                           "downloaded-image"))
+                         ;; Ensure we have an image extension
+                         (filename (if (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)$" raw-filename)
+                                       raw-filename
+                                       (concat raw-filename ".jpg")))
+                         (clean-filename (org-astro--sanitize-filename filename))
+                         (assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+                         (target-path (when assets-folder
+                                        (expand-file-name clean-filename assets-folder))))
 
-      (when (and target-path assets-folder)
-        ;; Create assets directory if it doesn't exist
-        (make-directory assets-folder t)
+                    (when (and target-path assets-folder)
+                      ;; Create assets directory if it doesn't exist
+                      (make-directory assets-folder t)
 
-        ;; Download the image
-        (condition-case err
-            (progn
-              (message "Downloading remote image: %s" url)
-              (org-astro--dbg-log nil "REMOTE downloading: %s" url)
-              (url-copy-file url target-path t)
-              (when (file-exists-p target-path)
-                (message "Successfully downloaded: %s -> %s" url target-path)
-                (org-astro--dbg-log nil "REMOTE downloaded: %s -> %s" url clean-filename)
-                target-path))
-          (error
-           (message "Failed to download image %s: %s" url err)
-           (org-astro--dbg-log nil "REMOTE failed: %s - %s" url err)
-           nil))))))
+                      ;; Download the image
+                      (condition-case err
+                          (progn
+                            (message "Downloading remote image: %s" url)
+                            (org-astro--dbg-log nil "REMOTE downloading: %s" url)
+                            (url-copy-file url target-path t)
+                            (when (file-exists-p target-path)
+                              (message "Successfully downloaded: %s -> %s" url target-path)
+                              (org-astro--dbg-log nil "REMOTE downloaded: %s -> %s" url clean-filename)
+                              target-path))
+                        (error
+                         (message "Failed to download image %s: %s" url err)
+                         (org-astro--dbg-log nil "REMOTE failed: %s - %s" url err)
+                         nil))))))
 
-(defun org-astro--process-image-path (image-path posts-folder sub-dir &optional update-buffer)
-  "Process IMAGE-PATH for POSTS-FOLDER, copying local files or downloading remote URLs to SUB-DIR.
+              (defun org-astro--process-image-path (image-path posts-folder sub-dir &optional update-buffer)
+                "Process IMAGE-PATH for POSTS-FOLDER, copying local files or downloading remote URLs to SUB-DIR.
 Returns the processed path suitable for Astro imports.
 If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path."
-  (message "DEBUG: Processing image - path: %s, posts-folder: %s, sub-dir: %s, update-buffer: %s"
-           image-path posts-folder sub-dir update-buffer)
+                (message "DEBUG: Processing image - path: %s, posts-folder: %s, sub-dir: %s, update-buffer: %s"
+                         image-path posts-folder sub-dir update-buffer)
 
-  (when (and image-path posts-folder)
-    (let ((image-path (substring-no-properties image-path)))
-      (cond
-       ;; Handle images already in the assets folder - just return the alias path
-       ((let ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir)))
-          (message "DEBUG: Checking if in assets - assets-folder: %s, image-path: %s"
-                   assets-folder image-path)
-          (and assets-folder
-               (string-match-p (regexp-quote (expand-file-name assets-folder))
-                               (expand-file-name image-path))))
-        (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-               (relative-path (file-relative-name image-path (expand-file-name assets-folder)))
-               (filename (file-name-nondirectory image-path))
-               (result (concat "~/assets/images/" sub-dir filename)))
-          (message "DEBUG: Image already in assets folder - returning: %s" result)
-          result))
+                (when (and image-path posts-folder)
+                  (let ((image-path (substring-no-properties image-path)))
+                    (cond
+                     ;; Handle images already in the assets folder - just return the alias path
+                     ((let ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir)))
+                        (message "DEBUG: Checking if in assets - assets-folder: %s, image-path: %s"
+                                 assets-folder image-path)
+                        (and assets-folder
+                             (string-match-p (regexp-quote (expand-file-name assets-folder))
+                                             (expand-file-name image-path))))
+                      (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+                             (relative-path (file-relative-name image-path (expand-file-name assets-folder)))
+                             (filename (file-name-nondirectory image-path))
+                             (result (concat "~/assets/images/" sub-dir filename)))
+                        (message "DEBUG: Image already in assets folder - returning: %s" result)
+                        result))
 
-       ;; Handle remote URLs (both full https:// and protocol-relative //)
-       ((let ((is-remote (or (string-match-p "^https?://" image-path)
-                             (and (string-match-p "^//" image-path)
-                                  (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)" image-path)))))
-          (message "DEBUG: Checking remote URL for %s. Is remote: %s" image-path is-remote)
-          is-remote)
-        (let* ((full-url (if (string-match-p "^//" image-path)
-                             (concat "https:" image-path)
-                             image-path))
-               (downloaded-path (org-astro--download-remote-image full-url posts-folder sub-dir)))
-          (when downloaded-path
-            (let* ((clean-filename (file-name-nondirectory downloaded-path))
-                   (result (concat "~/assets/images/" sub-dir clean-filename)))
-              ;; Update the buffer to replace remote URL with local path
-              ;; For protocol-relative URLs, we need to find the original https:// version in the buffer
-              (when update-buffer
-                (let ((original-url (if (string-match-p "^//" image-path)
-                                        ;; Try to find the original https:// version in the buffer
-                                        full-url
-                                        ;; Use the path as-is if it already has protocol
-                                        image-path)))
-                  (message "DEBUG: Updating buffer - remote URL %s -> local path %s" original-url downloaded-path)
-                  (org-astro--update-source-buffer-image-path original-url downloaded-path)))
-              (message "DEBUG: Remote image processed - returning astro path: %s" result)
-              result))))
+                     ;; Handle remote URLs (both full https:// and protocol-relative //)
+                     ((let ((is-remote (or (string-match-p "^https?://" image-path)
+                                           (and (string-match-p "^//" image-path)
+                                                (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)" image-path)))))
+                        (message "DEBUG: Checking remote URL for %s. Is remote: %s" image-path is-remote)
+                        is-remote)
+                      (let* ((full-url (if (string-match-p "^//" image-path)
+                                           (concat "https:" image-path)
+                                           image-path))
+                             (downloaded-path (org-astro--download-remote-image full-url posts-folder sub-dir)))
+                        (when downloaded-path
+                          (let* ((clean-filename (file-name-nondirectory downloaded-path))
+                                 (result (concat "~/assets/images/" sub-dir clean-filename)))
+                            ;; Update the buffer to replace remote URL with local path
+                            ;; For protocol-relative URLs, we need to find the original https:// version in the buffer
+                            (when update-buffer
+                              (let ((original-url (if (string-match-p "^//" image-path)
+                                                      ;; Try to find the original https:// version in the buffer
+                                                      full-url
+                                                      ;; Use the path as-is if it already has protocol
+                                                      image-path)))
+                                (message "DEBUG: Updating buffer - remote URL %s -> local path %s" original-url downloaded-path)
+                                (org-astro--update-source-buffer-image-path original-url downloaded-path)))
+                            (message "DEBUG: Remote image processed - returning astro path: %s" result)
+                            result))))
 
-       ;; Handle local files
-       (t
-        (message "DEBUG: Handling local file: %s" image-path)
-        (message "DEBUG: File exists check: %s" (file-exists-p image-path))
-        (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-               (original-filename (file-name-nondirectory image-path))
-               (clean-filename (org-astro--sanitize-filename original-filename))
-               (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
+                     ;; Handle local files
+                     (t
+                      (message "DEBUG: Handling local file: %s" image-path)
+                      (message "DEBUG: File exists check: %s" (file-exists-p image-path))
+                      (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+                             (original-filename (file-name-nondirectory image-path))
+                             (clean-filename (org-astro--sanitize-filename original-filename))
+                             (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
 
-          (message "DEBUG: Assets folder: %s" assets-folder)
-          (message "DEBUG: Target path: %s" target-path)
-          (message "DEBUG: About to check conditions - target-path: %s, file-exists: %s"
-                   (and target-path t) (file-exists-p image-path))
+                        (message "DEBUG: Assets folder: %s" assets-folder)
+                        (message "DEBUG: Target path: %s" target-path)
+                        (message "DEBUG: About to check conditions - target-path: %s, file-exists: %s"
+                                 (and target-path t) (file-exists-p image-path))
 
-          (when (and target-path (file-exists-p image-path))
-            ;; Create assets directory if it doesn't exist
-            (when assets-folder
-              (make-directory assets-folder t))
-            ;; Copy the file
-            (condition-case err
-                (progn
-                  (copy-file image-path target-path t)
-                  (message "DEBUG: Successfully copied %s to %s" image-path target-path))
-              (error (message "Failed to copy image %s: %s" image-path err)))
+                        (when (and target-path (file-exists-p image-path))
+                          ;; Create assets directory if it doesn't exist
+                          (when assets-folder
+                            (make-directory assets-folder t))
+                          ;; Copy the file
+                          (condition-case err
+                              (progn
+                                (copy-file image-path target-path t)
+                                (message "DEBUG: Successfully copied %s to %s" image-path target-path))
+                            (error (message "Failed to copy image %s: %s" image-path err)))
 
-            ;; Update the buffer if requested (even if file already exists from previous run)
-            (when update-buffer
-              (message "DEBUG: Attempting buffer update...")
-              (org-astro--debug-log-direct "UPDATE: Calling buffer update for %s -> %s" image-path target-path)
-              (let ((update-result (org-astro--update-source-buffer-image-path image-path target-path)))
-                (org-astro--debug-log-direct "UPDATE: Buffer update result: %s" (if update-result "SUCCESS" "FAILED"))))
+                          ;; Update the buffer if requested (even if file already exists from previous run)
+                          (when update-buffer
+                            (message "DEBUG: Attempting buffer update...")
+                            (org-astro--debug-log-direct "UPDATE: Calling buffer update for %s -> %s" image-path target-path)
+                            (let ((update-result (org-astro--update-source-buffer-image-path image-path target-path)))
+                              (org-astro--debug-log-direct "UPDATE: Buffer update result: %s" (if update-result "SUCCESS" "FAILED"))))
 
-            ;; Return the alias path for imports
-            (when (file-exists-p target-path)
-              (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
-                (message "DEBUG: Returning astro path: %s" result)
-                result)))))))))
+                          ;; Return the alias path for imports
+                          (when (file-exists-p target-path)
+                            (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
+                              (message "DEBUG: Returning astro path: %s" result)
+                              result)))))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TABLE HANDLING
+              ;; TABLE HANDLING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun org-astro-table (table contents info)
-  "Transcode a TABLE element from Org to Markdown.
+              (defun org-astro-table (table contents info)
+                "Transcode a TABLE element from Org to Markdown.
 CONTENTS holds the contents of the table.  INFO is a plist
 holding contextual information."
-  (let* ((rows (org-element-map table 'table-row
-                 (lambda (row)
-                   (when (eq (org-element-property :type row) 'standard)
-                     row))))
-         (table-rows (mapcar (lambda (row)
-                               (org-astro-table-row row nil info))
-                             rows)))
-    (when table-rows
-      (let ((first-row (car table-rows))
-            (remaining-rows (cdr table-rows)))
-        (concat
-         first-row "\n"
-         (org-astro--table-separator-row (car rows) info) "\n"
-         (when remaining-rows
-           (concat (mapconcat #'identity remaining-rows "\n") "\n")))))))
+                (let* ((rows (org-element-map table 'table-row
+                               (lambda (row)
+                                 (when (eq (org-element-property :type row) 'standard)
+                                   row))))
+                       (table-rows (mapcar (lambda (row)
+                                             (org-astro-table-row row nil info))
+                                           rows)))
+                  (when table-rows
+                    (let ((first-row (car table-rows))
+                          (remaining-rows (cdr table-rows)))
+                      (concat
+                       first-row "\n"
+                       (org-astro--table-separator-row (car rows) info) "\n"
+                       (when remaining-rows
+                         (concat (mapconcat #'identity remaining-rows "\n") "\n")))))))
 
-(defun org-astro-table-row (table-row _contents info)
-  "Transcode a TABLE-ROW element from Org to Markdown.
+              (defun org-astro-table-row (table-row _contents info)
+                "Transcode a TABLE-ROW element from Org to Markdown.
 CONTENTS is the contents of the row.  INFO is a plist used as a
 communication channel."
-  (when (eq (org-element-property :type table-row) 'standard)
-    (let* ((cells (org-element-map table-row 'table-cell
-                    (lambda (cell)
-                      (org-astro-table-cell cell nil info))))
-           (row-content (mapconcat #'identity cells " | ")))
-      (concat "| " row-content " |"))))
+                (when (eq (org-element-property :type table-row) 'standard)
+                  (let* ((cells (org-element-map table-row 'table-cell
+                                  (lambda (cell)
+                                    (org-astro-table-cell cell nil info))))
+                         (row-content (mapconcat #'identity cells " | ")))
+                    (concat "| " row-content " |"))))
 
-(defun org-astro-table-cell (table-cell _contents info)
-  "Transcode a TABLE-CELL element from Org to Markdown.
+              (defun org-astro-table-cell (table-cell _contents info)
+                "Transcode a TABLE-CELL element from Org to Markdown.
 CONTENTS is the cell contents.  INFO is a plist used as a
 communication channel."
-  (let ((cell-contents (org-element-contents table-cell)))
-    (if cell-contents
-        (org-trim (org-export-data cell-contents info))
-        "")))
+                (let ((cell-contents (org-element-contents table-cell)))
+                  (if cell-contents
+                      (org-trim (org-export-data cell-contents info))
+                      "")))
 
-(defun org-astro--table-separator-row (header-row info)
-  "Generate a Markdown table separator row based on HEADER-ROW.
+              (defun org-astro--table-separator-row (header-row info)
+                "Generate a Markdown table separator row based on HEADER-ROW.
 INFO is a plist used as a communication channel."
-  (let* ((cells (org-element-map header-row 'table-cell #'identity))
-         (separators (mapcar (lambda (_cell) "---") cells)))
-    (concat "| " (mapconcat #'identity separators " | ") " |")))
+                (let* ((cells (org-element-map header-row 'table-cell #'identity))
+                       (separators (mapcar (lambda (_cell) "---") cells)))
+                  (concat "| " (mapconcat #'identity separators " | ") " |")))
 
-(defun org-astro-special-block (special-block contents info)
-  "Transcode a SPECIAL-BLOCK element.
+              (defun org-astro-special-block (special-block contents info)
+                "Transcode a SPECIAL-BLOCK element.
 Handle GALLERY blocks specially by converting them to ImageGallery components."
-  (let ((block-type (org-element-property :type special-block)))
-    (cond
-     ;; Handle GALLERY blocks
-     ((string-equal block-type "GALLERY")
-      (org-astro--dbg-log info "Processing GALLERY block")
-      (let* ((image-imports (plist-get info :astro-body-images-imports))
-             (gallery-id (concat "gallery-" (number-to-string (random 10000))))
-             (gallery-items nil))
-        ;; Debug: log what's in image-imports
-        (org-astro--dbg-log info "GALLERY: image-imports contains %d items" (length image-imports))
-        (when image-imports
-          (org-astro--dbg-log info "GALLERY: import paths: %s" 
-                              (mapcar (lambda (item) (plist-get item :path)) image-imports)))
-        ;; First, extract image links from the block contents
-        (org-element-map special-block 'link
-          (lambda (link)
-            (when (and (string-equal (org-element-property :type link) "file")
-                       (let ((path (org-element-property :path link)))
-                         (and path (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path))))
-              (let* ((path (org-element-property :path link))
-                     ;; Try to find the import data by matching the sanitized filename
-                     (filename (file-name-nondirectory path))
-                     (sanitized-filename (org-astro--sanitize-filename filename))
-                     (import-data (cl-find-if 
-                                   (lambda (item) 
-                                     (string-equal sanitized-filename 
-                                                   (file-name-nondirectory (plist-get item :path))))
-                                   image-imports))
-                     (var-name (when import-data (plist-get import-data :var-name)))
-                     (alt-text (org-astro--filename-to-alt-text path)))
-                (org-astro--dbg-log info "GALLERY checking link path: %s (sanitized: %s), found in imports: %s" 
-                                    path sanitized-filename (if import-data "YES" "NO"))
-                (when var-name
-                  (org-astro--dbg-log info "GALLERY found image: %s -> %s" path var-name)
-                  (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))
-        
-        ;; Also extract raw image paths from the block region
-        (let ((beg (org-element-property :begin special-block))
-              (end (org-element-property :end special-block)))
-          (when (and beg end)
-            (save-excursion
-              (save-restriction
-                (narrow-to-region beg end)
-                (goto-char (point-min))
-                ;; Look for raw image paths (absolute paths ending in image extensions)
-                (while (re-search-forward "^\\s-*/[^[:space:]]+\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
-                  (let* ((raw-path (string-trim (match-string 0)))
-                         ;; Try to find the import data by matching the sanitized filename
-                         (filename (file-name-nondirectory raw-path))
-                         (sanitized-filename (org-astro--sanitize-filename filename))
-                         (import-data (cl-find-if 
-                                       (lambda (item) 
-                                         (string-equal sanitized-filename 
-                                                       (file-name-nondirectory (plist-get item :path))))
-                                       image-imports))
-                         (var-name (when import-data (plist-get import-data :var-name)))
-                         (alt-text (org-astro--filename-to-alt-text raw-path)))
-                    (org-astro--dbg-log info "GALLERY checking raw path: %s (sanitized: %s), found in imports: %s" 
-                                        raw-path sanitized-filename (if import-data "YES" "NO"))
-                    (when var-name
-                      (org-astro--dbg-log info "GALLERY found image: %s -> %s" raw-path var-name)
-                      (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))))
-        
-        ;; Generate ImageGallery component
-        (org-astro--dbg-log info "GALLERY generating component with %d images" (length gallery-items))
-        (if gallery-items
-            (concat "<ImageGallery\n"
-                    "  images={[\n"
-                    (mapconcat #'identity (reverse gallery-items) ",\n")
-                    "\n  ]}\n"
-                    "  galleryId=\"" gallery-id "\"\n"
-                    "/>")
-            ;; Fallback if no images found
-            contents)))
-     ;; Default: use standard markdown export
-     (t (org-md-special-block special-block contents info)))))
+                (let ((block-type (org-element-property :type special-block)))
+                  (cond
+                   ;; Handle GALLERY blocks
+                   ((string-equal block-type "GALLERY")
+                    (org-astro--dbg-log info "Processing GALLERY block")
+                    (let* ((image-imports (plist-get info :astro-body-images-imports))
+                           (gallery-id (concat "gallery-" (number-to-string (random 10000))))
+                           (gallery-items nil))
+                      ;; Debug: log what's in image-imports
+                      (org-astro--dbg-log info "GALLERY: image-imports contains %d items" (length image-imports))
+                      (when image-imports
+                        (org-astro--dbg-log info "GALLERY: import paths: %s"
+                                            (mapcar (lambda (item) (plist-get item :path)) image-imports)))
+                      ;; First, extract image links from the block contents
+                      (org-element-map special-block 'link
+                        (lambda (link)
+                          (when (and (string-equal (org-element-property :type link) "file")
+                                     (let ((path (org-element-property :path link)))
+                                       (and path (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path))))
+                            (let* ((path (org-element-property :path link))
+                                   ;; Try to find the import data by matching the sanitized filename
+                                   (filename (file-name-nondirectory path))
+                                   (sanitized-filename (org-astro--sanitize-filename filename))
+                                   (import-data (cl-find-if
+                                                 (lambda (item)
+                                                   (string-equal sanitized-filename
+                                                                 (file-name-nondirectory (plist-get item :path))))
+                                                 image-imports))
+                                   (var-name (when import-data (plist-get import-data :var-name)))
+                                   (alt-text (org-astro--filename-to-alt-text path)))
+                              (org-astro--dbg-log info "GALLERY checking link path: %s (sanitized: %s), found in imports: %s"
+                                                  path sanitized-filename (if import-data "YES" "NO"))
+                              (when var-name
+                                (org-astro--dbg-log info "GALLERY found image: %s -> %s" path var-name)
+                                (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))
 
-(defun org-astro--collect-raw-images-from-tree-region (tree)
-  "Collect raw image paths by scanning the buffer region of a parse TREE.
+                      ;; Also extract raw image paths from the block region
+                      (let ((beg (org-element-property :begin special-block))
+                            (end (org-element-property :end special-block)))
+                        (when (and beg end)
+                          (save-excursion
+                            (save-restriction
+                              (narrow-to-region beg end)
+                              (goto-char (point-min))
+                              ;; Look for raw image paths (absolute paths ending in image extensions)
+                              (while (re-search-forward "^\\s-*/[^[:space:]]+\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+                                (let* ((raw-path (string-trim (match-string 0)))
+                                       ;; Try to find the import data by matching the sanitized filename
+                                       (filename (file-name-nondirectory raw-path))
+                                       (sanitized-filename (org-astro--sanitize-filename filename))
+                                       (import-data (cl-find-if
+                                                     (lambda (item)
+                                                       (string-equal sanitized-filename
+                                                                     (file-name-nondirectory (plist-get item :path))))
+                                                     image-imports))
+                                       (var-name (when import-data (plist-get import-data :var-name)))
+                                       (alt-text (org-astro--filename-to-alt-text raw-path)))
+                                  (org-astro--dbg-log info "GALLERY checking raw path: %s (sanitized: %s), found in imports: %s"
+                                                      raw-path sanitized-filename (if import-data "YES" "NO"))
+                                  (when var-name
+                                    (org-astro--dbg-log info "GALLERY found image: %s -> %s" raw-path var-name)
+                                    (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))))
+
+                      ;; Generate ImageGallery component
+                      (org-astro--dbg-log info "GALLERY generating component with %d images" (length gallery-items))
+                      (if gallery-items
+                          (concat "<ImageGallery\n"
+                                  "  images={[\n"
+                                  (mapconcat #'identity (reverse gallery-items) ",\n")
+                                  "\n  ]}\n"
+                                  "  galleryId=\"" gallery-id "\"\n"
+                                  "/>")
+                          ;; Fallback if no images found
+                          contents)))
+                   ;; Default: use standard markdown export
+                   (t (org-md-special-block special-block contents info)))))
+
+              (defun org-astro--collect-raw-images-from-tree-region (tree)
+                "Collect raw image paths by scanning the buffer region of a parse TREE.
 This is more robust for narrowed subtrees than relying on `plain-text` parsing."
-  (let (images)
-    (let ((beg (org-element-property :begin tree))
-          (end (org-element-property :end tree)))
-      (when (and beg end)
-        (save-excursion
-          (save-restriction
-            (narrow-to-region beg end)
-            (goto-char (point-min))
-            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
-              (let ((path (string-trim (match-string 0))))
-                (when (file-exists-p path)
-                  (push path images))))))))
-    (nreverse images)))
+                (let (images)
+                  (let ((beg (org-element-property :begin tree))
+                        (end (org-element-property :end tree)))
+                    (when (and beg end)
+                      (save-excursion
+                        (save-restriction
+                          (narrow-to-region beg end)
+                          (goto-char (point-min))
+                          (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+                            (let ((path (string-trim (match-string 0))))
+                              (when (file-exists-p path)
+                                (push path images))))))))
+                  (nreverse images)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; PDF HANDLING
+              ;; PDF HANDLING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun org-astro--get-pdfs-folder (posts-folder sub-dir)
-  "Compute the app's public/pdfs/{slug}/ folder using POSTS-FOLDER and SUB-DIR.
+              (defun org-astro--get-pdfs-folder (posts-folder sub-dir)
+                "Compute the app's public/pdfs/{slug}/ folder using POSTS-FOLDER and SUB-DIR.
 SUB-DIR for images is typically "posts/{slug}/"; for PDFs we drop the
 leading "posts/" so files land in /pdfs/{slug}/."
-  (when posts-folder
-    (let* ((posts-dir (file-name-as-directory (expand-file-name posts-folder)))
-           ;; src dir = .../apps/<app>/src/
-           (src-dir (file-name-directory
-                     (directory-file-name
-                      (file-name-directory
-                       (directory-file-name posts-dir)))))
-           ;; app root = parent of src
-           (app-root (file-name-directory (directory-file-name src-dir)))
-           (pdf-subdir (if (and sub-dir (string-prefix-p "posts/" sub-dir))
-                           (substring sub_dir (length "posts/"))
-                         sub-dir)))
-      (expand-file-name (concat "public/pdfs/" pdf-subdir) app-root)))
+                (when posts-folder
+                  (let* ((posts-dir (file-name-as-directory (expand-file-name posts-folder)))
+                         ;; src dir = .../apps/<app>/src/
+                         (src-dir (file-name-directory
+                                   (directory-file-name
+                                    (file-name-directory
+                                     (directory-file-name posts-dir)))))
+                         ;; app root = parent of src
+                         (app-root (file-name-directory (directory-file-name src-dir)))
+                         (pdf-subdir (if (and sub-dir (string-prefix-p "posts/" sub-dir))
+                                         (substring sub-dir (length "posts/"))
+                                         sub-dir)))
+                    (expand-file-name (concat "public/pdfs/" pdf-subdir) app-root)))
 
-(defun org-astro--collect-pdfs-from-tree (tree)
-  "Collect PDF file paths from Org TREE links."
-  (let (pdfs)
-    (org-element-map tree 'link
-      (lambda (lnk)
-        (let ((type (org-element-property :type lnk))
-              (p (org-element-property :path lnk)))
-          (when (and p (or (string= type "file") (null type)))
-            (when (and (string-suffix-p ".pdf" (downcase p))
-                       ;; Accept absolute site paths and local absolute paths
-                       (or (string-prefix-p "/" p)
-                           (file-name-absolute-p p)))
-              (push p pdfs)))))
-    (delete-dups (nreverse pdfs))))
+                (defun org-astro--collect-pdfs-from-tree (tree)
+                  "Collect PDF file paths from Org TREE links."
+                  (let (pdfs)
+                    (org-element-map tree 'link
+                      (lambda (lnk)
+                        (let ((type (org-element-property :type lnk))
+                              (p (org-element-property :path lnk)))
+                          (when (and p (or (string= type "file") (null type)))
+                            (when (and (string-suffix-p ".pdf" (downcase p))
+                                       ;; Accept absolute site paths and local absolute paths
+                                       (or (string-prefix-p "/" p)
+                                           (file-name-absolute-p p)))
+                              (push p pdfs)))))
+                      (delete-dups (nreverse pdfs))))
 
-(defun org-astro--process-pdf-path (pdf-path posts-folder sub-dir &optional update-buffer)
-  "Copy local PDF to app public/pdfs/SUB-DIR and optionally update source buffer.
+                  (defun org-astro--process-pdf-path (pdf-path posts-folder sub-dir &optional update-buffer)
+                    "Copy local PDF to app public/pdfs/SUB-DIR and optionally update source buffer.
 Returns the site path beginning with /pdfs/."
-  (when (and pdf-path posts-folder)
-    (let* ((pdf-path (substring-no-properties pdf-path))
-           ;; If already a site path, just return it
-           (site-path (when (string-prefix-p "/pdfs/" pdf-path) pdf-path))
-           (pdfs-folder (org-astro--get-pdfs-folder posts-folder sub-dir))
-           (pdf-subdir (if (and sub-dir (string-prefix-p "posts/" sub-dir))
-                           (substring sub_dir (length "posts/"))
-                         sub_dir)))
-      (cond
-       (site-path site-path)
-       ;; Local file → copy
-       ((and (file-name-absolute-p pdf-path) (file-exists-p pdf-path) pdfs-folder)
-        (let* ((clean-filename (org-astro--sanitize-filename (file-name-nondirectory pdf-path)))
-               (target-dir pdfs-folder)
-               (target-path (expand-file-name clean-filename target-dir))
-               (site (concat "/pdfs/" pdf-subdir clean-filename)))
-          (make-directory target-dir t)
-          (condition-case err
-              (progn (copy-file pdf-path target-path t)
-                     (message "Copied PDF %s -> %s" pdf-path target-path))
-            (error (message "Failed to copy PDF %s: %s" pdf-path err)))
-          (when update-buffer
-            ;; Update source buffer from old local absolute path to new absolute target path
-            (ignore-errors (org-astro--update-source-buffer-image-path pdf-path target-path)))
-          site))
-       (t
-        ;; Unknown form; leave as-is
-        pdf-path)))))
+                    (when (and pdf-path posts-folder)
+                      (let* ((pdf-path (substring-no-properties pdf-path))
+                             ;; If already a site path, just return it
+                             (site-path (when (string-prefix-p "/pdfs/" pdf-path) pdf-path))
+                             (pdfs-folder (org-astro--get-pdfs-folder posts-folder sub-dir))
+                             (pdf-subdir (if (and sub-dir (string-prefix-p "posts/" sub-dir))
+                                             (substring sub_dir (length "posts/"))
+                                             sub_dir)))
+                        (cond
+                         (site-path site-path)
+                         ;; Local file → copy
+                         ((and (file-name-absolute-p pdf-path) (file-exists-p pdf-path) pdfs-folder)
+                          (let* ((clean-filename (org-astro--sanitize-filename (file-name-nondirectory pdf-path)))
+                                 (target-dir pdfs-folder)
+                                 (target-path (expand-file-name clean-filename target-dir))
+                                 (site (concat "/pdfs/" pdf-subdir clean-filename)))
+                            (make-directory target-dir t)
+                            (condition-case err
+                                (progn (copy-file pdf-path target-path t)
+                                       (message "Copied PDF %s -> %s" pdf-path target-path))
+                              (error (message "Failed to copy PDF %s: %s" pdf-path err)))
+                            (when update-buffer
+                              ;; Update source buffer from old local absolute path to new absolute target path
+                              (ignore-errors (org-astro--update-source-buffer-image-path pdf-path target-path)))
+                            site))
+                         (t
+                          ;; Unknown form; leave as-is
+                          pdf-path)))))
 
-(provide 'ox-astro-helpers)
+                  (provide 'ox-astro-helpers)
 ;;; ox-astro-helpers.el ends here
