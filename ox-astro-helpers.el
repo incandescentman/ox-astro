@@ -265,6 +265,7 @@ reference-style links like [label][ref]."
   (when (and text (stringp text))
     (or (string-match-p "\\[[^]]+\\](\\([^)]\\|\\n\\)+)" text) ; inline [..](..)
         (string-match-p "\\[[^]]+\\]\\[[^]]+\\]" text)))   ; reference [..][..]
+  )
 
 ;; Detect Markdown reference-style link definitions lines like:
 ;;   [1]: https://example.com "Title"
