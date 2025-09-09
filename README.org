@@ -11,6 +11,9 @@ To use this exporter, save the following files to your Emacs load path:
 - ~ox-astro-config.el~ (configuration options)
 - ~ox-astro-helpers.el~ (internal helper functions)
 - ~ox-astro-handlers.el~ (export and filter handlers)
+- ~ox-astro-table-handlers.el~ (table processing)
+- ~ox-astro-image-handlers.el~ (image handling)
+- ~ox-astro-pdf-handlers.el~ (PDF handling)
 
 Then, add the following to your Emacs configuration (~init.el~):
 
@@ -203,25 +206,43 @@ A bare URL without a description is automatically converted into a custom ~<Link
 
 When any ~<LinkPeek>~ is emitted, ox-astro automatically adds the necessary import to the top of the MDX file.
 
-** PDF Links**
-Export org-mode links to PDFs as clean Markdown links, with spaces URL‑encoded.
+** PDF Handling (Automatic)**
 
-- Supported inputs (either is fine):
-  - ~[[/pdfs/Effective Psychology-Based Strategies for Managing Urges and Impulses.pdf][Effective Psychology-Based Strategies for Managing Urges and Impulses]]~
-  - ~[[file:/pdfs/Effective Psychology-Based Strategies for Managing Urges and Impulses.pdf][Effective Psychology-Based Strategies for Managing Urges and Impulses]]~
-- Output (spaces encoded):
-  - ~[Effective Psychology-Based Strategies for Managing Urges and Impulses](/pdfs/Effective%20Psychology-Based%20Strategies%20for%20Managing%20Urges%20and%20Impulses.pdf)~
-- Notes:
-  - Absolute web path preferred (`/pdfs/...`). `file:/pdfs/...` also works and is normalized.
-  - If the path already contains `%20`, it is preserved as-is.
-  - Only `.pdf` is special-cased; other file types fall back to normal link handling.
+The exporter provides automatic PDF handling that mirrors the image processing system. PDFs are automatically detected, copied, and linked with proper paths.
 
-** PDF Copying**
-Local PDF files referenced in Org are automatically copied to your app’s `public/pdfs/` folder on export.
+*** How It Works
 
-- Destination path: `public/pdfs/{slug}/filename.pdf` (slug derived from the post)
-- Org source update: the original absolute path is replaced with the new local file path in `public/pdfs/...`
-- MDX output: links are written as site-relative `/pdfs/{slug}/filename.pdf` with any spaces encoded to `%20`.
+When you link to a PDF file in your Org document (e.g., from your Downloads folder), the exporter:
+
+1. **Detects** PDF links in your document
+2. **Copies** the PDF to your Astro app's ~public/pdfs/{slug}/~ folder
+3. **Updates** your source Org file with the new path
+4. **Exports** the correct site-relative path in the MDX output
+
+*** Example Workflow
+
+Simply add a link to any PDF on your system:
+#+begin_example
+Check out this document:
+[[/Users/jay/Downloads/my-presentation.pdf]]
+#+end_example
+
+After export:
+- The PDF is copied to: ~public/pdfs/{post-slug}/my-presentation.pdf~
+- Your Org source is updated to: ~[[/path/to/app/public/pdfs/{post-slug}/my-presentation.pdf]]~
+- The MDX output contains: ~[my-presentation](/pdfs/{post-slug}/my-presentation.pdf)~
+
+*** Supported Input Formats
+- Local absolute paths: ~[[/Users/jay/Downloads/document.pdf]]~
+- File protocol: ~[[file:/Users/jay/Downloads/document.pdf]]~
+- Already processed paths: ~[[/path/to/app/public/pdfs/slug/document.pdf]]~ (detected and converted to site path)
+- Site paths: ~[[/pdfs/document.pdf]]~ (passed through unchanged)
+
+*** Technical Details
+- **Destination**: ~public/pdfs/{slug}/~ where slug is derived from the post
+- **Path encoding**: Spaces in filenames are URL-encoded as ~%20~ in the final MDX
+- **Label normalization**: PDF link labels are cleaned up (removes special characters, normalizes "PDF:" spacing)
+- **Source updates**: The Org source file is automatically updated with the new path after copying
 
 * Post Visibility Options
 

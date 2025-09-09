@@ -126,6 +126,48 @@ The collected data is used to assemble the final MDX output:
     <ImageGallery images={[{src: img1, alt: "..."}, {src: img2, alt: "..."}]} columns={3} />
     #+END_SRC
 
+* PDF Handling Strategy
+
+The PDF handling system mirrors the image processing pipeline but targets the =public/= directory for direct web serving.
+
+** Goals
+1. **Detect** PDF links in Org documents
+2. **Copy** PDFs from anywhere on the filesystem to the Astro =public/pdfs/= directory
+3. **Update** source Org files with the new paths
+4. **Generate** proper site-relative URLs in MDX output
+
+** Implementation Details
+
+*** 1. Detection
+PDFs are detected via =org-astro--collect-pdfs-from-tree=:
+- Searches for links with =.pdf= extension
+- Accepts both =file:= protocol and plain paths
+- Works with absolute local paths and site paths
+
+*** 2. Processing & Copying
+The =org-astro--process-pdf-path= function:
+- Copies PDFs to =public/pdfs/{slug}/= structure
+- Sanitizes filenames for web compatibility
+- Updates the source buffer with the new path
+- Returns site-relative paths for MDX output
+
+*** 3. Path Transformation
+- Local paths: =/Users/jay/Downloads/doc.pdf= → =/pdfs/{slug}/doc.pdf=
+- Already processed: =/app/public/pdfs/{slug}/doc.pdf= → =/pdfs/{slug}/doc.pdf=
+- Site paths: =/pdfs/doc.pdf= → passed through unchanged
+
+*** 4. MDX Output
+PDF links are rendered as standard Markdown links with URL encoding:
+#+BEGIN_SRC markdown
+[Document Name](/pdfs/post-slug/document-name.pdf)
+#+END_SRC
+
+** Key Differences from Image Handling
+- **Target Directory**: =public/pdfs/= instead of =src/assets/=
+- **No Imports**: PDFs are served directly, not imported as modules
+- **Simple Links**: Standard Markdown links instead of components
+- **URL Encoding**: Spaces encoded as =%20= for web compatibility
+
 * Key Design Decisions
 
 ** Decision 1: Derived Backend vs. Standalone

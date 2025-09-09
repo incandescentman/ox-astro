@@ -76,7 +76,9 @@
       "Read(/Users/jay/Library/CloudStorage/Dropbox/roam/vibecoding/**)",
       "Read(/Users/jay/Downloads/**)",
       "Bash(pbpaste)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Read(//Users/jay/Library/CloudStorage/Dropbox/github/**)",
+      "Read(//Users/jay/Downloads/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

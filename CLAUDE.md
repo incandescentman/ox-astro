@@ -8,8 +8,11 @@
 ### File Structure
 - `ox-astro.el` - Main exporter engine and Org backend registration
 - `ox-astro-config.el` - User-customizable configuration options
-- `ox-astro-helpers.el` - Utility functions (slugify, date formatting, variable naming)
+- `ox-astro-helpers.el` - Core utility functions (slugify, date formatting, variable naming)
 - `ox-astro-handlers.el` - Export filters and content processing pipeline
+- `ox-astro-table-handlers.el` - Table transcoding functions
+- `ox-astro-image-handlers.el` - Image processing and path management
+- `ox-astro-pdf-handlers.el` - PDF detection, copying, and path handling
 
 ### Key Components
 
@@ -19,17 +22,28 @@
 3. **Asset Management**: Copies images and generates import statements
 4. **Front Matter Generation**: Creates YAML metadata from Org keywords
 
-#### Image Handling System
-- **Cover Images**: From `#+COVER_IMAGE` keyword � import statements + front matter
-- **Body Images**: From `[[file:path]]` links � copied to assets + `<img>` tags
-- **Raw Paths**: Standalone image paths � auto-detected and processed
+#### Asset Handling Systems
+
+##### Image Handling
+- **Cover Images**: From `#+COVER_IMAGE` keyword → import statements + front matter
+- **Body Images**: From `[[file:path]]` links → copied to assets + `<img>` tags
+- **Raw Paths**: Standalone image paths → auto-detected and processed
 - **Variable Naming**: Converts filenames to camelCase JS variables
+- **Destination**: `src/assets/images/posts/{slug}/`
+
+##### PDF Handling
+- **Detection**: PDF links in `[[file:path.pdf]]` format
+- **Copying**: From local paths to `public/pdfs/{slug}/`
+- **Path Updates**: Source Org file updated with new location
+- **MDX Output**: Site-relative paths `/pdfs/{slug}/filename.pdf`
+- **URL Encoding**: Spaces encoded as `%20` in output
 
 #### Content Transformations
-- TODO items � Markdown task lists (`- [ ]` / `- [x]`)
-- Example blocks � blockquotes
-- Special code blocks (user/prompt/quote) � preserved with formatting
-- Raw URLs � `<LinkPeek>` components
+- TODO items → Markdown task lists (`- [ ]` / `- [x]`)
+- Example blocks → blockquotes
+- Special code blocks (user/prompt/quote) → preserved with formatting
+- Raw URLs → `<LinkPeek>` components
+- PDF links → Markdown links with URL-encoded spaces
 - Literal characters preserved (vs HTML entities)
 
 ## Configuration System
@@ -72,6 +86,14 @@ When `:preserve-folder-structure t` is set for a destination:
 
 ## Recent Development
 
+### PDF Handling Implementation (Latest)
+- Implemented automatic PDF handling that mirrors the image processing system
+- PDFs are automatically copied from local paths (e.g., Downloads) to `public/pdfs/{slug}/`
+- Source Org files are updated with the new path after copying
+- MDX output generates correct site-relative paths (`/pdfs/{slug}/filename.pdf`)
+- Fixed docstring syntax error that was preventing PDF processing
+
+### Previous Work
 Based on CHANGE-LOG.org, recent work focused on raw image path processing - detecting absolute paths in document text and automatically converting them to proper Astro Image components with imports.
 
 ## Usage Workflow
