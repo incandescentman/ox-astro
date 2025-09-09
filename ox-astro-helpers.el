@@ -571,6 +571,9 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
          (visibility (let ((v (plist-get info :visibility)))
                        (when (and v (not (string-empty-p (org-trim v))))
                          (org-trim v))))
+         (theme (let ((th (plist-get info :theme)))
+                  (when (and th (not (string-empty-p (org-trim th))))
+                    (org-trim th))))
          (status (plist-get info :status))
          (draft (when (and status (string= (downcase (org-trim status)) "draft")) "true")))
     ;; Return the alist of final data - include visibility as a string when provided
@@ -585,6 +588,7 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
       (tags . ,tags)
       (categories . ,categories)
       ,@(when visibility `((visibility . ,visibility)))
+      ,@(when theme `((theme . ,theme)))
       ,@(when draft `((draft . ,draft))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
