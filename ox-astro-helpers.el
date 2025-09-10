@@ -369,7 +369,7 @@ If the generated name starts with a number, it is prefixed with 'img'."
                                             ;; Quote strings that contain ':' or look like dates (avoid YAML parse issues)
                                             (format "\"%s\""
                                                     (replace-regexp-in-string
-                                                     "\"" "\\\"" val))
+                                                     "\"" "\\\\\"" val))
                                             val))))))))
         (concat yaml-str "---\n"))))
 
