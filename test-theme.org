@@ -1,0 +1,13 @@
+#+TITLE: Test Theme Feature
+#+AUTHOR: Jay Dixit
+#+DATE: 2025-09-09
+#+EXCERPT: Testing the new theme feature
+#+THEME: claude
+
+* Introduction
+
+This is a test post to verify that the theme keyword is properly exported to the MDX front matter.
+
+The theme should appear in the front matter as:
+
+theme: claude
