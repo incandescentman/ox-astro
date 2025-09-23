@@ -1,0 +1,48 @@
+#+TITLE: ox-astro Codebase Wisdom
+#+DATE: [2025-09-23 Mon]
+
+* Setup / Environment
+
+* Codebase Quirks
+
+** Gotcha: Code modifications can be silently overwritten during development
+- *Trigger:* Modified ox-astro.el to add slug generation, but the changes were partially reverted
+- *Mechanism:* The file can be modified by external processes (linters, user edits) between your changes
+- *Actionable insight:* Always re-read critical sections before assuming your changes are still there
+
+** Pattern: Export happens in two distinct phases requiring careful state management
+- *Mechanism:* Pre-processing phase (lines 91-178 in ox-astro.el) handles images/PDFs, then main export phase (179+) handles metadata
+- *Actionable insight:* When adding metadata like SLUG, it must be added in the metadata phase (around line 180+), not earlier
+
+** Fact: The export narrowing context affects keyword detection
+- *Mechanism:* When exporting a subtree or in narrowed buffer, `org-element-parse-buffer` only sees the narrowed region
+- *Actionable insight:* Always check for both title-kw and slug-kw within the narrowed context to avoid duplicate additions
+
+* Debugging Tactics
+
+** Technique: Use file modification notifications to track external changes
+- *Mechanism:* Claude Code provides system reminders when files are modified externally
+- *Actionable insight:* Pay attention to these notifications - they indicate your code may have been overwritten
+
+* Tool Oddities (Claude Code, etc.)
+
+** Behavior: Emacs batch mode syntax errors can be cryptic
+- *Example:* "Invalid read syntax: ")", 371, 21" means extra closing parenthesis at line 371
+- *Actionable insight:* Count parentheses carefully when editing Lisp code, especially in complex let* forms
+
+* ox-astro Specific Patterns
+
+** Pattern: Keyword insertion uses `org-astro--upsert-keyword-after-roam`
+- *Mechanism:* This function intelligently places keywords after org-roam properties
+- *Actionable insight:* Always use this helper instead of manual insertion to maintain consistent formatting
+
+** Pattern: Front matter data flows through multiple functions
+- *Flow:* ox-astro.el generates keywords → info plist → ox-astro-helpers.el `org-astro--get-front-matter-data` → MDX
+- *Actionable insight:* To add new metadata, update both the keyword generation AND the front matter assembly
+
+** Gotcha: Slug generation logic was split across multiple locations
+- *Locations:*
+  - ox-astro.el lines 118-125 (for image processing)
+  - ox-astro.el lines 187-214 (for metadata addition)
+  - ox-astro-helpers.el lines 552-554 (for front matter)
+- *Actionable insight:* When modifying slug behavior, check ALL three locations to ensure consistency
