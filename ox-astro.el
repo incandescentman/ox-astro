@@ -307,7 +307,8 @@ generated and added to the Org source file."
                (out-dir (file-name-directory default-outfile))
                (out-filename (file-name-nondirectory default-outfile))
                ;; Prefer a SLUG found in the narrowed region (subtree) first,
-               ;; then fall back to searching the full buffer.
+               ;; then fall back to searching the full buffer, and finally use
+               ;; the value currently in the export environment.
                (slug-filename (let ((slug-in-narrow
                                      (save-excursion
                                        (goto-char (point-min))
@@ -319,19 +320,20 @@ generated and added to the Org source file."
                                          (widen)
                                          (goto-char (point-min))
                                          (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" nil t)
-                                           (org-trim (match-string 1)))))))
-                                (or slug-in-narrow slug-in-full)))
+                                           (org-trim (match-string 1))))))
+                                    (slug-in-info (let ((val (plist-get info :slug)))
+                                                    (when (and val (stringp val))
+                                                      (org-trim val)))))
+                                (or slug-in-narrow slug-in-full slug-in-info)))
                (final-filename
-                ;; Treat either explicit subtree export or an actively narrowed buffer
-                ;; as a signal to use the subtree slug for the filename.
-                (if (and (or subtreep was-narrowed)
-                         slug-filename (not (string-blank-p slug-filename)))
-                    ;; Use slug as filename for subtree exports
+                ;; Prefer slug-based filenames whenever we have a usable slug,
+                ;; regardless of whether we're exporting a subtree or full file.
+                (if (and slug-filename (not (string-blank-p slug-filename)))
                     (concat slug-filename ".mdx")
-                    ;; Use default filename processing for full file exports
-                    (replace-regexp-in-string
-                     "_" "-"
-                     (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
+                  ;; Fallback to default filename processing when no slug exists.
+                  (replace-regexp-in-string
+                   "_" "-"
+                   (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
                (outfile (expand-file-name final-filename out-dir)))
 
           ;; Update debug system with actual output file path now that we know it
