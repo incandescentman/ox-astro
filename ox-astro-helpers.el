@@ -904,11 +904,7 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
                              (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
                            ;; Fallback: if image wasn't processed by the filter, output as plain text.
                            line)))
-                    ;; Regular remote URL (non-image)
-                    ((and trimmed-line
-                          (string-match-p "^https?://[^[:space:]]+$" trimmed-line))
-                     (setq has-linkpeek t)
-                     (format "<LinkPeek href=\"%s\"></LinkPeek>" trimmed-line))
+                    ;; Regular remote URL (non-image) is now handled correctly by org-astro-link.
                     ;; Regular line
                     (t line)))))
            lines)))
