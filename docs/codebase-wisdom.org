@@ -5,11 +5,6 @@
 
 * Codebase Quirks
 
-** Gotcha: Code modifications can be silently overwritten during development
-- *Trigger:* Modified ox-astro.el to add slug generation, but the changes were partially reverted
-- *Mechanism:* The file can be modified by external processes (linters, user edits) between your changes
-- *Actionable insight:* Always re-read critical sections before assuming your changes are still there
-
 ** Pattern: Export happens in two distinct phases requiring careful state management
 - *Mechanism:* Pre-processing phase (lines 91-178 in ox-astro.el) handles images/PDFs, then main export phase (179+) handles metadata
 - *Actionable insight:* When adding metadata like SLUG, it must be added in the metadata phase (around line 180+), not earlier
@@ -29,6 +24,7 @@
 ** Behavior: Emacs batch mode syntax errors can be cryptic
 - *Example:* "Invalid read syntax: ")", 371, 21" means extra closing parenthesis at line 371
 - *Actionable insight:* Count parentheses carefully when editing Lisp code, especially in complex let* forms
+- Emacs has a function (check-parens) that can help. If you still have trouble fixing mismatched parentheses, ask user to help!
 
 * ox-astro Specific Patterns
 
@@ -46,3 +42,4 @@
   - ox-astro.el lines 187-214 (for metadata addition)
   - ox-astro-helpers.el lines 552-554 (for front matter)
 - *Actionable insight:* When modifying slug behavior, check ALL three locations to ensure consistency
+- Question: Is this OK? should we consolidate slug generation logic to one place?
