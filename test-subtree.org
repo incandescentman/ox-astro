@@ -1,0 +1,11 @@
+#+TITLE: File Title
+
+
+#+EXCERPT: This is the content of the subtree.
+
+#+PUBLISH_DATE: [2025-09-23 Tue 18:37]
+* Subtree Post
+#+TITLE: Subtree Title
+#+DESTINATION_FOLDER: /Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/debug
+
+This is the content of the subtree.

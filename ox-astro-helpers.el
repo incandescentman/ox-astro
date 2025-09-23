@@ -549,16 +549,9 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
   (let* ((posts-folder (or (plist-get info :destination-folder)
                            (plist-get info :astro-posts-folder)))
          (title (org-astro--get-title tree info))
-         ;; Generate slug from title if no explicit slug is provided
+         ;; Always use slug from info or generate from title
          (slug (or (plist-get info :slug)
-                   (let* ((title-kw (org-element-map tree 'keyword
-                                      (lambda (k)
-                                        (when (string-equal "TITLE" (org-element-property :key k)) k))
-                                      nil 'first-match))
-                          (title-from-headline (not title-kw)))
-                     ;; Only auto-generate slug if title came from headline (not from #+TITLE keyword)
-                     (when title-from-headline
-                       (org-astro--slugify title)))))
+                   (when title (org-astro--slugify title))))
          (author (or (plist-get info :author) "Jay Dixit"))
          (excerpt (org-astro--get-excerpt tree info))
          (tags (org-astro--parse-tags tree info))

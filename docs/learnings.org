@@ -1,0 +1,53 @@
+#+TITLE: Learnings from Debugging ox-astro.el
+
+This document contains key learnings and insights gained from debugging and extending the `ox-astro.el` exporter. These points may be helpful for future development.
+
+* Technical Learnings
+
+** Subtree Boundary Detection
+
+- *Insight*: The `org-export-get-environment` function, even when called with `subtreep` as `t`, may not reliably return the `:begin` and `:end` boundaries of the subtree being exported. This was observed during batch mode execution.
+
+- *Recommendation*: For robust subtree handling, manually determine the boundaries if they are not present in the `info` plist returned by `org-export-get-environment`. This can be done by using `org-element-at-point` to get the current headline and then extracting its `:begin` and `:end` properties.
+
+  #+BEGIN_SRC emacs-lisp
+    (when (and (or subtreep was-narrowed) (not (plist-get info :begin)))
+      (save-excursion
+        (let ((headline (org-element-at-point)))
+          (when (eq (org-element-type headline) 'headline)
+            (plist-put info :begin (org-element-property :begin headline))
+            (plist-put info :end (org-element-property :end headline))))))
+  #+END_SRC
+
+** Buffer Narrowing for Subtree Operations
+
+- *Insight*: When exporting a subtree without narrowing the buffer first (e.g., via a `subtreep` argument), functions that operate on the buffer (like `org-element-parse-buffer` or keyword insertion functions) will act on the entire buffer, leading to incorrect behavior.
+
+- *Recommendation*: Always wrap logic that modifies or parses a subtree in a `(save-restriction (narrow-to-region ...))` block. This ensures that all operations are confined to the intended subtree.
+
+  #+BEGIN_SRC emacs-lisp
+    (save-excursion
+      (save-restriction
+        (when (and (or subtreep was-narrowed) (plist-get info :begin) (plist-get info :end))
+          (narrow-to-region (plist-get info :begin) (plist-get info :end)))
+        ; ... code that operates on the subtree ...
+        ))
+  #+END_SRC
+
+** State Management and Side-Effects
+
+- *Insight*: The export process in `ox-astro.el` involves multiple steps that have side-effects on the source buffer (e.g., adding missing keywords, updating image paths). This makes state management complex, as the `info` plist can become stale.
+
+- *Recommendation*: Be mindful of the order of operations. If the buffer is modified, the `info` plist must be refreshed by calling `(org-export-get-environment 'astro subtreep)` again. When debugging, it's important to trace the state of `info` throughout the function.
+
+** Batch Mode and Interactive Functions
+
+- *Insight*: Running Emacs in batch mode (`emacs --batch`) provides no `stdin`. Any function that requires interactive user input, such as `completing-read`, will cause the script to fail.
+
+- *Recommendation*: For testing or batch processing, ensure that any interactive prompts are avoided. This can be done by providing all necessary information non-interactively (e.g., using absolute paths for `#+DESTINATION_FOLDER`) or by temporarily mocking the interactive functions.
+
+** Tooling and Lisp Syntax
+
+- *Insight*: Lisp's strict parenthetical syntax means that a single mismatched parenthesis will prevent the file from being loaded. This can be difficult to debug, especially when using tools that replace large blocks of code.
+
+- *Recommendation*: When making significant changes to Lisp code, it is often more reliable to use `write_file` to overwrite the entire file with the corrected content, rather than using `replace` on a large, complex S-expression. This gives more control and avoids subtle syntax errors that can be introduced by the `replace` tool's string-based matching.

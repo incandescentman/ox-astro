@@ -1,3 +1,38 @@
+# Codebase Learning & Documentation 
+After major failures, tricky discoveries, or elegant solutions, capture insights using this reflection prompt:
+
+- *Trigger:* What failed or surprised me?
+- *Mechanism:* What does this tell me about how the codebase/tools actually work? 
+- *Actionable insight:* How might this help next time we add or debug a feature?
+
+Add insights to `docs/codebase-wisdom.org`. Only log things that are *non-obvious*, *repeatable*, and *action-saving*.
+
+*Entry format — keep it scannable:*
+#+begin_src org
+- Setup / Environment
+- Gotcha: Brief insight here
+- Fact: Another useful discovery
+
+- Codebase Quirks  
+- Pattern: How X actually works vs. how it appears
+
+- Debugging Tactics
+- Technique: What worked when standard approaches failed
+
+- Tool Oddities (Claude Code, etc.)
+- Behavior: Unexpected tool behavior and workarounds
+#+end_src 
+
+*Workflow integration:*
+- [ ] After debugging session → quick note in codebase-wisdom.org
+- [ ] Monthly: reorganize entries by theme for better scanning
+
+*What NOT to log:*
+- Obvious solutions or standard debugging
+- One-off issues unlikely to repeat
+- Anything easily found in docs
+
+
 # ox-astro Project Understanding
 
 ## Project Overview
