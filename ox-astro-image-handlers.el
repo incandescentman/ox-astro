@@ -129,7 +129,7 @@
               (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file)
               (org-astro--debug-log-direct "UPDATE-BUFFER: FOUND source buffer: %s" (buffer-name))
               (setq source-buffer buf)
-              (return)))))))
+              (cl-return)))))))
 
     ;; Now use the source-buffer within the same let binding
     (if source-buffer

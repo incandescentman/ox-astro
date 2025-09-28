@@ -2,6 +2,26 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Fix Emacs 27.1+ Deprecation Warnings (2025-09-28)
+
+** Summary
+Fixed deprecation warnings for Emacs 27.1+ compatibility without changing functionality.
+
+** Changes
+- **ox-astro-helpers.el**: Fixed unescaped character literal warning
+  - Line 460: Changed ~?"~ to ~?\"~ (properly escaped double-quote character)
+- **ox-astro-image-handlers.el**: Fixed obsolete function warning
+  - Line 132: Changed ~return~ to ~cl-return~ (modern Common Lisp macro)
+
+** Impact
+- No functional changes - code behavior remains identical
+- Eliminates deprecation warnings in Emacs 27.1 and newer
+- Maintains backward compatibility
+
+** Testing
+- All existing functionality preserved
+- Image export and gallery blocks continue to work as before
+
 * Debug System Enhancement: Comprehensive Logging and Clipboard Integration (2025-08-30)
 
 ** Summary

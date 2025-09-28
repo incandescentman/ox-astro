@@ -457,7 +457,7 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
                 ;; ignore
                 )
                ;; Start of quoted token (only if buffer empty)
-               ((and (or (= ch ?") (= ch ?')) (null buf))
+               ((and (or (= ch ?\") (= ch ?')) (null buf))
                 (setq quote-char ch))
                ;; Separator logic: if any comma exists in S, use comma-only separation;
                ;; otherwise fall back to splitting on whitespace and commas.
