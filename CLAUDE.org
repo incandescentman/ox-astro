@@ -1,0 +1,118 @@
+#+TITLE: CLAUDE.org — ox-astro Documentation Map
+#+DATE: 2025-10-05
+
+* Start Here
+
+If you're new to this project, read these in order:
+1. [[file:docs/the-ox-astro-approach.org][The ox-astro Approach]] — Philosophy, purpose, and core design decisions
+2. [[file:docs/design-architecture.org][Architecture]] — Technical architecture and system design
+3. [[file:docs/instructions.org][Instructions]] — How to use and operate ox-astro
+
+* All Documentation Files
+
+Core Documentation:
+- [[file:docs/the-ox-astro-approach.org][the-ox-astro-approach.org]] — Why this exists, core concepts, and design rationale
+- [[file:docs/concept-map.org][concept-map.org]] — Glossary of project-specific terminology
+- [[file:docs/design-architecture.org][design-architecture.org]] — Technical architecture with mental models
+- [[file:docs/instructions.org][instructions.org]] — Step-by-step operational guide for users
+- [[file:docs/codebase-wisdom.org][codebase-wisdom.org]] — Hard-won debugging insights and gotchas
+- [[file:docs/work-log.org][work-log.org]] — Session-based work tracking and development history
+- [[file:docs/critical-next-steps.org][critical-next-steps.org]] — Technical debt and roadmap
+- [[file:docs/decisions/][decisions/]] — Architecture Decision Records (ADRs)
+
+Historical/Reference:
+- [[file:CHANGE-LOG.org][CHANGE-LOG.org]] — Detailed change history
+- [[file:README.org][README.org]] — Project README
+
+* For Contributors
+
+** How to Update Documentation
+- Work-in-progress notes → =docs/drafts/=
+- Mature content → promote to =docs/=
+- After debugging → add to =codebase-wisdom.org=
+- After major decisions → create ADR in =docs/decisions/=
+
+** When to Document
+Ask in every session: "What did we just learn that future developers will need?"
+
+** Pre-Session Ritual (DO NOT SKIP)
+Every coding session MUST start with:
+1. Read last entry in [[file:docs/work-log.org][work-log.org]]
+2. Check [[file:docs/codebase-wisdom.org][codebase-wisdom.org]] for gotchas related to your task
+3. Review [[file:docs/design-architecture.org][design-architecture.org]] for relevant architecture
+
+Skipping this ritual leads to:
+- Regenerating existing code
+- Missing critical warnings
+- Breaking established patterns
+- Wasting time on preventable bugs
+
+* For AI Assistants
+
+** Overview
+This repo uses the following documentation structure:
+- [[file:docs/design-architecture.org][design-architecture.org]] → system-level technical overview
+- [[file:docs/codebase-wisdom.org][codebase-wisdom.org]] → debugging lessons and traps
+- [[file:docs/instructions.org][instructions.org]] → operational workflows
+- [[file:docs/concept-map.org][concept-map.org]] → project-specific terminology
+
+** Before Making Code Changes
+1. Always consult [[file:docs/design-architecture.org][design-architecture.org]] first
+2. Check [[file:docs/codebase-wisdom.org][codebase-wisdom.org]] for known gotchas related to your task
+3. Reference [[file:docs/concept-map.org][concept-map.org]] for internal terminology
+4. Review recent [[file:docs/work-log.org][work-log.org]] entries for context
+
+** Core Modules
+- =ox-astro.el= — Main exporter engine and Org backend registration
+- =ox-astro-config.el= — User-customizable configuration
+- =ox-astro-helpers.el= — Core utility functions (slugify, date formatting, variable naming)
+- =ox-astro-handlers.el= — Export filters and content processing pipeline
+- =ox-astro-table-handlers.el= — Table transcoding
+- =ox-astro-image-handlers.el= — Image processing and path management
+- =ox-astro-pdf-handlers.el= — PDF detection, copying, and path handling
+
+** Key Invariants
+- All image processing happens in pre-processing phase before transcoding
+- Keyword insertion must use =org-astro--upsert-keyword-after-roam= to respect org-roam properties
+- Slug generation occurs in multiple places and must remain synchronized
+- Configuration lookups should be whitespace-tolerant (use =cl-find= with =string-trim=)
+- All documentation must remain link-consistent (no dangling references)
+- Export happens in three phases: parse-tree filter → element transcoding → final output filter
+
+** Common LLM Anti-Patterns in This Codebase
+
+*** Pattern: Forgetting Dual-Phase Slug Logic
+- Problem: Modifying slug generation in one location without updating others
+- Locations to check: =ox-astro.el= lines 118-125, 187-214; =ox-astro-helpers.el= lines 552-554
+- Prevention: Always search for "slug" across all files before making changes
+
+*** Pattern: Breaking Keyword Insertion
+- Problem: Inserting keywords without respecting org-roam properties
+- Fix: Always use =org-astro--upsert-keyword-after-roam= helper
+- Prevention: Check =ox-astro-helpers.el= for keyword insertion patterns
+
+*** Pattern: Assuming Simple String Matching
+- Problem: Using =assoc= for config lookups without handling whitespace
+- Fix: Use =cl-find= with custom =:test= function and =string-trim=
+- Prevention: Load this file's "Whitespace in config" wisdom entry before config changes
+
+** Session Handoff Template
+When ending a session, provide:
+
+*COMPLETED (Safe to rely on)*
+- [x] Feature X fully implemented in =file.el=
+- [x] Tests passing (if applicable)
+- [x] Docs updated: =specific-file.org::*Section=
+
+*IN-PROGRESS (Requires completion)*
+- [ ] Task description — X% done
+  - Files: =specific-files.el= (lines touched)
+  - Next: Specific next steps
+  - Risk: Potential gotchas
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: [exact paths]
+- Known unknowns: [questions that arose]
+- Recommendations: Load these docs first: [[file:docs/relevant.org][relevant.org]]
+
+Last Updated: 2025-10-05

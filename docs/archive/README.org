@@ -1,0 +1,25 @@
+#+TITLE: Archive README
+#+DATE: 2025-10-05
+
+* Purpose
+
+This directory contains archived documentation that has been superseded by newer files or is no longer actively maintained but preserved for historical reference.
+
+* Archived Files
+
+- =learnings.org= - Original learning documentation, superseded by [[file:../codebase-wisdom.org][codebase-wisdom.org]]
+
+* When to Archive
+
+Archive documentation when:
+- It has been superseded by a newer, better-organized file
+- The feature/approach it documents has been completely replaced
+- The content is outdated but contains historical value
+- You need to preserve the evolution of thinking
+
+* When to Delete
+
+Delete documentation outright when:
+- It's completely obsolete with no historical value
+- It contains incorrect information that could mislead
+- It's a temporary scratch file with no useful content

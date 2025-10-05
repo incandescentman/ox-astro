@@ -1,0 +1,418 @@
+#+TITLE: ox-astro Design Architecture
+#+DATE: 2025-10-05
+#+TAGS: architecture, design, technical-overview
+
+* TL;DR
+
+- *This system*: Org Mode exporter that generates Astro-compatible MDX files with automatic asset management
+- *Core components*: Derived backend (ox-md), three-phase pipeline, image/PDF processors, front matter generator
+- *Mental model*: Think of it as a "smart copy" — it detects, transforms, and relocates assets while preserving relationships
+- *Key gotchas*:
+  - Slug generation happens in 3 places (must stay synchronized)
+  - Image data can be lost between export phases (uses dual storage)
+  - Config lookups need whitespace tolerance
+  - Keyword insertion must respect org-roam properties
+- *Last major update*: 2025-10-05 (Whitespace-tolerant config lookups)
+
+* For LLM Context
+
+This document defines the technical architecture of ox-astro:
+- **Key invariants**: Export happens in 3 phases; all image processing in pre-processing; keyword insertion via =org-astro--upsert-keyword-after-roam=
+- **When to update**: When adding major features, changing pipeline phases, or modifying asset handling
+- **Where this connects to code**:
+  - =ox-astro.el= lines 390-445 (backend definition)
+  - =ox-astro-handlers.el= (filter functions)
+  - =ox-astro-helpers.el= (transcoding functions)
+
+* System Overview
+
+ox-astro is an Org Mode export backend that extends =ox-md.el= to generate Astro-compatible MDX files. It handles the complete workflow from Org source to production-ready MDX, including asset management, front matter generation, and content transformation.
+
+** What Makes It Different
+Unlike standard markdown exporters, ox-astro:
+- Automatically detects and processes images from multiple sources (links, raw paths, remote URLs)
+- Copies assets to the correct Astro project structure
+- Generates ES6 import statements for images
+- Creates proper front matter from Org keywords
+- Handles PDFs and other binary assets
+- Supports org-roam integration
+
+* Architecture Overview
+
+** Three-Phase Processing Pipeline
+
+The export process happens in three distinct phases:
+
+*** Phase 1: Parse Tree Processing (Pre-processing)
+*When*: Before any transcoding begins
+*What happens*:
+- Parse entire Org buffer into element tree
+- Collect all image and PDF paths
+- Process and copy assets to destination folders
+- Update source Org file with new paths
+- Store import data for later phases
+
+*Key functions*:
+- =org-astro-prepare-images-filter= — Main pre-processing filter
+- =org-astro--collect-images-from-tree= — Image detection
+- =org-astro--collect-pdfs-from-tree= — PDF detection
+- =org-astro--process-image-path= — Asset copying and import generation
+
+*Why this matters*: Asset processing must happen before transcoding because we need to update the source file and collect import data that will be used in later phases.
+
+*** Phase 2: Element Transcoding
+*When*: After parse tree processing
+*What happens*:
+- Convert individual Org elements to MDX equivalents
+- Transform TODO items to task lists
+- Process links and images
+- Handle special code blocks
+- Convert tables to markdown
+
+*Key functions*:
+- =org-astro-heading= — Headlines and TODO items
+- =org-astro-link= — Links (preserves markdown, wraps bare URLs)
+- =org-astro-paragraph= — Paragraphs with image detection
+- =org-astro-plain-text= — Raw text with URL/image processing
+- =org-astro-src-block= — Code blocks with special types
+- =org-astro-table=, =org-astro-table-row=, =org-astro-table-cell= — Table conversion
+
+*Why this matters*: Each element type gets specialized handling. This is where Org syntax becomes MDX.
+
+*** Phase 3: Final Output Processing (Post-processing)
+*When*: After all elements have been transcoded
+*What happens*:
+- Assemble complete MDX file (front matter + imports + body)
+- Apply final transformations (URL wrapping, reference link cleanup)
+- Generate debug output if enabled
+
+*Key functions*:
+- =org-astro-body-filter= — Assembles front matter, imports, and body
+- =org-astro-final-output-filter= — Final string transformations
+
+*Why this matters*: Front matter and imports must be added after body is generated. Final cleanup happens here.
+
+** Mental Model: Smart Asset Pipeline
+
+Think of ox-astro as an intelligent asset pipeline:
+
+```
+Org File with Local Images
+         ↓
+    [Detection Phase]
+    - Scan for images/PDFs
+    - Find from links, raw paths, URLs
+         ↓
+    [Processing Phase]
+    - Download remote images
+    - Copy to Astro assets/
+    - Generate camelCase var names
+    - Create import statements
+         ↓
+    [Transformation Phase]
+    - Replace raw paths with <Image> components
+    - Update source Org file
+    - Assemble MDX output
+         ↓
+Production MDX with Imports
+```
+
+* Core Subsystems
+
+** 1. Asset Management System
+
+*** Image Processing
+*Goal*: Transform local/remote images into optimized Astro Image components
+
+*Flow*:
+1. Detection → 2. Downloading (if remote) → 3. Copying → 4. Sanitization → 5. Import generation → 6. Component creation
+
+*Key patterns*:
+- **Post-specific folders**: Each post gets =src/assets/images/posts/{slug}/=
+- **Astro alias paths**: Use =~/= prefix (maps to =src/=)
+- **Variable naming**: Filename → camelCase, prepend =img= if starts with number
+- **Multi-source detection**: Org links, raw paths, remote URLs, protocol-relative URLs
+
+*Files*: =ox-astro-image-handlers.el=
+
+*** PDF Handling
+*Goal*: Copy PDFs to public directory with proper site-relative URLs
+
+*Flow*:
+1. Detection → 2. Copying to =public/pdfs/{slug}/= → 3. Source update → 4. URL generation
+
+*Differences from images*:
+- Target: =public/= instead of =src/assets/=
+- No imports: Direct URL serving
+- Simple markdown links: No component wrapping
+- URL encoding: Spaces become =%20=
+
+*Files*: =ox-astro-pdf-handlers.el=
+
+** 2. Front Matter System
+
+*** Data Collection
+Front matter is assembled from multiple sources with fallback logic:
+
+| Field | Primary Source | Fallback |
+|-------|---------------|----------|
+| title | =#+TITLE= | First level-1 headline |
+| publishDate | =#+PUBLISH_DATE= or =#+DATE= | Current time |
+| excerpt | =#+EXCERPT= | First paragraph |
+| author | =#+AUTHOR= | "Jay Dixit" |
+| image | =#+COVER_IMAGE= | First image in document |
+| tags | =#+TAGS= | None |
+| categories | =#+CATEGORIES= | None |
+| visibility | =#+VISIBILITY: value= | None |
+| draft | =#+STATUS: draft= | =false= |
+
+*** Keyword Insertion Pattern
+When metadata is missing, ox-astro adds it to the source file:
+- Uses =org-astro--upsert-keyword-after-roam= to respect org-roam =:PROPERTIES:=
+- Handles narrowed buffers (subtree exports) correctly
+- Auto-generates slug from title if missing
+- Saves buffer after insertion
+
+*Why this matters*: Creates a virtuous cycle where exported files gain better metadata over time.
+
+*Files*: =ox-astro-helpers.el= (=org-astro--get-front-matter-data=, =org-astro--gen-yaml-front-matter=)
+
+** 3. Configuration System
+
+*** Known Posts Folders
+Maps nicknames to destination configurations:
+
+```elisp
+'(("blog" . (:path "~/projects/blog/src/content/blog"))
+  ("docs" . (:path "~/projects/docs/src/content/docs"))
+  ("roam" . (:path "~/projects/roam/src/content"
+             :preserve-folder-structure t)))
+```
+
+*Features*:
+- Nickname lookup: =#+DESTINATION_FOLDER: blog=
+- Absolute path support: =#+DESTINATION_FOLDER: /full/path=
+- Folder structure preservation: Maintains relative paths from source root
+- Whitespace tolerance: Handles trailing/leading spaces gracefully
+
+*Lookup pattern*:
+```elisp
+(cl-find nickname org-astro-known-posts-folders
+         :test (lambda (needle pair)
+                 (string= needle (string-trim (car pair)))))
+```
+
+*Files*: =ox-astro-config.el=, =ox-astro.el= (resolution logic)
+
+** 4. Content Transformation System
+
+*** Special Transformations
+- **TODO items** → GitHub task lists (=- [ ]= / =- [x]=)
+- **Bare URLs** → =<LinkPeek url="..." />= components
+- **Raw image paths** → =<Image src={varName} alt="..." />= components
+- **Special code blocks** (user/prompt/quote) → Preserved with formatting
+- **Tables** → Markdown format (not HTML)
+
+*** Link Handling Strategy
+Links are processed in transcoding phase (not final filter) to avoid regex complexity:
+- Markdown links → Preserved exactly
+- Bare URLs → Wrapped in LinkPeek
+- Reference-style links → Definitions preserved
+- Image links → Converted to Image components
+
+*Why this design*: Processing during transcoding gives us proper AST access instead of regex hacks.
+
+*Files*: =ox-astro-helpers.el= (=org-astro-link=, =org-astro-paragraph=, =org-astro-plain-text=)
+
+* Data Flow Diagrams
+
+** Image Processing Flow
+```
+User writes Org file
+     ↓
+[[file:/path/image.png]] or raw path
+     ↓
+org-astro-export-to-mdx triggered
+     ↓
+Phase 1: Parse tree processing
+  - org-astro--collect-images-from-tree
+  - org-astro--collect-raw-images-from-tree-region
+  - org-astro--process-image-path
+    → Copy to src/assets/images/posts/{slug}/
+    → Generate variable name (camelCase)
+    → Create import data
+  - Update source Org file with new path
+     ↓
+Phase 2: Transcoding
+  - org-astro-paragraph detects image
+  - Uses stored import data
+  - Generates <Image src={var} alt="..." />
+     ↓
+Phase 3: Final assembly
+  - org-astro-body-filter adds imports at top
+  - Front matter + imports + body combined
+     ↓
+Output: MDX file with proper imports and components
+```
+
+** Export Decision Flow
+```
+User triggers export
+     ↓
+Check #+DESTINATION_FOLDER keyword
+     ↓
+Is it a known nickname? ──Yes──→ Use configured path
+     ↓ No                              ↓
+Is it absolute path? ────Yes──→ Use directly
+     ↓ No                              ↓
+Prompt user to select ───────────────→ └─→ Resolve path
+     ↓
+Preserve folder structure? ──Yes──→ Calculate relative path from source root
+     ↓ No                              ↓
+Use base destination ─────────────────→ └─→ Final destination
+     ↓
+Export to destination/slug.mdx
+```
+
+* Key Design Decisions
+
+See [[file:the-ox-astro-approach.org][the-ox-astro-approach.org]] for complete rationale. Summary:
+
+| Decision | Rationale | Trade-off |
+|----------|-----------|-----------|
+| Derive from ox-md | Inherit standard markdown for free | Tied to ox-md behavior |
+| Three-phase pipeline | Separate concerns (assets, transcoding, assembly) | More complex than single pass |
+| Custom TODO conversion | Interactive task lists better for web | Must override default behavior |
+| Dual storage for images | Prevent data loss between phases | Extra state management |
+| Whitespace-tolerant lookups | Handle config errors gracefully | Slightly more complex |
+| org-roam integration | Respect existing workflows | Must detect and handle properties |
+| Subtree export support | Enable multi-post files | Need narrowing detection |
+
+* Integration Points
+
+** org-roam
+- Keyword insertion respects =:PROPERTIES:= blocks
+- Helper function: =org-astro--upsert-keyword-after-roam=
+- Searches for roam preamble (=- Links ::=, =- Source ::=) and inserts after
+
+** Astro Framework
+- Generates ES6 imports compatible with Astro's asset system
+- Uses Astro alias paths (=~/=) for robustness
+- Outputs MDX format with front matter Astro expects
+- Image components use =astro:assets=
+
+** Org Export Framework
+- Registers as derived backend: =(org-export-define-derived-backend 'astro 'md ...)=
+- Hooks into filter system: =:filter-parse-tree=, =:filter-body=, =:filter-final-output=
+- Overrides specific transcoders in =:translate-alist=
+- Uses standard =:options-alist= for keyword mapping
+
+* State Management
+
+** Global State
+- =org-astro--current-body-images-imports= — Fallback storage for image imports
+- =org-astro-debug-images= — Debug mode flag
+
+** Export Info Plist
+Keys stored in =info= during export:
+- =:astro-body-images-imports= — Image import data
+- =:destination-folder= — Target folder
+- =:slug= — Post slug
+- =:title=, =:date=, =:excerpt=, etc. — Front matter fields
+
+** File System State
+- Source Org files updated with new asset paths
+- Assets copied to Astro project directories
+- MDX files written to destination
+
+* Error Handling & Edge Cases
+
+** Defensive Patterns
+- Always check for nil before =cl-find=
+- Validate data structures before processing
+- Use proper escape sequences in regex
+- Trim whitespace in config lookups
+- Handle missing information with defaults or prompts
+
+** Common Edge Cases
+1. **Files starting with numbers** → Prepend =img= to variable name
+2. **Spaces in filenames** → Sanitize with hyphens, URL-encode for PDFs
+3. **Remote images** → Download before processing
+4. **Protocol-relative URLs** → Convert to =https://=
+5. **Narrowed buffers** → Detect and search within visible region
+6. **Missing metadata** → Use fallbacks or generate from content
+7. **Trailing spaces in config** → Trim during lookup
+
+* Performance Considerations
+
+** Two-Pass Export System
+The exporter runs twice to ensure all images are processed:
+1. First pass: Initial processing and import generation
+2. Second pass: Re-collection to catch any updates
+
+*Why*: Downloaded images and updated paths need to be re-collected for proper import generation.
+
+** Asset Copying Strategy
+- Copy-on-export: Assets copied during export, not build time
+- Post-specific folders: Prevent filename collisions
+- Sanitization: Web-safe filenames reduce build issues
+
+* Debugging & Troubleshooting
+
+** Debug System
+Enable with: =(setq org-astro-debug-images t)=
+
+Features:
+- Detailed logging to =ox-astro-debug.log=
+- Automatic clipboard copy of file paths
+- Session headers with timestamps
+- Image processing trace
+- Gallery debugging
+
+** Common Issues & Solutions
+
+| Issue | Likely Cause | Check |
+|-------|-------------|-------|
+| Images not imported | Data lost between phases | =org-astro--current-body-images-imports= |
+| Wrong slug used | Multiple slug generation points | Search all 3 locations |
+| Keyword in wrong place | Not using upsert helper | Use =org-astro--upsert-keyword-after-roam= |
+| Config not found | Whitespace mismatch | Check for trailing spaces |
+| Subtree export fails | Narrowing not detected | Verify =buffer-narrowed-p= logic |
+
+* Future Considerations
+
+See [[file:critical-next-steps.org][critical-next-steps.org]] for roadmap. Architectural considerations:
+
+- **Slug consolidation**: Centralize slug generation logic
+- **Caching layer**: Avoid re-processing unchanged assets
+- **Parallel processing**: Handle multiple images concurrently
+- **Plugin system**: Allow user extensions for custom transformations
+- **Template support**: Configurable front matter templates
+
+* References
+
+** Internal Documentation
+- [[file:the-ox-astro-approach.org][The ox-astro Approach]] — Philosophy and design rationale
+- [[file:concept-map.org][Concept Map]] — Terminology glossary
+- [[file:codebase-wisdom.org][Codebase Wisdom]] — Debugging insights
+- [[file:instructions.org][Instructions]] — User guide
+- [[file:../CHANGE-LOG.org][Change Log]] — Development history
+
+** Code Files
+- [[file:../ox-astro.el][ox-astro.el]] — Backend definition and main export functions
+- [[file:../ox-astro-config.el][ox-astro-config.el]] — Configuration options
+- [[file:../ox-astro-helpers.el][ox-astro-helpers.el]] — Transcoding and utility functions
+- [[file:../ox-astro-handlers.el][ox-astro-handlers.el]] — Filter functions
+- [[file:../ox-astro-image-handlers.el][ox-astro-image-handlers.el]] — Image processing
+- [[file:../ox-astro-pdf-handlers.el][ox-astro-pdf-handlers.el]] — PDF handling
+- [[file:../ox-astro-table-handlers.el][ox-astro-table-handlers.el]] — Table conversion
+
+** External Resources
+- [[https://orgmode.org/worg/dev/org-export-reference.html][Org Export Reference]]
+- [[https://docs.astro.build/][Astro Documentation]]
+- [[file:../org-reference-backends/ox-md.el][ox-md.el reference implementation]]
+
+---
+[[file:codebase-wisdom.org][← Codebase Wisdom]] | [[file:../CLAUDE.org][↑ Docs Map]] | [[file:instructions.org][Instructions →]]
+
+Last Updated: 2025-10-05

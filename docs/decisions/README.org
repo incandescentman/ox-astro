@@ -1,0 +1,73 @@
+#+TITLE: Architecture Decision Records (ADRs)
+#+DATE: 2025-10-05
+
+* What Are ADRs?
+
+Architecture Decision Records (ADRs) are short documents that capture important architectural and design decisions made during development, including:
+- The context and problem being solved
+- The decision made
+- Alternatives considered
+- Consequences (positive and negative)
+
+* Why Use ADRs?
+
+- **Preserve context**: Future developers understand *why* decisions were made
+- **Prevent revisiting**: Avoid rehashing already-considered alternatives
+- **Knowledge transfer**: New contributors can quickly understand the system's evolution
+- **Linkable history**: Easy to reference from code, docs, and discussions
+
+* ADR Index
+
+Currently no ADRs. When created, they will appear here.
+
+* How to Create an ADR
+
+1. Create a new file: =adr-NNNN-short-title.org= (e.g., =adr-0001-derive-from-ox-md.org=)
+2. Use the template below
+3. Add to this index
+4. Link from relevant documentation (design-architecture.org, codebase-wisdom.org)
+
+* ADR Template
+
+#+begin_src org
+,#+TITLE: ADR-NNNN: [Short Title]
+,#+DATE: YYYY-MM-DD
+,#+STATUS: [Proposed | Accepted | Deprecated | Superseded]
+
+,* Context
+What is the issue we're facing? What forces are at play?
+
+,* Decision
+What decision did we make?
+
+,* Alternatives Considered
+1. Option A - why rejected
+2. Option B - why rejected
+
+,* Consequences
+,** Positive
+- Benefit 1
+- Benefit 2
+
+,** Negative
+- Trade-off 1
+- Trade-off 2
+
+,* References
+- [[file:../design-architecture.org::*Related Section][Related architecture]]
+- [[file:../codebase-wisdom.org::*Related Bug][Related debugging insight]]
+#+end_src
+
+* When to Create an ADR
+
+Create an ADR when:
+- Making a significant architectural change
+- Choosing between multiple viable approaches
+- Establishing a new pattern or convention
+- Deprecating an existing approach
+- A decision will impact future development
+
+Don't create ADRs for:
+- Obvious or trivial choices
+- Temporary workarounds
+- Implementation details that don't affect architecture

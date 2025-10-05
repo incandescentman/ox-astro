@@ -1,0 +1,199 @@
+#+TITLE: ox-astro Concept Map
+#+DATE: 2025-10-05
+#+DESCRIPTION: Glossary of ox-astro terminology and internal concepts
+
+* Core Concepts
+
+** Derived Backend
+A backend that extends another exporter rather than building from scratch. ox-astro derives from =ox-md.el= to inherit standard markdown functionality while adding Astro-specific features.
+
+Related: [[*Export Pipeline]], [[file:the-ox-astro-approach.org::*Decision 1: Derived Backend vs. Standalone][Design Decision]]
+Implementation: See [[file:../ox-astro.el::10][ox-astro.el:10]]
+
+** Export Pipeline
+The three-phase processing system that transforms Org content to MDX:
+1. *Parse-tree filter* — Collect and process assets before transcoding
+2. *Element transcoding* — Convert individual elements to markdown/MDX
+3. *Final output filter* — Post-process entire document
+
+Related: [[*Parse Tree]], [[*Transcoding]]
+Implementation: See [[file:../ox-astro.el::412][ox-astro.el:412-416]]
+
+** Parse Tree
+The hierarchical representation of an Org document created by =org-element-parse-buffer=. Image and PDF processing happens at this level before transcoding begins.
+
+Related: [[*Export Pipeline]]
+Implementation: See [[file:../ox-astro-handlers.el][ox-astro-handlers.el]]
+
+** Transcoding
+The process of converting individual Org elements (headlines, paragraphs, links, etc.) to their MDX equivalents. Each element type has a dedicated transcoding function.
+
+Related: [[*Export Pipeline]], [[*Derived Backend]]
+Implementation: See [[file:../ox-astro-helpers.el][ox-astro-helpers.el]]
+
+* Asset Management
+
+** Astro Alias Path
+Import paths using the =~/= alias which points to the project's =src/= directory. Example: =~/assets/images/posts/my-post/image.png=
+
+Related: [[*Image Import]], [[*Post-Specific Folders]]
+Rationale: Makes imports robust and location-independent
+
+** Image Import
+ES6 import statements generated for images to enable Astro's Image component. Each image gets a camelCase variable name derived from its filename.
+
+Related: [[*Variable Name Generation]], [[*Astro Alias Path]]
+Implementation: See [[file:../ox-astro-image-handlers.el::org-astro--process-image-path][org-astro--process-image-path]]
+
+** Post-Specific Folders
+Each blog post gets its own image subfolder using the slug: =src/assets/images/posts/{slug}/=. Prevents filename collisions and improves organization.
+
+Related: [[*Slug]], [[*Asset Folder Resolution]]
+Implementation: See [[file:the-ox-astro-approach.org::*Asset Folder Resolution][Asset Folder Resolution]]
+
+** Slug
+A URL-friendly identifier for a post, typically derived from the title. Used for filenames, URL paths, and organizing assets.
+
+Related: [[*Post-Specific Folders]]
+Implementation: See [[file:../ox-astro-helpers.el::org-astro--slugify][org-astro--slugify]]
+Gotcha: Slug generation happens in multiple locations (see [[file:codebase-wisdom.org::*Gotcha: Slug generation logic was split across multiple locations][Codebase Wisdom]])
+
+** Variable Name Generation
+Converting filenames to valid JavaScript camelCase identifiers. Handles edge cases like files starting with numbers by prepending "img".
+
+Example: =2025-image.png= → =img2025Image=
+Related: [[*Image Import]]
+Implementation: See [[file:../ox-astro-helpers.el::org-astro--path-to-var-name][org-astro--path-to-var-name]]
+
+* Configuration
+
+** Known Posts Folders
+An alist mapping nicknames to destination folder configurations. Supports both simple paths and plist format with options like =:preserve-folder-structure=.
+
+Example: =("blog" . (:path "/path/to/blog" :preserve-folder-structure t))=
+Related: [[*Destination Folder]]
+Implementation: See [[file:../ox-astro-config.el::39][ox-astro-config.el:39]]
+
+** Destination Folder
+The target directory for exported MDX files. Can be specified as a nickname (looked up in Known Posts Folders) or an absolute path.
+
+Keyword: =#+DESTINATION_FOLDER: blog=
+Related: [[*Known Posts Folders]]
+Gotcha: Lookups are whitespace-tolerant (see [[file:codebase-wisdom.org::*Gotcha: Whitespace in config folder nicknames causes lookup failures][Codebase Wisdom]])
+
+** Preserve Folder Structure
+When enabled for a destination, maintains the relative path from =org-astro-source-root-folder= to the source file.
+
+Example: =~/roam/journal/2025.org= → =~/site/content/journal/2025.mdx=
+Related: [[*Destination Folder]]
+Configuration: Set =:preserve-folder-structure t= in [[*Known Posts Folders]]
+
+* Front Matter
+
+** Front Matter
+YAML metadata block at the top of MDX files containing title, date, excerpt, tags, etc. Generated from Org keywords and fallback values.
+
+Related: [[*Keyword Mapping]]
+Implementation: See [[file:../ox-astro-helpers.el::org-astro--gen-yaml-front-matter][org-astro--gen-yaml-front-matter]]
+
+** Keyword Mapping
+The translation between Org keywords and MDX front matter fields:
+- =#+TITLE= → =title=
+- =#+DATE= or =#+PUBLISH_DATE= → =publishDate=
+- =#+EXCERPT= → =excerpt=
+- =#+COVER_IMAGE= → =image=
+- =#+VISIBILITY: value= → =visibility: value=
+
+Related: [[*Front Matter]]
+Implementation: See [[file:../ox-astro.el::418][ox-astro.el:418-444]]
+
+** Upsert Keyword
+The pattern of inserting or updating Org keywords while respecting org-roam properties. Uses =org-astro--upsert-keyword-after-roam= to place keywords in the correct location.
+
+Related: [[*org-roam Integration]]
+Implementation: See [[file:../ox-astro-helpers.el::org-astro--upsert-keyword-after-roam][org-astro--upsert-keyword-after-roam]]
+
+* Content Transformation
+
+** Task List Conversion
+Converting Org TODO items to GitHub-style interactive task lists in markdown:
+- =TODO= → =- [ ]=
+- =DONE= → =- [x]=
+
+Related: [[file:the-ox-astro-approach.org::*Decision 3: Custom TODO → Task List Conversion][Design Decision]]
+Implementation: See [[file:../ox-astro-helpers.el::org-astro-heading][org-astro-heading]]
+
+** LinkPeek Component
+Custom React component for displaying rich previews of bare URLs. Bare URLs are automatically wrapped in =<LinkPeek url="..." />= tags.
+
+Related: [[file:the-ox-astro-approach.org::*Decision 6: Comprehensive Link Handling][Link Handling Decision]]
+Implementation: See [[file:../ox-astro-handlers.el::org-astro-final-output-filter][org-astro-final-output-filter]]
+
+** Raw Image Path
+Absolute image paths appearing as standalone text in Org documents (e.g., =/Users/jay/image.png=). Automatically detected and converted to proper Astro Image components.
+
+Related: [[*Image Import]], [[*Asset Management]]
+Implementation: See [[file:../ox-astro-image-handlers.el::org-astro--collect-raw-images-from-tree-region][org-astro--collect-raw-images-from-tree-region]]
+
+* Integration
+
+** org-roam Integration
+Support for org-roam's =:PROPERTIES:= blocks. Keyword insertion respects these blocks to avoid disrupting file structure.
+
+Related: [[*Upsert Keyword]]
+Rationale: See [[file:the-ox-astro-approach.org::*Decision 7: org-roam Integration and Keyword Placement][Design Decision]]
+
+** Subtree Export
+Exporting a single Org subtree (headline and its contents) as a standalone MDX file. Supports narrowed buffer detection for proper slug and filename resolution.
+
+Related: [[*Slug]], [[*Narrowed Buffer]]
+Rationale: See [[file:the-ox-astro-approach.org::*Decision 10: Filename Resolution Honors Subtree SLUG][Design Decision]]
+
+** Narrowed Buffer
+A buffer view restricted to a specific region (often a subtree). The exporter detects narrowing via =buffer-narrowed-p= and adjusts keyword detection accordingly.
+
+Related: [[*Subtree Export]]
+Gotcha: See [[file:codebase-wisdom.org::*Fact: The export narrowing context affects keyword detection][Codebase Wisdom]]
+
+* Debugging
+
+** Debug Mode
+Comprehensive logging system activated by =org-astro-debug-images=. Logs image processing details to =ox-astro-debug.log= and copies file paths to clipboard.
+
+Related: [[file:the-ox-astro-approach.org::*Decision 11: Debug System][Design Decision]]
+Activation: =(setq org-astro-debug-images t)=
+
+** Dual Storage Pattern
+Storing image data in both the export =info= plist and a global variable (=org-astro--current-body-images-imports=) to prevent data loss between export phases.
+
+Related: [[*Export Pipeline]]
+Rationale: See [[file:the-ox-astro-approach.org::*6. Data Persistence Across Export Phases][Image Handling Strategy]]
+
+* Special Blocks
+
+** Gallery Block
+A =#+BEGIN_GALLERY= block that groups multiple images into an =<ImageGallery>= component with configurable columns and captions.
+
+Related: [[*Image Import]]
+Implementation: See [[file:the-ox-astro-approach.org::*8. Gallery Support][Gallery Support]]
+
+** Special Code Blocks
+Code blocks with specific types (user/prompt/quote) that receive special formatting in the MDX output.
+
+Related: [[*Content Transformation]]
+Implementation: See [[file:../ox-astro-helpers.el::org-astro-src-block][org-astro-src-block]]
+
+* Cross-References
+
+** Related Documentation
+- [[file:the-ox-astro-approach.org][The ox-astro Approach]] — Complete philosophy and design decisions
+- [[file:design-architecture.org][Design Architecture]] — Technical architecture overview
+- [[file:codebase-wisdom.org][Codebase Wisdom]] — Gotchas and debugging insights
+- [[file:../CHANGE-LOG.org][Change Log]] — Development history
+
+** External Resources
+- [[https://orgmode.org/worg/dev/org-export-reference.html][Org Export Reference]] — Official Org export documentation
+- [[https://docs.astro.build/][Astro Documentation]] — Astro framework docs
+- [[file:../org-reference-backends/ox-md.el][ox-md.el]] — Reference markdown exporter
+
+Last Updated: 2025-10-05
