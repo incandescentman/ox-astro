@@ -1,0 +1,73 @@
+:PROPERTIES:
+:ID:       20250923T130052.059354
+:END:
+#+TITLE: 2025-09-23
+#+FILETAGS: :journal:
+
+- Links ::
+
+* Tuesday, September 23, 2025
+
+** Today [0/1]
+
+** LrMediaWiki for WikiPortraits 
+
+#+DESTINATION_FOLDER: jaydocs
+#+PUBLISH_DATE: [2025-09-23 Tue 13:07]
+
+#+EXCERPT: How to use LrMediaWiki to upload photos to Wikipedia 
+#+SLUG: lrmediawiki-for-wikiportraits
+
+#+TITLE: LrMediaWiki for WikiPortraits
+[[https://commons.wikimedia.org/wiki/Commons:LrMediaWiki][LrMediaWiki]] is a free, open-source Lightroom plug-in that lets you export photos directly from Lightroom to Wikimedia Commons (the media repository behind Wikipedia).
+
+*** Step 1: Set up an Export Preset
+
+- In Lightroom, go to *Export* and choose *MediaWiki* as the target.
+- Create a preset called *Wikipedia Upload*.
+- Save your *username*, *preferred license*, *default categories*, and *naming scheme*.
+- You'll only have to do this once --- afterward, just reuse the preset.
+
+*** Step 2: Login Settings
+
+In the *LrMediaWiki Login Information* section:
+
+- *Username*: your Wikimedia Commons username.
+- *Password*: if you use 2FA, create a *Bot Password* at [[https://commons.wikimedia.org/wiki/Special:BotPasswords][Special\:BotPasswords]]. Call it "LrMediaWiki" and grant it rights to *upload, edit, and replace files*.
+- *API Path*: for Commons, use [[https://commons.wikimedia.org/w/api.php][https://commons.wikimedia.org/w/api.php]] 
+
+*** Step 3: Upload Settings (per export)
+
+In the *Upload Information* section:
+
+- *Infobox Template*: choose ~Information~ (the standard template for photos).
+- *Source*: ~{{own}}~
+- *Author*: ~[[User:JayDixit|Jay Dixit]]~
+- *License*: ~{{Cc-by-4.0}}~ (or ~{{Cc-by-sa-4.0}}~ if you prefer ShareAlike)
+- *Categories*: enter defaults you use often, separated by ~;~ 
+  Example:
+
+  #+end_src 
+  Janet Yang; Asian Contents & Film Market; 2025 in Busan
+  #+end_src 
+
+*** Step 4: File-level Metadata (per photo)
+
+Before export, make sure you've entered the right info in Lightroom's *Metadata panel*:
+
+- *Title* → short ID, e.g. ~Janet Yang at ACFM 2025~
+- *Caption/Description* → full description, e.g.
+  ~English: Janet Yang at the Asian Contents & Film Market (ACFM) 2025 in Busan, South Korea.~
+- *Date Created* → auto-filled from EXIF.
+- *Location* → Busan, South Korea (add GPS if available).
+- *Creator* → Jay Dixit.
+
+This info gets pulled into the Commons file page automatically.
+
+*** Step 5: Export & Upload
+
+- Right-click → Export → *Wikipedia Upload*.
+- LrMediaWiki will log in, send your file and metadata, and create the Commons description page.
+- You can preview the generated wikitext before confirming.
+
+With your preset in place, you'll only need to tweak *Caption*, *Title*, and *Categories* for each new photo. Everything else will auto-populate.

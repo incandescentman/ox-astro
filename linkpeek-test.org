@@ -1,0 +1,13 @@
+#+SLUG: untitled-post
+
+#+EXCERPT: https:commons.wikimedia.orgwapi.php should not get converted into linkpeek
+
+#+PUBLISH_DATE: [2025-09-24 Wed 01:49]
+
+#+DESTINATION_FOLDER: blog
+[[https://commons.wikimedia.org/w/api.php][https://commons.wikimedia.org/w/api.php]] should not get converted into linkpeek
+
+https://jaydixit should get converted into linkpeek
+
+[[https://www.bhphotovideo.com/c/product/1466057-REG/godox_v1_s_v1_flash_for_sony.html][Godox V1 Flash for Sony V1-S B&H Photo Video]] should not get converted into linkpeek 
+

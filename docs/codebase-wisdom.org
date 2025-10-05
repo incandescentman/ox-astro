@@ -43,3 +43,14 @@
   - ox-astro-helpers.el lines 552-554 (for front matter)
 - *Actionable insight:* When modifying slug behavior, check ALL three locations to ensure consistency
 - Question: Is this OK? should we consolidate slug generation logic to one place?
+
+** Gotcha: Whitespace in config folder nicknames causes lookup failures
+- *Date:* 2025-10-05
+- *Trigger:* `#+DESTINATION_FOLDER: socratic` failed with "not found" error even though "socratic " existed in config
+- *Mechanism:* `assoc` performs exact string matching, so `"socratic"` ≠ `"socratic "` (trailing space)
+- *The Fix:* Implemented whitespace-tolerant lookup using `cl-find` with `string-trim` on both input and config keys (ox-astro.el:243-245, 100-103)
+- *Prevention:*
+  - Always trim whitespace from user input before lookup
+  - Use `cl-find` with custom `:test` function instead of `assoc` for fuzzy matching
+  - This pattern applies to any user-facing configuration lookups
+- *Actionable insight:* Configuration errors (trailing spaces, inconsistent formatting) should be handled gracefully rather than failing with cryptic errors

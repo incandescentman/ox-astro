@@ -90,11 +90,17 @@ generated and added to the Org source file."
         (setq org-astro--current-body-images-imports nil)
         ;; --- PREPROCESSING: Process and update all image paths BEFORE export ---
         (let* ((tree (org-element-parse-buffer))
-               (posts-folder-raw (or (plist-get info :destination-folder)
-                                     (plist-get info :astro-posts-folder)))
+               (posts-folder-raw-input (or (plist-get info :destination-folder)
+                                           (plist-get info :astro-posts-folder)))
+               ;; Trim whitespace from the folder name to handle config errors
+               (posts-folder-raw (and posts-folder-raw-input
+                                      (string-trim posts-folder-raw-input)))
                ;; Resolve the posts folder using the same logic as in handlers
+               ;; Use a more forgiving lookup that ignores whitespace differences
                (folder-config (and posts-folder-raw
-                                   (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+                                   (cdr (cl-find posts-folder-raw org-astro-known-posts-folders
+                                                 :test (lambda (needle pair)
+                                                         (string= needle (string-trim (car pair))))))))
                ;; Extract path from config (handle both old string and new plist formats)
                (resolved-posts-folder-raw (if (stringp folder-config)
                                               folder-config
@@ -233,10 +239,16 @@ generated and added to the Org source file."
           (setq info (org-export-get-environment 'astro)))
 
         ;; --- Original export logic continues below ---
-        (let* ((posts-folder-from-file (or (plist-get info :astro-posts-folder)
-                                           (plist-get info :destination-folder)))
+        (let* ((posts-folder-from-file-raw (or (plist-get info :astro-posts-folder)
+                                               (plist-get info :destination-folder)))
+               ;; Trim whitespace from the folder name to handle config errors
+               (posts-folder-from-file (and posts-folder-from-file-raw
+                                            (string-trim posts-folder-from-file-raw)))
                ;; Look up the folder config - now returns a plist
-               (folder-config (cdr (assoc posts-folder-from-file org-astro-known-posts-folders)))
+               ;; Use a more forgiving lookup that ignores whitespace differences
+               (folder-config (cdr (cl-find posts-folder-from-file org-astro-known-posts-folders
+                                            :test (lambda (needle pair)
+                                                    (string= needle (string-trim (car pair)))))))
                ;; Extract path from the plist (handle both old and new formats)
                (resolved-posts-folder-raw (if (stringp folder-config)
                                               ;; Old format: just a string path
@@ -253,18 +265,23 @@ generated and added to the Org source file."
                                            (string-trim resolved-posts-folder-raw)))
                (posts-folder
                 (cond
-                 ;; If we found it in known folders, use that path
+                 ;; If we found it in known folders, use that path (no prompt needed)
                  (resolved-posts-folder resolved-posts-folder)
                  ;; If posts-folder-from-file exists and looks like an absolute path, use it directly
                  ((and posts-folder-from-file
                        (file-name-absolute-p posts-folder-from-file)
                        (file-directory-p (expand-file-name posts-folder-from-file)))
                   posts-folder-from-file)
-                 ;; Otherwise, prompt the user for selection
+                 ;; If posts-folder-from-file is specified (e.g., nickname) but wasn't resolved above,
+                 ;; it means the nickname doesn't exist in org-astro-known-posts-folders
+                 ;; In this case, we should NOT prompt - just fail with an error message
+                 (posts-folder-from-file
+                  (error "DESTINATION_FOLDER '%s' not found in org-astro-known-posts-folders. Please check your configuration." posts-folder-from-file))
+                 ;; Only prompt if no DESTINATION_FOLDER was specified at all
                  (t
                   (let* ((selection (completing-read "Select a posts folder: "
                                                      org-astro-known-posts-folders
-                                                     nil t posts-folder-from-file))
+                                                     nil t))
                          (selected-config (cdr (assoc selection org-astro-known-posts-folders)))
                          ;; Handle both old and new formats
                          (selected-path-raw (if (stringp selected-config)
