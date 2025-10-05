@@ -1011,8 +1011,10 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
 Recognizes MDX, MARKDOWN, and MD export blocks and passes their content through verbatim."
   (let ((type (org-element-property :type export-block)))
     (if (member (upcase type) '("MDX" "MARKDOWN" "MD"))
-        ;; Pass through the content as-is, removing indentation
-        (org-remove-indentation (org-element-property :value export-block))
+        ;; Pass through the content completely unindented to prevent the final-output
+        ;; filter from converting indented lines to blockquotes
+        (let ((content (org-element-property :value export-block)))
+          (replace-regexp-in-string "^[ \t]+" "" content))
       ;; For other types, fall back to HTML backend
       (org-export-with-backend 'html export-block nil info))))
 

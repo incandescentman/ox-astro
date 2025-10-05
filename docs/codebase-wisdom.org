@@ -71,3 +71,14 @@
   #+END_EXPORT
   ```
 - *Actionable insight:* For one-off component usage, export blocks are cleaner than creating special transcoding logic
+
+** Gotcha: Export block indentation was converted to blockquotes
+- *Date:* 2025-10-05
+- *Trigger:* MDX export blocks with indented HTML (like `<button>`) were being converted to blockquote syntax (`> `)
+- *Mechanism:*
+  1. `org-astro-export-block` used `org-remove-indentation` which only removes *minimum* indentation, leaving some spaces
+  2. `org-astro-final-output-filter` detects lines starting with 4+ spaces and converts them to blockquotes (`> `)
+  3. The filter only skips this conversion for JSX components (uppercase tags like `<Image>`), not HTML elements (lowercase tags like `<div>`)
+- *The Fix:* Changed export block handler to completely strip ALL leading whitespace: `(replace-regexp-in-string "^[ \t]+" "" content)`
+- *Prevention:* Export blocks must output completely unindented content to avoid triggering the blockquote conversion logic
+- *Actionable insight:* The final-output filter's blockquote conversion is aggressive - any content that should stay verbatim must have zero indentation
