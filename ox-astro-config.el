@@ -40,7 +40,6 @@ Used for calculating relative paths when preserving folder structure."
   '(("blog"       . (:path "~/projects/my-astro-site/src/content/blog"))
     ("docs"       . (:path "~/projects/my-docs-site/src/content/docs"))
     ("socratic"   . (:path "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog"))
-    ("socraticai" . (:path "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socraticai/src/content/blog"))
     ("jaydocs"    . (:path "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog"))
     )
   "An alist of known directories for exporting Astro posts.
