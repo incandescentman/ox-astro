@@ -1003,5 +1003,18 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
 
 
 
-              (provide 'ox-astro-helpers)
+;;;; Export Block Handler
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun org-astro-export-block (export-block _contents info)
+  "Transcode EXPORT-BLOCK element into MDX format.
+Recognizes MDX, MARKDOWN, and MD export blocks and passes their content through verbatim."
+  (let ((type (org-element-property :type export-block)))
+    (if (member (upcase type) '("MDX" "MARKDOWN" "MD"))
+        ;; Pass through the content as-is, removing indentation
+        (org-remove-indentation (org-element-property :value export-block))
+      ;; For other types, fall back to HTML backend
+      (org-export-with-backend 'html export-block nil info))))
+
+(provide 'ox-astro-helpers)
 ;;; ox-astro-helpers.el ends here

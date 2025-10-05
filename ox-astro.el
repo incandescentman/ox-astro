@@ -424,7 +424,8 @@ generated and added to the Org source file."
     (table . org-astro-table)
     (table-row . org-astro-table-row)
     (table-cell . org-astro-table-cell)
-    (special-block . org-astro-special-block))
+    (special-block . org-astro-special-block)
+    (export-block . org-astro-export-block))
 
   :filters-alist
   '((:filter-parse-tree . (org-astro-auto-wrap-image-paths-filter
