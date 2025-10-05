@@ -54,3 +54,20 @@
   - Use `cl-find` with custom `:test` function instead of `assoc` for fuzzy matching
   - This pattern applies to any user-facing configuration lookups
 - *Actionable insight:* Configuration errors (trailing spaces, inconsistent formatting) should be handled gracefully rather than failing with cryptic errors
+
+** Pattern: MDX Export Blocks for Raw JSX/Components
+- *Date:* 2025-10-05
+- *Use Case:* Embedding Astro/React components directly in Org files
+- *Mechanism:* Use `#+BEGIN_EXPORT mdx` / `#+END_EXPORT` blocks to pass JSX/MDX through verbatim
+- *Implementation:* Added `org-astro-export-block` transcoder that recognizes MDX, MARKDOWN, and MD export types
+- *Example:*
+  ```org
+  #+BEGIN_EXPORT mdx
+  import CopyPromptButton from '@jaydixit/astro-utils/components/CopyPromptButton.astro';
+
+  export const promptText = `Your text here`;
+
+  <CopyPromptButton text={promptText} buttonText="Click me" />
+  #+END_EXPORT
+  ```
+- *Actionable insight:* For one-off component usage, export blocks are cleaner than creating special transcoding logic
