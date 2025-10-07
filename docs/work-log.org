@@ -1,0 +1,23 @@
+#+TITLE: ox-astro Work Log
+#+DATE: 2025-10-07
+
+* 2025-10-07
+** Session Summary
+- Updated table cell sanitization to wrap generic type signatures and normalize `<br>` tags for MDX compatibility.
+- Normalized `<br>` tags during final output filtering to avoid Astro parse errors.
+- Re-exported `guide-to-codex.org` to regenerate the Socratic blog post.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Generic type cells wrapped in inline code: `ox-astro-table-handlers.el`
+- [x] `<br>` normalization added to final output filter: `ox-astro-handlers.el`
+- [x] Export refreshed: `/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/guide-to-codex-cli.mdx`
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro-table-handlers.el`, `ox-astro-handlers.el`
+- Known unknowns: Consider whether other HTML fragments (e.g., `<hr>`, `<img>`) need similar normalization.
+- Recommendations: Review latest generated MDX in Astro dev server to confirm no additional JSX parse errors.

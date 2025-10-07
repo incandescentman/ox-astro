@@ -223,6 +223,9 @@ preprocessing has already been completed and we skip the processing."
     ;; Replace HTML entities
     (dolist (pair entity-map)
       (setq s (replace-regexp-in-string (car pair) (cdr pair) s t t)))
+    ;; Normalize self-closing tags so MDX doesn't expect separate closing tags.
+    (let ((case-fold-search t))
+      (setq s (replace-regexp-in-string "<br\\s*/?>" "<br />" s)))
     ;; Convert markdown image syntax with absolute paths to Image components
     (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
                                   org-astro--current-body-images-imports))
@@ -277,6 +280,9 @@ preprocessing has already been completed and we skip the processing."
                        (t line)))
                     lines)))
       (setq s (mapconcat 'identity processed-lines "\n")))
+    ;; Final pass to ensure any <br> variants are self-closing.
+    (let ((case-fold-search t))
+      (setq s (replace-regexp-in-string "<br\\s*/?>" "<br />" s)))
     s))
 
 (provide 'ox-astro-handlers)

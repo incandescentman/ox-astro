@@ -49,8 +49,24 @@ CONTENTS is the cell contents.  INFO is a plist used as a
 communication channel."
   (let ((cell-contents (org-element-contents table-cell)))
     (if cell-contents
-        (org-trim (org-export-data cell-contents info))
-        "")))
+        (org-astro--sanitize-table-cell
+         (org-trim (org-export-data cell-contents info)))
+      "")))
+
+(defun org-astro--sanitize-table-cell (text)
+  "Normalize TABLE cell TEXT for MDX compatibility.
+Ensure self-closing tags like <br> become `<br />` and wrap generic type
+signatures (e.g., `map<string>`) in inline code so MDX doesn't parse the
+angle brackets as JSX."
+  (let* ((raw (or text ""))
+         (normalized raw))
+    (dolist (needle '("<br>" "<br/>" "<br />" "<br  />"))
+      (setq normalized (replace-regexp-in-string needle "<br />" normalized t t)))
+    (if (and (not (equal normalized ""))
+             (not (string-match-p "`" normalized))
+             (string-match-p "\\`[[:alnum:]-_]+<.*>\\'" normalized))
+        (concat "`" normalized "`")
+      normalized)))
 
 (defun org-astro--table-separator-row (header-row info)
   "Generate a Markdown table separator row based on HEADER-ROW.
