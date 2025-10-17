@@ -88,6 +88,10 @@ generated and added to the Org source file."
             (buffer-modified-p nil))
         ;; Clear any stale image import state before running export filters.
         (setq org-astro--current-body-images-imports nil)
+        ;; --- AUTO-NORMALIZE: Convert org headings to markdown in user/prompt/quote blocks ---
+        ;; This must run BEFORE org-mode parses the buffer, otherwise asterisks at start
+        ;; of lines inside src blocks will be interpreted as org headlines and break the block.
+        (org-astro--normalize-user-blocks)
         ;; --- PREPROCESSING: Process and update all image paths BEFORE export ---
         (let* ((tree (org-element-parse-buffer))
                (posts-folder-raw-input (or (plist-get info :destination-folder)

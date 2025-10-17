@@ -244,6 +244,43 @@ Respects narrowing - works within the current narrowed region."
                  (insert (format "#+%s: %s\n" (upcase key) value)))
           (org-astro--upsert-keyword key value)))))
 
+(defun org-astro--normalize-user-blocks ()
+  "Convert org headings to markdown inside user/prompt/quote blocks.
+This prevents org-mode from interpreting asterisks as headings inside
+these special blocks, which would break the block structure."
+  (save-excursion
+    (goto-char (point-min))
+    (let ((modified nil))
+      (while (re-search-forward "^#\\+begin_src \\(user\\|prompt\\|quote\\)" nil t)
+        (let ((block-start (point))
+              (block-end (save-excursion
+                          (when (re-search-forward "^#\\+end_src" nil t)
+                            (match-beginning 0)))))
+          (when block-end
+            (save-restriction
+              (narrow-to-region block-start block-end)
+              (goto-char (point-min))
+              ;; Convert org headings to markdown (must go from most to least asterisks)
+              (while (re-search-forward "^\\(\\*\\*\\*\\*\\) \\(.*\\)$" nil t)
+                (replace-match "#### \\2")
+                (setq modified t))
+              (goto-char (point-min))
+              (while (re-search-forward "^\\(\\*\\*\\*\\) \\(.*\\)$" nil t)
+                (replace-match "### \\2")
+                (setq modified t))
+              (goto-char (point-min))
+              (while (re-search-forward "^\\(\\*\\*\\) \\(.*\\)$" nil t)
+                (replace-match "## \\2")
+                (setq modified t))
+              (goto-char (point-min))
+              (while (re-search-forward "^\\(\\*\\) \\(.*\\)$" nil t)
+                (replace-match "# \\2")
+                (setq modified t)))
+            ;; Move past this block to continue searching
+            (goto-char block-end))))
+      (when modified
+        (message "[ox-astro] Auto-converted org headings to markdown in user/prompt/quote blocks")))))
+
 (defun org-astro--safe-export (data info)
   "Like `org-export-data' but never throws. Falls back to readable plain text."
   (condition-case _
@@ -724,13 +761,23 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
               (format "[%s](%s)" text raw))))))))
 
 (defun org-astro-src-block (src-block contents info)
-  "Transcode a SRC-BLOCK element into fenced Markdown format."
+  "Transcode a SRC-BLOCK element into fenced Markdown format.
+For 'user', 'prompt', and 'quote' blocks, preserve org-mode syntax
+literally - convert org headings to markdown equivalents."
   (if (not (org-export-read-attribute :attr_md src-block :textarea))
       (let* ((lang (org-element-property :language src-block))
              ;; Use :value to get raw content, preserving internal newlines.
              (code (org-element-property :value src-block)))
-        (when (and (member lang '("user" "prompt" "quote")) (string-match-p "---" code))
-          (setq code (replace-regexp-in-string "---" "—" code)))
+        ;; For user/prompt/quote blocks, convert org-mode syntax to markdown
+        (when (member lang '("user" "prompt" "quote"))
+          ;; Convert em dashes
+          (when (string-match-p "---" code)
+            (setq code (replace-regexp-in-string "---" "—" code)))
+          ;; Convert org headings to markdown headings
+          (setq code (replace-regexp-in-string "^\\*\\*\\*\\* \\(.*\\)$" "#### \\1" code))
+          (setq code (replace-regexp-in-string "^\\*\\*\\* \\(.*\\)$" "### \\1" code))
+          (setq code (replace-regexp-in-string "^\\*\\* \\(.*\\)$" "## \\1" code))
+          (setq code (replace-regexp-in-string "^\\* \\(.*\\)$" "# \\1" code)))
         ;; Trim trailing newlines/whitespace to prevent extra space at the end.
         (setq code (string-trim-right code))
         (format "```%s\n%s\n```" (or lang "") code))

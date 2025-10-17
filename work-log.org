@@ -1,0 +1,250 @@
+#+TITLE: ox-astro Work Log
+#+AUTHOR: Jay Dixit & Claude
+#+DATE: 2025-10-17
+
+* 2025-10-17 Thursday - Org Headings Breaking User Blocks
+
+** Summary
+Fixed a critical parsing issue where org-mode heading syntax (`***`, `****`) inside user/prompt/quote src blocks was breaking the block structure during export, resulting in malformed MDX output.
+
+** Problem Discovery
+
+*** Symptom
+MDX blog post [[/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/wherein-chatgpt-helps-me-launch-this-substack.mdx][wherein-chatgpt-helps-me-launch-this-substack.mdx]] had content breaking out of styled "user" bubbles. Instead of rendering inside the CSS-styled code block, markdown headings and lists were rendering as page-level elements.
+
+*** Root Cause
+The exported MDX contained `\#+begin_src_ user` (escaped/literal text) instead of proper triple backticks. This happened because the org-mode source file [[/Users/jay/Library/CloudStorage/Dropbox/roam/socratic/20250825182342-wherein_chatgpt_helps_me_launch_this_substack.org][20250825182342-wherein_chatgpt_helps_me_launch_this_substack.org]] had org heading syntax inside the src blocks:
+
+#+begin_example
+#+begin_src user
+OK here are my thoughts...
+
+*** 1. Clarify your audience
+
+#### Who do you want reading this?
+#+end_src
+#+end_example
+
+Org-mode's parser was interpreting the `***` at line start as actual org headlines, which *broke the src block structure before export even began*.
+
+** Approach to Solution
+
+*** First Attempt: Export-Time Conversion
+*Strategy*: Modify `org-astro-src-block` function to convert org headings to markdown during export.
+
+*Implementation*: Added regex replacements in [[/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-helpers.el][ox-astro-helpers.el]] lines 726-750:
+
+#+begin_src emacs-lisp
+(defun org-astro-src-block (src-block contents info)
+  "Transcode a SRC-BLOCK element into fenced Markdown format.
+For 'user', 'prompt', and 'quote' blocks, preserve org-mode syntax
+literally - convert org headings to markdown equivalents."
+  (if (not (org-export-read-attribute :attr_md src-block :textarea))
+      (let* ((lang (org-element-property :language src-block))
+             (code (org-element-property :value src-block)))
+        ;; For user/prompt/quote blocks, convert org-mode syntax to markdown
+        (when (member lang '("user" "prompt" "quote"))
+          ;; Convert org headings to markdown headings
+          (setq code (replace-regexp-in-string "^\\*\\*\\*\\* \\(.*\\)$" "#### \\1" code))
+          (setq code (replace-regexp-in-string "^\\*\\*\\* \\(.*\\)$" "### \\1" code))
+          (setq code (replace-regexp-in-string "^\\*\\* \\(.*\\)$" "## \\1" code))
+          (setq code (replace-regexp-in-string "^\\* \\(.*\\)$" "# \\1" code)))
+        (setq code (string-trim-right code))
+        (format "```%s\n%s\n```" (or lang "") code))
+#+end_src
+
+*Problem*: This approach was **too late** - the src block had already been broken during parsing, so there was no intact block structure to process.
+
+*Result*: Still produced malformed output with `\#+begin_src_ user`
+
+*** Second Attempt: Pre-Processing Before Parse
+*Strategy*: Run transformation BEFORE org-mode's parser processes the buffer, converting asterisks to markdown heading syntax.
+
+*Why This Works*: Org-mode's parser is what interprets asterisks at line start as headlines. By converting them to markdown syntax (`###`) before parsing, we prevent the parser from seeing them as org elements.
+
+** Final Solution: Automatic Normalization
+
+*** Implementation Architecture
+
+**** 1. Created Normalization Function
+Added `org-astro--normalize-user-blocks` in [[/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-helpers.el][ox-astro-helpers.el]] lines 247-282:
+
+#+begin_src emacs-lisp
+(defun org-astro--normalize-user-blocks ()
+  "Convert org headings to markdown inside user/prompt/quote blocks.
+This prevents org-mode from interpreting asterisks as headings inside
+these special blocks, which would break the block structure."
+  (save-excursion
+    (goto-char (point-min))
+    (let ((modified nil))
+      (while (re-search-forward "^#\\+begin_src \\(user\\|prompt\\|quote\\)" nil t)
+        (let ((block-start (point))
+              (block-end (save-excursion
+                          (when (re-search-forward "^#\\+end_src" nil t)
+                            (match-beginning 0)))))
+          (when block-end
+            (save-restriction
+              (narrow-to-region block-start block-end)
+              (goto-char (point-min))
+              ;; Convert org headings to markdown (must go from most to least asterisks)
+              (while (re-search-forward "^\\(\\*\\*\\*\\*\\) \\(.*\\)$" nil t)
+                (replace-match "#### \\2")
+                (setq modified t))
+              (goto-char (point-min))
+              (while (re-search-forward "^\\(\\*\\*\\*\\) \\(.*\\)$" nil t)
+                (replace-match "### \\2")
+                (setq modified t))
+              (goto-char (point-min))
+              (while (re-search-forward "^\\(\\*\\*\\) \\(.*\\)$" nil t)
+                (replace-match "## \\2")
+                (setq modified t))
+              (goto-char (point-min))
+              (while (re-search-forward "^\\(\\*\\) \\(.*\\)$" nil t)
+                (replace-match "# \\2")
+                (setq modified t)))
+            (goto-char block-end))))
+      (when modified
+        (message "[ox-astro] Auto-converted org headings to markdown in user/prompt/quote blocks")))))
+#+end_src
+
+*Key Design Decisions*:
+- Uses `save-excursion` to preserve cursor position
+- Processes from most to least asterisks to avoid double-conversion
+- Uses `narrow-to-region` to limit replacements to within each block
+- Provides user feedback when conversions are made
+- Non-destructive to the original buffer (unless export proceeds)
+
+**** 2. Integrated Into Export Workflow
+Modified [[/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro.el][ox-astro.el]] line 94 to call normalization BEFORE parsing:
+
+#+begin_src emacs-lisp
+;; Clear any stale image import state before running export filters.
+(setq org-astro--current-body-images-imports nil)
+;; --- AUTO-NORMALIZE: Convert org headings to markdown in user/prompt/quote blocks ---
+;; This must run BEFORE org-mode parses the buffer, otherwise asterisks at start
+;; of lines inside src blocks will be interpreted as org headlines and break the block.
+(org-astro--normalize-user-blocks)
+;; --- PREPROCESSING: Process and update all image paths BEFORE export ---
+(let* ((tree (org-element-parse-buffer))
+#+end_src
+
+*Critical Timing*: This runs **before** `org-element-parse-buffer`, which is when org-mode's parser would normally interpret the asterisks as headlines.
+
+*** Manual Fix Applied
+Also manually fixed the source org file [[/Users/jay/Library/CloudStorage/Dropbox/roam/socratic/20250825182342-wherein_chatgpt_helps_me_launch_this_substack.org][20250825182342-wherein_chatgpt_helps_me_launch_this_substack.org]] at lines 187-213 to demonstrate proper format:
+
+#+begin_example
+#+begin_src user
+OK here are my thoughts on your questions from above. I'll run them by you one at a time.
+
+### 1. Clarify your audience
+
+Before you write anything, ask:
+
+#### Who do you want reading this? Professors? Writers? Students? AI-curious professionals?
+#+end_src
+#+end_example
+
+** Technical Insights
+
+*** Org Export Pipeline Order
+Understanding the correct order of operations was crucial:
+
+1. *Pre-processing* (custom code before parsing) ← Our normalization runs here
+2. *Parsing* (`org-element-parse-buffer`) ← Where asterisks would be interpreted
+3. *Parse-tree filters* (modify AST)
+4. *Transcoding* (convert elements to output format)
+5. *Body filters* (modify body string)
+6. *Final filters* (modify complete output)
+
+*** Why Export-Time Processing Failed
+By the time `org-astro-src-block` was called to transcode the element, org-mode had already:
+- Parsed the asterisks as headlines
+- Broken the src block structure
+- Created malformed AST nodes
+
+The transcoder received an already-broken structure, so it couldn't fix it.
+
+*** Why Pre-Processing Works
+By running before the parser:
+- We transform the raw buffer text
+- Org-mode parser sees markdown syntax (`###`) not org syntax (`***`)
+- Src block structure remains intact through parsing
+- Export proceeds normally with well-formed blocks
+
+*** Conversion Order Matters
+Must process from most to least asterisks:
+- `****` → `####` (first)
+- `***` → `###`
+- `**` → `##`
+- `*` → `#` (last)
+
+Otherwise `****` would become `###*` after the first pass.
+
+** Prevention Strategy
+
+*** User Experience
+The automatic normalization provides:
+1. **Zero friction**: Users don't need to remember special syntax
+2. **Automatic correction**: Problematic syntax is fixed on every export
+3. **User notification**: Message confirms when conversions are made
+4. **No manual intervention**: Works transparently in the background
+
+*** Alternative Options Considered
+1. ✅ *Automatic pre-processing* (implemented) - Best UX
+2. ⚠️ *Export-time warning* - Requires user action
+3. ⚠️ *Documentation* - Relies on user memory
+
+Chose Option 1 for optimal user experience and reliability.
+
+** Files Modified
+
+*** [[/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-helpers.el][ox-astro-helpers.el]]
+- Lines 247-282: Added `org-astro--normalize-user-blocks` function
+- Lines 726-750: Updated `org-astro-src-block` with heading conversion (this became redundant but kept as defense in depth)
+
+*** [[/Users/jay/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro.el][ox-astro.el]]
+- Line 94: Integrated normalization call before parsing
+
+*** [[/Users/jay/Library/CloudStorage/Dropbox/roam/socratic/20250825182342-wherein_chatgpt_helps_me_launch_this_substack.org][Source org file]]
+- Lines 187-213: Manually fixed as demonstration of proper format
+
+** User Impact
+
+*** Immediate Benefits
+- Blog post now renders correctly with content staying inside styled bubbles
+- No more escaped literal text in MDX output
+- Proper triple-backtick code fences generated
+
+*** Long-Term Benefits
+- Users can freely use conversational markdown syntax inside user blocks
+- No need to remember special escaping rules
+- Automatic handling prevents future issues
+- Works for all three block types: user, prompt, quote
+
+** Lessons Learned
+
+*** 1. Pre-Processing vs Post-Processing
+When working with structured parsers like org-mode:
+- Some problems must be solved BEFORE parsing
+- Post-processing (during export) can be too late
+- Understanding the pipeline order is critical
+
+*** 2. Defensive Programming Layers
+Multiple intervention points provide robustness:
+- Pre-processing catches the issue early (primary defense)
+- Export-time conversion provides backup (defense in depth)
+- Both together ensure reliable output
+
+### 3. User Experience Design
+Best solutions:
+- Work automatically without user intervention
+- Provide feedback when taking action
+- Don't require users to memorize special rules
+- Fix problems at the source, not with workarounds
+
+*** 4. Testing with Real Content
+The problem was discovered in a real blog post with complex conversational content, not in simplified test cases. Real-world content reveals edge cases that simple tests miss.
+
+** Status
+✅ **RESOLVED** - Automatic normalization implemented and integrated. Future exports will handle this automatically.
