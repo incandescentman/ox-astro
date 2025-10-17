@@ -390,13 +390,23 @@ If the generated name starts with a number, it is prefixed with 'img'."
    "Untitled Post"))
 
 (defun org-astro--get-excerpt (tree info)
-  "Return an excerpt string from TREE/INFO, possibly empty but never nil."
+  "Return an excerpt string from TREE/INFO, possibly empty but never nil.
+Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
   (or
-   ;; Prefer explicit #+ASTRO_EXCERPT or #+EXCERPT
+   ;; Prefer explicit #+ASTRO_EXCERPT or #+EXCERPT first
    (let ((kw (org-element-map tree 'keyword
                (lambda (k)
                  (when (member (org-element-property :key k)
                                '("ASTRO_EXCERPT" "EXCERPT"))
+                   k))
+               nil 'first-match)))
+     (when kw
+       (let* ((v (org-element-property :value kw)))
+         (string-trim (replace-regexp-in-string "[*_/]" "" v)))))
+   ;; Fall back to #+DESCRIPTION if no EXCERPT
+   (let ((kw (org-element-map tree 'keyword
+               (lambda (k)
+                 (when (string= (org-element-property :key k) "DESCRIPTION")
                    k))
                nil 'first-match)))
      (when kw

@@ -1,6 +1,30 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-10-10
+** Session Summary
+- Added DESCRIPTION keyword as fallback for EXCERPT in front matter generation
+- Updated excerpt extraction logic to check EXCERPT first, then DESCRIPTION, then first paragraph
+- Updated documentation in concept-map.org, design-architecture.org, and CHANGE-LOG.org
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] DESCRIPTION fallback implemented: `ox-astro-helpers.el:392-414`
+- [x] Priority order: ASTRO_EXCERPT → EXCERPT → DESCRIPTION → first paragraph
+- [x] Documentation updated: `docs/concept-map.org:103`, `docs/design-architecture.org:161`
+- [x] Change log entry added: `CHANGE-LOG.org:5-29`
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro-helpers.el`, `docs/concept-map.org`, `docs/design-architecture.org`, `CHANGE-LOG.org`
+- Known unknowns: None - feature is complete and self-contained
+- Recommendations:
+  - Test with an org file that has both DESCRIPTION and EXCERPT to verify priority works correctly
+  - Consider whether README.org needs updating (currently skipped per user request)
+
 * 2025-10-07
 ** Session Summary
 - Updated table cell sanitization to wrap generic type signatures and normalize `<br>` tags for MDX compatibility.

@@ -2,6 +2,32 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* DESCRIPTION as Synonym for EXCERPT (2025-10-10)
+
+** Summary
+The exporter now treats =#+DESCRIPTION= as a synonym for =#+EXCERPT= when generating front matter. If both keywords are present, =#+EXCERPT= takes priority.
+
+** Rationale
+Many Org files use =#+DESCRIPTION= for SEO and metadata purposes, which serves the same purpose as an excerpt. This change eliminates redundant metadata by allowing users to specify either keyword.
+
+** Priority Order
+1. =#+ASTRO_EXCERPT= (highest priority)
+2. =#+EXCERPT=
+3. =#+DESCRIPTION= (new fallback)
+4. First paragraph (final fallback)
+
+** Implementation
+Modified =org-astro--get-excerpt= in =ox-astro-helpers.el= to check for DESCRIPTION keyword after checking for EXCERPT keywords but before falling back to the first paragraph.
+
+** Files Changed
+- =ox-astro-helpers.el:392-414= — Added DESCRIPTION fallback to excerpt extraction
+- =docs/concept-map.org= — Updated keyword mapping documentation
+- =docs/design-architecture.org= — Updated front matter table
+- =CHANGE-LOG.org= — Added this entry
+
+** User Impact
+Users can now use =#+DESCRIPTION= in their Org files and it will automatically populate the excerpt field in exported MDX files, reducing metadata duplication.
+
 * Fix Emacs 27.1+ Deprecation Warnings (2025-09-28)
 
 ** Summary

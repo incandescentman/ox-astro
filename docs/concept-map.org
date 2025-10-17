@@ -100,7 +100,7 @@ Implementation: See [[file:../ox-astro-helpers.el::org-astro--gen-yaml-front-mat
 The translation between Org keywords and MDX front matter fields:
 - =#+TITLE= → =title=
 - =#+DATE= or =#+PUBLISH_DATE= → =publishDate=
-- =#+EXCERPT= → =excerpt=
+- =#+EXCERPT= or =#+DESCRIPTION= → =excerpt= (EXCERPT takes priority if both exist)
 - =#+COVER_IMAGE= → =image=
 - =#+VISIBILITY: value= → =visibility: value=
 
