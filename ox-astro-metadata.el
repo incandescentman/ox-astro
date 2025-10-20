@@ -84,6 +84,10 @@ or double quotes retain internal spacing; quotes are stripped in the result."
   "Return raw value for ASTRO_PLACES or PLACES keyword from TREE."
   (org-astro--keyword-first-value tree '("ASTRO_PLACES" "PLACES")))
 
+(defun org-astro--keyword-raw-place (tree)
+  "Return raw value for ASTRO_PLACE or PLACE keyword from TREE."
+  (org-astro--keyword-first-value tree '("ASTRO_PLACE" "PLACE")))
+
 (defun org-astro--keyword-raw-themes (tree)
   "Return raw value for ASTRO_THEMES or THEMES keyword from TREE."
   (org-astro--keyword-first-value tree '("ASTRO_THEMES" "THEMES")))
@@ -91,6 +95,14 @@ or double quotes retain internal spacing; quotes are stripped in the result."
 (defun org-astro--keyword-raw-story-type (tree)
   "Return raw value for ASTRO_STORY_TYPE or STORY_TYPE keyword from TREE."
   (org-astro--keyword-first-value tree '("ASTRO_STORY_TYPE" "STORY_TYPE")))
+
+(defun org-astro--keyword-raw-people (tree)
+  "Return raw value for ASTRO_PEOPLE or PEOPLE keyword from TREE."
+  (org-astro--keyword-first-value tree '("ASTRO_PEOPLE" "PEOPLE")))
+
+(defun org-astro--keyword-raw-emotions (tree)
+  "Return raw value for ASTRO_EMOTIONS or EMOTIONS keyword from TREE."
+  (org-astro--keyword-first-value tree '("ASTRO_EMOTIONS" "EMOTIONS")))
 
 (defun org-astro--parse-tags (tree info)
   "Return list of tags from TREE/INFO, honoring ASTRO_TAGS and TAGS."
@@ -120,6 +132,20 @@ or double quotes retain internal spacing; quotes are stripped in the result."
                          (plist-get info :themes))))
     (org-astro--split-quoted-list themes-raw)))
 
+(defun org-astro--parse-people (tree info)
+  "Return list of people from TREE/INFO, honoring ASTRO_PEOPLE and PEOPLE."
+  (let* ((people-raw (or (org-astro--keyword-raw-people tree)
+                         (plist-get info :astro-people)
+                         (plist-get info :people))))
+    (org-astro--split-quoted-list people-raw)))
+
+(defun org-astro--parse-emotions (tree info)
+  "Return list of emotions from TREE/INFO, honoring ASTRO_EMOTIONS and EMOTIONS."
+  (let* ((emotions-raw (or (org-astro--keyword-raw-emotions tree)
+                           (plist-get info :astro-emotions)
+                           (plist-get info :emotions))))
+    (org-astro--split-quoted-list emotions-raw)))
+
 (defun org-astro--get-date-occurred (tree info)
   "Extract and format the `dateOccurred' value from TREE/INFO."
   (let ((date-raw (or (org-astro--keyword-raw-date-occurred tree)
@@ -144,15 +170,32 @@ or double quotes retain internal spacing; quotes are stripped in the result."
         (unless (string-empty-p trimmed)
           trimmed)))))
 
+(defun org-astro--get-place (tree info)
+  "Return the place string from TREE/INFO."
+  (let ((place-raw (or (org-astro--keyword-raw-place tree)
+                       (plist-get info :astro-place)
+                       (plist-get info :place))))
+    (when place-raw
+      (let ((trimmed (org-trim place-raw)))
+        (unless (string-empty-p trimmed)
+          trimmed)))))
+
 (defun org-astro--get-story-type (tree info)
   "Return the story type string from TREE/INFO."
   (let ((story-type-raw (or (org-astro--keyword-raw-story-type tree)
                             (plist-get info :astro-story-type)
                             (plist-get info :story-type))))
     (when story-type-raw
-      (let ((trimmed (org-trim story-type-raw)))
-        (unless (string-empty-p trimmed)
-          trimmed)))))
+      (let* ((trimmed (org-trim story-type-raw))
+             (valid '("full-story" "vignette" "snapshot" "fragment")))
+        (cond
+         ((string-empty-p trimmed) nil)
+         ((member trimmed valid) trimmed)
+         (t
+          (org-astro--debug-log-direct
+           "Invalid STORY_TYPE '%s'. Expected one of %s"
+           trimmed valid)
+          nil))))))
 
 (provide 'ox-astro-metadata)
 ;;; ox-astro-metadata.el ends here
