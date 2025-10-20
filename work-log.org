@@ -2,6 +2,25 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
+* 2025-10-24 Friday - Enrich org-roam Metadata Export
+
+** Summary
+Taught the exporter to surface the full set of org-roam enrichment fields (date occurred, era, place, people, emotions, places, themes, story type) so downstream sites like roam-life-web can drive richer navigation and search experiences.
+
+** Changes
+- Added `ox-astro-metadata.el` helpers for parsing/normalizing list-style keywords (handles quoted tokens, optional `ASTRO_` prefixes, and story type validation).
+- Registered the new keywords in `ox-astro.el` and wired `org-astro--get-front-matter-data` to emit `dateOccurred`, `era`, `place`, `people`, `emotions`, `places`, `themes`, and `storyType` when present.
+- Updated the change log with guidance for validating org frontmatter slugs and array fields.
+
+** Impact
+- MDX frontmatter now mirrors the enriched schema expected by `roam-life-web/src/content/config.ts`.
+- Arrays such as `people`/`emotions` are always emitted as trimmed lists, preventing schema validation errors.
+- Authors can keep using either `#+field` or `#+ASTRO_field` conventions without breaking exports.
+
+** Follow-ups
+- Run a regression export on representative stories and characters to confirm real data covers the new fields.
+- Consider adding ERT fixtures that exercise the parser against the sample org files mentioned in the exporter guide.
+
 * 2025-10-17 Thursday - Org Headings Breaking User Blocks
 
 ** Summary
