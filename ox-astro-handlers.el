@@ -13,6 +13,7 @@
 ;; Declare functions from other ox-astro modules
 (declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
 (declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
+(declare-function org-astro--build-render-map "ox-astro-image-handlers")
 (declare-function org-astro--process-image-manifest "ox-astro-image-handlers")
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
 (declare-function org-astro--persist-wrap-raw-image-lines "ox-astro-image-handlers")
@@ -108,8 +109,13 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     ;; Persist the processed list (from either preflight or fallback work).
     (when processed
       (plist-put info :astro-body-images-imports processed)
-      (setq org-astro--current-body-images-imports processed)))
-
+      (setq org-astro--current-body-images-imports processed))
+    ;; Build render metadata for downstream consumers.
+    (let* ((render-data (and processed (org-astro--build-render-map processed)))
+           (render-map (and render-data (plist-get render-data :map)))
+           (render-imports (and render-data (plist-get render-data :imports))))
+      (plist-put info :astro-render-map render-map)
+      (plist-put info :astro-render-imports render-imports)))
   tree)
 
 
@@ -135,45 +141,24 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                            (format "{/* Source org: %s */}\n" source-path)))
          ;; --- Handle All Imports ---
          ;; 1. Body image imports (collected by our filter)
-         (body-images-imports (or (plist-get info :astro-body-images-imports)
-                                  org-astro--current-body-images-imports))
-         ;; Whether an explicit hero (cover) is provided in front matter
-         (explicit-hero (or (plist-get info :astro-image)
-                            (plist-get info :cover-image)))
-         (body-imports-string
-          (when body-images-imports
-            (mapconcat
-             (lambda (item)
-               (format "import %s from '%s';"
-                       (plist-get item :var-name)
-                       (plist-get item :astro-path)))
-             body-images-imports
-             "\n")))
-         ;; 2. Hero image import (if first body image is being used as hero)
-         (posts-folder (or (plist-get info :destination-folder)
-                           (plist-get info :astro-posts-folder)))
-         (hero-import (when (and (not explicit-hero) body-images-imports posts-folder)
-                        (let ((first-image (car body-images-imports)))
-                          (format "import hero from '%s';"
-                                  (plist-get first-image :astro-path)))))
-         ;; 3. Manual imports from #+ASTRO_IMPORTS
+         (render-imports (plist-get info :astro-render-imports))
+         (render-imports-string (when render-imports
+                                  (mapconcat #'identity render-imports "\n")))
+         ;; 2. Manual imports from #+ASTRO_IMPORTS
          (manual-imports (plist-get info :astro-imports))
-         ;; 4. Astro Image component import (always include if we have any body images)
-         (astro-image-import (when body-images-imports
-                               "import { Image } from 'astro:assets';"))
-         ;; 5. LinkPeek component import (if raw URLs are used - check body for raw URL patterns)
+         ;; 3. LinkPeek component import (if raw URLs are used - check body for raw URL patterns)
          (linkpeek-import (when (plist-get info :astro-uses-linkpeek)
                             "import LinkPeek from '../../components/ui/LinkPeek.astro';"))
-         ;; 6. ImageGallery component import (if GALLERY blocks are used)
+         ;; 4. ImageGallery component import (if GALLERY blocks are used)
          (has-gallery-blocks (org-element-map tree 'special-block
                                (lambda (block)
                                  (string-equal (org-element-property :type block) "GALLERY"))
                                nil t))
          (image-gallery-import (when has-gallery-blocks
                                  "import ImageGallery from '../../components/ImageGallery.astro';"))
-         ;; 7. Combine all imports, filtering out nil/empty values
+         ;; 5. Combine all imports, filtering out nil/empty values
          (all-imports (mapconcat #'identity
-                                 (delq nil (list hero-import astro-image-import linkpeek-import image-gallery-import body-imports-string manual-imports))
+                                 (delq nil (list render-imports-string linkpeek-import image-gallery-import manual-imports))
                                  "\n")))
     (concat front-matter-string
             (or source-comment "")
@@ -200,31 +185,20 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     (let ((case-fold-search t))
       (setq s (replace-regexp-in-string "<br\\s*/?>" "<br />" s)))
     ;; Convert markdown image syntax with absolute paths to Image components
-    (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
-                                  org-astro--current-body-images-imports))
-           ;; Exclude first image when it's being used as hero (same logic as imports)
-           (explicit-hero (or (plist-get info :astro-image)
-                              (plist-get info :cover-image)))
-           (image-imports (if (and (not explicit-hero) image-imports-raw)
-                              ;; Exclude first image when it's used as hero
-                              (cdr image-imports-raw)
-                              ;; Use all images when there's an explicit hero
-                              image-imports-raw)))
-      (when image-imports
-        (setq s (replace-regexp-in-string
-                 "!\[\([^]]*\)\](\(/[^)]+\.\(?:png\|jpe?g\|webp\)\))"
-                 (lambda (match)
-                   (let* ((alt (match-string 1 match))
-                          (path (match-string 2 match))
-                          (image-data (cl-find path image-imports
-                                               :key (lambda (item) (plist-get item :path))
-                                               :test #'string-equal)))
-                     (if image-data
-                         (let ((var-name (plist-get image-data :var-name))
-                               (alt-text (or (org-astro--filename-to-alt-text path) alt "Image")))
-                           (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
-                         match)))
-                 s))))
+    (let ((pattern "!\\[\\([^]]*\\)\\](\\([~/][^)]+\\.\\(?:png\\|jpe?g\\|webp\\)\\))"))
+      (setq s (replace-regexp-in-string
+               pattern
+               (lambda (match)
+                 (let* ((alt (match-string 1 match))
+                        (path (match-string 2 match))
+                        (record (org-astro--lookup-render-record path info)))
+                   (if record
+                       (let ((var-name (plist-get record :var-name)))
+                         (if (and var-name (not (string-blank-p alt)))
+                             (org-astro--format-image-component var-name alt)
+                           (plist-get record :jsx)))
+                     match)))
+               s t t)))
     ;; Indented blocks to blockquotes (but skip JSX components)
     (let* ((lines (split-string s "\n"))
            (in-jsx-component nil)

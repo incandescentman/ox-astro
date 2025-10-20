@@ -17,6 +17,7 @@
 (declare-function org-astro--get-assets-folder "ox-astro-helpers")
 (declare-function org-astro--sanitize-filename "ox-astro-helpers")
 (declare-function org-astro--path-to-var-name "ox-astro-helpers")
+(declare-function org-astro--filename-to-alt-text "ox-astro-helpers")
 (declare-function org-astro--collect-raw-image-paths "ox-astro-helpers")
 (declare-function org-astro--extract-image-path-from-paragraph "ox-astro-helpers")
 
@@ -170,6 +171,19 @@ Returns non-nil when the buffer was modified."
              (not (string-equal original-path new-path)))
     (org-astro--update-source-buffer-image-path original-path new-path)))
 
+(defun org-astro--image-entry-alt (entry)
+  "Derive a human-readable alt string for ENTRY."
+  (or (cl-loop for occurrence in (plist-get entry :occurrences)
+               for desc = (plist-get occurrence :description)
+               when (and desc (not (string-blank-p desc)))
+               return desc)
+      (let ((path (or (plist-get entry :original-path)
+                      (plist-get entry :path)
+                      (plist-get entry :astro-path))))
+        (when path
+          (org-astro--filename-to-alt-text path)))
+      "Image"))
+
 (defun org-astro--materialize-image (entry posts-folder sub-dir)
   "Copy or download the image for ENTRY into Astro assets.
 Returns a plist describing the outcome or nil on failure."
@@ -231,6 +245,45 @@ Returns a plist describing the outcome or nil on failure."
                         :target-path target-path
                         :rewrite-path target-path
                         :status 'copied))))))))))))
+
+(defun org-astro--build-render-map (processed)
+  "Return render metadata for PROCESSED image entries.
+The result is a plist with keys:
+- :map — hash table mapping lookup keys to render records
+- :imports — list of import lines to include in the MDX prolog."
+  (let ((render-map (make-hash-table :test #'equal))
+        (imports nil)
+        (include-image-component nil))
+    (dolist (entry processed)
+      (let* ((astro-path (plist-get entry :astro-path))
+             (var-name (plist-get entry :var-name))
+             (path (plist-get entry :path))
+             (original (plist-get entry :original-path)))
+        (when (and astro-path var-name)
+          (let* ((alt (org-astro--image-entry-alt entry))
+                 (escaped-alt (replace-regexp-in-string "\"" "\\\\\"" alt))
+                 (jsx (format "<Image src={%s} alt=\"%s\" />" var-name escaped-alt))
+                 (import-line (format "import %s from '%s';" var-name astro-path))
+                 (record (list :entry entry
+                               :var-name var-name
+                               :astro-path astro-path
+                               :alt alt
+                               :jsx jsx)))
+            (cl-pushnew import-line imports :test #'equal)
+            (setq include-image-component t)
+            (dolist (key (list path
+                               original
+                               astro-path
+                               (and astro-path
+                                    (org-astro--sanitize-filename
+                                     (file-name-sans-extension
+                                      (file-name-nondirectory astro-path))))))
+              (when (and key (stringp key) (not (string-empty-p key)))
+                (puthash key record render-map)))))))
+    (when include-image-component
+      (cl-pushnew "import { Image } from 'astro:assets';" imports :test #'equal))
+    (list :map render-map
+          :imports (nreverse (cl-remove-duplicates imports :test #'equal)))))
 
 (defun org-astro--process-image-manifest (manifest posts-folder sub-dir &optional opts)
   "Process MANIFEST entries for POSTS-FOLDER/SUB-DIR.

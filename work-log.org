@@ -2,6 +2,25 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
+* 2025-10-20 Monday - Stage 3: Render Map + Hero Cleanup
+
+** Summary
+Completed the exporter refactor by precomputing render data, simplifying transcoders to read from that map, and deleting all hero-suppression branches.
+
+** Changes
+- Built a render map (`org-astro--build-render-map`) that packages imports and JSX snippets for each processed image and stored it via `:astro-render-map`/`:astro-render-imports`.
+- Simplified `org-astro-prepare-images-filter`, `org-astro-body-filter`, and the MDX transcoders (`org-astro-link`, `org-astro-paragraph`, `org-astro-plain-text`, final output filter) to look up render records instead of reconstructing data or skipping the first image.
+- Removed hero-specific imports/filters so every image is emitted uniformly; layout code can now decide how to present hero media.
+
+** Impact
+- Rendering is now deterministic: every phase reads the same precomputed JSX, eliminating duplicated logic and hero-based conditionals.
+- Imports are generated once from the render map, preventing drift between filters and body generation.
+- The exporter exports all images verbatim, relying on downstream layout for hero presentation as intended.
+
+** Next Steps
+- Monitor layout consumers for styling adjustments now that hero suppression is gone.
+- Consider adding regression fixtures that assert multiple render-map lookups (links, raw paths, markdown images) produce consistent output.
+
 * 2025-10-20 Monday - Stage 2: Image Materialization Drivers
 
 ** Summary

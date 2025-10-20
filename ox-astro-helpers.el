@@ -12,6 +12,9 @@
 (declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
 (declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
 (declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
+(declare-function org-astro--sanitize-filename "ox-astro-image-handlers")
+(declare-function org-astro--build-render-map "ox-astro-image-handlers")
+(declare-function org-astro--image-entry-alt "ox-astro-image-handlers")
 (declare-function org-astro--update-source-buffer-image-path "ox-astro-image-handlers")
 (declare-function org-astro--parse-tags "ox-astro-metadata")
 (declare-function org-astro--parse-categories "ox-astro-metadata")
@@ -42,6 +45,58 @@
 
 (defvar org-astro--current-output-root nil
   "Root output directory for the current export destination.")
+
+(defun org-astro--escape-attribute (text)
+  "Escape double quotes in TEXT for safe use in JSX attributes."
+  (replace-regexp-in-string "\"" "\\\\\"" (or text "")))
+
+(defun org-astro--format-image-component (var-name alt-text)
+  "Return a standardized Image component string for VAR-NAME and ALT-TEXT."
+  (format "<Image src={%s} alt=\"%s\" />"
+          var-name
+          (org-astro--escape-attribute (or alt-text "Image"))))
+
+(defun org-astro--lookup-render-record (path info)
+  "Return render metadata for PATH from INFO's render map."
+  (let* ((clean (and path (substring-no-properties path)))
+         (render-map (plist-get info :astro-render-map))
+         (processed (or (plist-get info :astro-body-images-imports)
+                        org-astro--current-body-images-imports)))
+    (when (and (null render-map) processed)
+      (let* ((data (org-astro--build-render-map processed))
+             (map (plist-get data :map))
+             (imports (plist-get data :imports)))
+        (when map
+          (setf (plist-get info :astro-render-map) map)
+          (setq render-map map))
+        (when imports
+          (setf (plist-get info :astro-render-imports)
+                (cl-remove-duplicates
+                 (append imports (plist-get info :astro-render-imports))
+                 :test #'equal)))))
+    (when clean
+      (or (and render-map (gethash clean render-map))
+          (let ((sanitized (org-astro--sanitize-filename
+                            (file-name-sans-extension
+                             (file-name-nondirectory clean)))))
+            (and render-map sanitized (gethash sanitized render-map)))
+          (let* ((entry (and processed
+                             (or (cl-find clean processed
+                                          :key (lambda (item) (plist-get item :path))
+                                          :test #'string-equal)
+                                 (cl-find clean processed
+                                          :key (lambda (item) (plist-get item :original-path))
+                                          :test #'string-equal)))))
+            (when entry
+              (let* ((astro (plist-get entry :astro-path))
+                     (var-name (plist-get entry :var-name))
+                     (alt (org-astro--image-entry-alt entry)))
+                (when (and astro var-name)
+                  (list :entry entry
+                        :var-name var-name
+                        :astro-path astro
+                        :alt alt
+                        :jsx (org-astro--format-image-component var-name alt))))))))))
 
 ;; Simple debug logging function that writes directly to file
 (defun org-astro--debug-log-direct (fmt &rest args)
@@ -913,44 +968,21 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
            path
            (or (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path)
                (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" path)))
-      (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
-                                    org-astro--current-body-images-imports))
-             (explicit-hero (or (plist-get info :astro-image)
-                                (plist-get info :cover-image)))
-             (image-imports image-imports-raw)
+      (let* ((record (org-astro--lookup-render-record path info))
              (_ (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-                  (message "[ox-astro][img] LINK processing path=%s, imports count=%d"
-                           path (length image-imports-raw))))
-             (image-data
-              (when image-imports
-                (or (cl-find path image-imports
-                             :key (lambda (item) (plist-get item :path))
-                             :test #'string-equal)
-                    ;; Fallback: match by sanitized filename if absolute path compare fails
-                    (let* ((base (file-name-nondirectory path))
-                           (base-s (org-astro--sanitize-filename (file-name-sans-extension base))))
-                      (cl-find base-s image-imports
-                               :key (lambda (item)
-                                      (org-astro--sanitize-filename
-                                       (file-name-sans-extension
-                                        (file-name-nondirectory (plist-get item :path)))))
-                               :test #'string-equal))))))
-        (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-          (message "[ox-astro][img] LINK path=%s explicit-hero=%s imports=%s match=%s"
-                   path (and explicit-hero t) (length image-imports)
-                   (and image-data (plist-get image-data :var-name))))
-        (cond
-         ;; Suppress only the very first occurrence of the implicit hero at top
-         (image-data
-          (let* ((var-name (plist-get image-data :var-name))
-                 (alt-text (or desc (org-astro--filename-to-alt-text path) "Image")))
-            (format "<Image src={%s} alt=\"%s\" />" var-name alt-text)))
-         ;; Unmatched: fall back to normal Markdown link instead of dropping
-         (t
+                  (message "[ox-astro][img] LINK path=%s record=%s"
+                           path (and record (plist-get record :var-name))))))
+        (if record
+            (let* ((var-name (plist-get record :var-name))
+                   (default-alt (plist-get record :alt))
+                   (alt (or desc default-alt "Image")))
+              (if var-name
+                  (org-astro--format-image-component var-name alt)
+                (plist-get record :jsx)))
           (let ((md (when (fboundp 'org-md-link)
                       (ignore-errors (org-md-link link desc info)))))
             (or md (or (org-element-property :raw-link link)
-                       (concat (or type "file") ":" path))))))))
+                       (concat (or type "file") ":" path)))))))
      ;; PDF links → emit a Markdown link with URL-encoded spaces; normalize label.
      ((and path
            (or (string= type "file") (and (null type) (string-prefix-p "/" path)))
@@ -1081,37 +1113,13 @@ literally - convert org headings to markdown equivalents."
 
 (defun org-astro--handle-broken-image-paragraph (paragraph info)
   "Handle a paragraph containing a broken image path with subscripts."
-  (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
-                                org-astro--current-body-images-imports))
-         ;; Exclude first image if it's being used as the implicit hero
-         (explicit-hero (or (plist-get info :astro-image)
-                            (plist-get info :cover-image)))
-         (image-imports (if (and (not explicit-hero) image-imports-raw)
-                            (cdr image-imports-raw)
-                            image-imports-raw))
-         (paragraph-context (org-element-interpret-data paragraph))
-         (matching-import nil))
-
-
-    ;; Try to find a matching imported image by comparing filenames
-    (when image-imports
-      (dolist (import image-imports)
-        (let* ((import-file-path (plist-get import :path))
-               (import-filename (file-name-nondirectory import-file-path)))
-          ;; Check if the paragraph context contains this filename (even broken up)
-          (when (and import-filename
-                     (string-match-p (regexp-quote (file-name-sans-extension import-filename))
-                                     paragraph-context))
-            (setq matching-import import)))))
-
-    (if matching-import
-        ;; Generate Image component for matched import
-        (let* ((var-name (plist-get matching-import :var-name))
-               (matched-path (plist-get matching-import :path))
-               (alt-text (or (org-astro--filename-to-alt-text matched-path) "Image")))
-          (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
-        ;; No match found - remove the broken paragraph
-        "")))
+  (let* ((path (org-astro--extract-image-path-from-paragraph paragraph))
+         (record (and path (org-astro--lookup-render-record path info))))
+    (if record
+        (let ((var-name (plist-get record :var-name))
+              (alt (plist-get record :alt)))
+          (org-astro--format-image-component var-name alt))
+      "")))
 
 
 (defun org-astro-paragraph (paragraph contents info)
@@ -1139,37 +1147,15 @@ literally - convert org headings to markdown equivalents."
           (setq is-image-path t)
           (setq path text))))
     (if is-image-path
-        (let* ((image-imports-raw (or (plist-get info :astro-body-images-imports)
-                                      org-astro--current-body-images-imports))
-               ;; Exclude first image if it's being used as the implicit hero
-               (explicit-hero (or (plist-get info :astro-image)
-                                  (plist-get info :cover-image)))
-               (image-imports (if (and (not explicit-hero) image-imports-raw)
-                                  (cdr image-imports-raw)
-                                  image-imports-raw))
-               (image-data (when image-imports
-                             (or (cl-find path image-imports
-                                          :key (lambda (item) (plist-get item :path))
-                                          :test #'string-equal)
-                                 ;; Fallback by sanitized filename (handles underscore→hyphen sanitation)
-                                 (let* ((base (file-name-nondirectory path))
-                                        (base-s (org-astro--sanitize-filename (file-name-sans-extension base))))
-                                   (cl-find base-s image-imports
-                                            :key (lambda (item)
-                                                   (org-astro--sanitize-filename
-                                                    (file-name-sans-extension
-                                                     (file-name-nondirectory (plist-get item :path)))))
-                                            :test #'string-equal))))))
+        (let* ((record (org-astro--lookup-render-record path info)))
           (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-            (message "[ox-astro][img] PARA path=%s explicit-hero=%s imports=%s match=%s"
-                     path (and explicit-hero t) (length image-imports)
-                     (and image-data (plist-get image-data :var-name))))
-          (if image-data
-              (let ((var-name (plist-get image-data :var-name))
-                    (alt-text (or (org-astro--filename-to-alt-text path) "Image")))
-                (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
-              ;; Fallback: if image wasn't processed by the filter, just output the original contents.
-              contents))
+            (message "[ox-astro][img] PARA path=%s record=%s"
+                     path (and record (plist-get record :var-name))))
+          (if record
+              (let ((var-name (plist-get record :var-name))
+                    (alt (plist-get record :alt)))
+                (org-astro--format-image-component var-name alt))
+            contents))
         ;; Check if this paragraph contains broken image path (subscripts)
         (let ((paragraph-context (org-element-interpret-data paragraph)))
           (if (string-match-p "/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)" paragraph-context)
@@ -1184,8 +1170,6 @@ literally - convert org headings to markdown equivalents."
   If the text contains raw image paths on their own lines, convert them to <img> tags.
   If the text contains raw URLs on their own lines, convert them to LinkPeek components."
   (let* ((lines (split-string text "\n"))
-         (image-imports (or (plist-get info :astro-body-images-imports)
-                            org-astro--current-body-images-imports))
          (has-linkpeek nil)
          (processed-lines
           (mapcar
@@ -1195,33 +1179,25 @@ literally - convert org headings to markdown equivalents."
                    ;; Preserve Markdown link formatting unchanged
                    line
                    (cond
-                    ;; Raw image path (trust imports rather than filesystem)
+                    ;; Raw image path (trust precomputed render map)
                     ((and trimmed-line
                           (or (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" trimmed-line)
                               (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" trimmed-line)))
-                     (let ((image-data (when image-imports
-                                         (cl-find trimmed-line image-imports
-                                                  :key (lambda (item) (plist-get item :path))
-                                                  :test #'string-equal))))
-                       (if image-data
-                           (let ((var-name (plist-get image-data :var-name))
-                                 (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
-                             (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
-                           ;; Fallback: if image wasn't processed by the filter, output as plain text.
-                           line)))
+                     (let ((record (org-astro--lookup-render-record trimmed-line info)))
+                       (if record
+                           (let ((var-name (plist-get record :var-name))
+                                 (alt (plist-get record :alt)))
+                             (org-astro--format-image-component var-name alt))
+                         line)))
                     ;; Remote image URL
                     ((and trimmed-line
                           (string-match-p "^https?://.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" trimmed-line))
-                     (let ((image-data (when image-imports
-                                         (cl-find trimmed-line image-imports
-                                                  :key (lambda (item) (plist-get item :path))
-                                                  :test #'string-equal))))
-                       (if image-data
-                           (let ((var-name (plist-get image-data :var-name))
-                                 (alt-text (or (org-astro--filename-to-alt-text trimmed-line) "Image")))
-                             (format "<Image src={%s} alt=\"%s\" />" var-name alt-text))
-                           ;; Fallback: if image wasn't processed by the filter, output as plain text.
-                           line)))
+                     (let ((record (org-astro--lookup-render-record trimmed-line info)))
+                       (if record
+                           (let ((var-name (plist-get record :var-name))
+                                 (alt (plist-get record :alt)))
+                             (org-astro--format-image-component var-name alt))
+                         line)))
                     ;; Regular remote URL (non-image) is now handled correctly by org-astro-link.
                     ;; Regular line
                     (t line)))))
