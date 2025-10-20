@@ -97,71 +97,71 @@ Each manifest entry is a plist with keys:
                            (and (buffer-file-name)
                                 (expand-file-name (buffer-file-name)))))
           (manifest (make-hash-table :test #'equal))
-          (order nil)
-          (register-entry
-           (lambda (path origin &rest kvs)
+          (order nil))
+     (cl-labels
+         ((register-entry (path origin &rest kvs)
+                          (when (org-astro--image-path-matches-p path)
+                            (let* ((entry (org-astro--image-manifest--ensure manifest path source-file))
+                                   (occur (apply #'org-astro--image-manifest--normalize-occurrence
+                                                 :origin origin kvs))
+                                   (occurrences (plist-get entry :occurrences)))
+                              (setq entry (plist-put entry :occurrences (append occurrences (list occur))))
+                              (puthash path entry manifest)
+                              (unless (member path order)
+                                (setq order (append order (list path))))))))
+       ;; Link-based references ([[file:...]] and remote URLs)
+       (org-element-map tree 'link
+         (lambda (link)
+           (let* ((type (or (org-element-property :type link) "file"))
+                  (path (or (org-element-property :path link)
+                            (org-element-property :raw-link link))))
              (when (org-astro--image-path-matches-p path)
-               (let* ((entry (org-astro--image-manifest--ensure manifest path source-file))
-                      (occur (apply #'org-astro--image-manifest--normalize-occurrence
-                                    :origin origin kvs))
-                      (occurrences (plist-get entry :occurrences)))
-                 (setq entry (plist-put entry :occurrences (append occurrences (list occur))))
-                 (puthash path entry manifest)
-                 (unless (member path order)
-                   (setq order (append order (list path)))))))))
-     ;; Link-based references ([[file:...]] and remote URLs)
-     (org-element-map tree 'link
-       (lambda (link)
-         (let* ((type (or (org-element-property :type link) "file"))
-                (path (or (org-element-property :path link)
-                          (org-element-property :raw-link link))))
-           (when (org-astro--image-path-matches-p path)
-             (funcall register-entry path
-                      (if (org-astro--image-remote-p path) 'remote-link 'link)
-                      :link-type type
-                      :description (org-astro--image-manifest--link-description link)
-                      :begin (org-element-property :begin link)
-                      :end (org-element-property :end link)
-                      :line (org-astro--image-manifest--line-number (org-element-property :begin link)))))))
-     ;; Raw plain-text occurrences (absolute paths, assets paths, remote URLs)
-     (org-element-map tree 'plain-text
-       (lambda (plain)
-         (let* ((raw (org-element-property :value plain)))
-           (when (stringp raw)
-             (let* ((begin (org-element-property :begin plain))
-                    (line (org-astro--image-manifest--line-number begin))
-                    (regex (concat "\\(/[^[:space:]]+" org-astro--image-extension-regexp "\\)\\b\\|"
-                                   "\\(https?://[^[:space:]]+" org-astro--image-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
-                                   "\\(//[^[:space:]]+" org-astro--image-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
-                                   "\\(assets/images/[^[:space:]]+" org-astro--image-extension-regexp "\\)"))
-                    (start 0))
-               (while (string-match regex raw start)
-                 (let ((path (or (match-string 1 raw)
-                                (match-string 2 raw)
-                                (match-string 3 raw)
-                                (match-string 4 raw)))))
-                   (funcall register-entry path 'plain-text
-                            :begin begin
-                            :line line
-                            :context raw))
+               (register-entry path
+                               (if (org-astro--image-remote-p path) 'remote-link 'link)
+                               :link-type type
+                               :description (org-astro--image-manifest--link-description link)
+                               :begin (org-element-property :begin link)
+                               :end (org-element-property :end link)
+                               :line (org-astro--image-manifest--line-number (org-element-property :begin link)))))))
+       ;; Raw plain-text occurrences (absolute paths, assets paths, remote URLs)
+       (org-element-map tree 'plain-text
+         (lambda (plain)
+           (let* ((raw (org-element-property :value plain)))
+             (when (stringp raw)
+               (let* ((begin (org-element-property :begin plain))
+                      (line (org-astro--image-manifest--line-number begin))
+                      (regex (concat "\\(/[^[:space:]]+" org-astro--image-extension-regexp "\\)\\b\\|"
+                                     "\\(https?://[^[:space:]]+" org-astro--image-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
+                                     "\\(//[^[:space:]]+" org-astro--image-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
+                                     "\\(assets/images/[^[:space:]]+" org-astro--image-extension-regexp "\\)"))
+                      (start 0))
+                 (while (string-match regex raw start)
+                   (let ((path (or (match-string 1 raw)
+                                   (match-string 2 raw)
+                                   (match-string 3 raw)
+                                   (match-string 4 raw)))))
+                     (register-entry path 'plain-text
+                                     :begin begin
+                                     :line line
+                                     :context raw))
                    (setq start (match-end 0))))))))
-     ;; Paragraph repair (paths broken by subscript parsing)
-     (org-element-map tree 'paragraph
-       (lambda (paragraph)
-         (let ((path (org-astro--extract-image-path-from-paragraph paragraph)))
-           (when path
-             (funcall register-entry path 'paragraph
-                      :begin (org-element-property :begin paragraph)
-                      :line (org-astro--image-manifest--line-number (org-element-property :begin paragraph))
-                      :context (org-element-interpret-data paragraph))))))
-     ;; Buffer-level raw scans (underscored paths prior to wrapping)
-     (dolist (path (org-astro--collect-raw-image-paths))
-       (funcall register-entry path 'raw-buffer))
-     ;; Convert hash table into ordered list of plists.
-     (mapcar
-      (lambda (key)
-        (gethash key manifest))
-      order)))
+       ;; Paragraph repair (paths broken by subscript parsing)
+       (org-element-map tree 'paragraph
+         (lambda (paragraph)
+           (let ((path (org-astro--extract-image-path-from-paragraph paragraph)))
+             (when path
+               (register-entry path 'paragraph
+                               :begin (org-element-property :begin paragraph)
+                               :line (org-astro--image-manifest--line-number (org-element-property :begin paragraph))
+                               :context (org-element-interpret-data paragraph))))))
+       ;; Buffer-level raw scans (underscored paths prior to wrapping)
+       (dolist (path (org-astro--collect-raw-image-paths))
+         (register-entry path 'raw-buffer))
+       ;; Convert hash table into ordered list of plists.
+       (mapcar
+        (lambda (key)
+          (gethash key manifest))
+        order))))
 
 (defun org-astro--rewrite-org-image-path (original-path new-path)
   "Rewrite ORIGINAL-PATH to NEW-PATH in the source Org buffer.
