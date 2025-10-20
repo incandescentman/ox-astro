@@ -11,13 +11,13 @@
 
 ** Handoff
 
-*COMPLETED (Safe to rely on)*
 - [x] Destination keyword aliasing implemented: `ox-astro.el:97`, `ox-astro-helpers.el:211`
 - [x] Auto-insert preserves user delimiter and absorptive docs updated: `ox-astro.el:309`, `README.org:82`, `docs/concept-map.org:80`
 - [x] Tooling aware of both forms (`update-image-paths.el:72`, config docs)
 - [x] Change log entry added: `CHANGE-LOG.org:5`
 - [x] ID link docs/tests reinforced Markdown relative outputs: `docs/lab/org-roam-links.org`, `test-id-links.el`, `test-files/id-links/*`
 - [x] Instructions updated to highlight Markdown link outputs: `docs/instructions.org:15`
+- [x] Absolute-path destinations now populate ID map metadata: `ox-astro-helpers.el:181`, `test-id-links.el`
 
 *IN-PROGRESS (Requires completion)*
 - [ ] None

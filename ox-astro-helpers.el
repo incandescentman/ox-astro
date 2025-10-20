@@ -182,11 +182,9 @@ Returns a plist with keys :path, :preserve, :nickname, :raw."
                       (cdr (cl-find trim org-astro-known-posts-folders
                                     :test (lambda (needle pair)
                                             (string= needle (string-trim (car pair))))))))
-         (path (cond
-                ((stringp config) config)
-                ((listp config) (plist-get config :path))
-                ((and trim (file-name-absolute-p trim)) trim)
-                (t nil)))
+         (path (or (and (stringp config) config)
+                   (and (listp config) (plist-get config :path))
+                   (and trim (file-name-absolute-p trim) trim)))
          (preserve (and (listp config)
                         (plist-get config :preserve-folder-structure))))
     (when path

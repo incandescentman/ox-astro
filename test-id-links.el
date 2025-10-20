@@ -85,6 +85,25 @@
       (org-astro--write-broken-link-report hash posts-root)
       (should (not (file-exists-p report-path))))))
 
+(ert-deftest org-astro-absolute-destination-produces-outfile ()
+  (let* ((source-root (make-temp-file "org-astro-src" t))
+         (dest-root (make-temp-file "org-astro-dest" t))
+         (subdir (expand-file-name "themes" source-root))
+         (org-file (expand-file-name "themes/test-theme.org" source-root)))
+    (make-directory subdir t)
+    (with-temp-file org-file
+      (insert ":PROPERTIES:\n:ID: theme-test\n:END:\n")
+      (insert "#+TITLE: Test Theme\n")
+      (insert "#+SLUG: test-theme\n")
+      (insert (format "#+DESTINATION_FOLDER: %s\n\n" dest-root))
+      (insert "Body\n"))
+    (let ((org-astro-source-root-folder source-root))
+      (let ((meta (org-astro--collect-org-file-export-metadata org-file)))
+        (should (equal (plist-get meta :posts-folder) (expand-file-name dest-root)))
+        (should (equal (plist-get meta :filename) "test-theme.mdx"))
+        (should (string-suffix-p "/test-theme.mdx"
+                                 (plist-get meta :outfile)))))))
+
 (provide 'test-id-links)
 
 ;;; test-id-links.el ends here
