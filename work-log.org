@@ -22,6 +22,11 @@ Taught the exporter to surface the full set of org-roam enrichment fields (date 
 - Run a regression export on representative stories and characters to confirm real data covers the new fields.
 - Consider adding ERT fixtures that exercise the parser against the sample org files mentioned in the exporter guide.
 
+** Handoff for Next Session
+- Please run exports for the sample notes to catch any lingering schema issues, especially around `place` vs `places`.
+- If time permits, add an ERT fixture covering `org-astro--split-quoted-list` with mixed quoted tokens.
+- Review `docs/instructions.org` metadata section for clarity; expand with screenshots if users stumble.
+
 * 2025-10-17 Thursday - Org Headings Breaking User Blocks
 
 ** Summary
