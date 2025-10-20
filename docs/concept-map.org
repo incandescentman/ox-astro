@@ -77,7 +77,7 @@ Implementation: See [[file:../ox-astro-config.el::39][ox-astro-config.el:39]]
 ** Destination Folder
 The target directory for exported MDX files. Can be specified as a nickname (looked up in Known Posts Folders) or an absolute path.
 
-Keyword: =#+DESTINATION_FOLDER: blog=
+Keyword: =#+DESTINATION_FOLDER: blog= (alias =#+DESTINATION-FOLDER: blog=)
 Related: [[*Known Posts Folders]]
 Gotcha: Lookups are whitespace-tolerant (see [[file:codebase-wisdom.org::*Gotcha: Whitespace in config folder nicknames causes lookup failures][Codebase Wisdom]])
 

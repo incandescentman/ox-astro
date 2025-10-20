@@ -94,8 +94,10 @@ generated and added to the Org source file."
         (org-astro--normalize-user-blocks)
         ;; --- PREPROCESSING: Process and update all image paths BEFORE export ---
         (let* ((tree (org-element-parse-buffer))
+               (destination-keyword (org-astro--keyword-value tree '("DESTINATION_FOLDER" "DESTINATION-FOLDER")))
                (posts-folder-raw-input (or (plist-get info :destination-folder)
-                                           (plist-get info :astro-posts-folder)))
+                                           (plist-get info :astro-posts-folder)
+                                           destination-keyword))
                ;; Trim whitespace from the folder name to handle config errors
                (posts-folder-raw (and posts-folder-raw-input
                                       (string-trim posts-folder-raw-input)))
@@ -118,6 +120,8 @@ generated and added to the Org source file."
                                     (file-directory-p (expand-file-name posts-folder-raw)))
                                posts-folder-raw)
                               (t nil))))
+          (when posts-folder-raw
+            (setq info (plist-put info :destination-folder posts-folder-raw)))
           (when posts-folder
             ;; Collect image paths
             (let* ((image-paths-from-tree (org-astro--collect-images-from-tree tree))
@@ -302,12 +306,14 @@ generated and added to the Org source file."
                       ;; Add the DESTINATION_FOLDER keyword to the org file
                       (save-excursion
                         (goto-char (point-min))
-                        (if (re-search-forward "^#\\+DESTINATION_FOLDER:" nil t)
-                            ;; Update existing DESTINATION_FOLDER keyword
-                            (progn
+                        (if (re-search-forward "^#\\+DESTINATION[_-]FOLDER:" nil t)
+                            ;; Update existing DESTINATION keyword, preserving user's delimiter
+                            (let* ((matched (match-string 0))
+                                   (use-hyphen (and matched (string-match-p "DESTINATION-FOLDER" matched)))
+                                   (keyword (if use-hyphen "DESTINATION-FOLDER" "DESTINATION_FOLDER")))
                               (beginning-of-line)
                               (kill-line)
-                              (insert (format "#+DESTINATION_FOLDER: %s" selection)))
+                              (insert (format "#+%s: %s" keyword selection)))
                           (org-astro--upsert-keyword-after-roam "DESTINATION_FOLDER" selection)))
                       (save-buffer))
                     selected-path))))
@@ -466,6 +472,7 @@ generated and added to the Org source file."
     (:status             "STATUS"              nil nil nil)
     (:theme              "THEME"               nil nil nil)
     (:destination-folder "DESTINATION_FOLDER"  nil nil nil)
+    (:destination-folder "DESTINATION-FOLDER"  nil nil nil)
     (:astro-publish-date "ASTRO_PUBLISH_DATE"  nil nil nil)
     (:astro-excerpt      "ASTRO_EXCERPT"       nil nil nil)
     (:astro-image        "ASTRO_IMAGE"         nil nil nil)

@@ -2,6 +2,29 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Hyphenated Destination Keyword Support (2025-10-22)
+
+** Summary
+Developers can now specify `#+DESTINATION-FOLDER` in addition to `#+DESTINATION_FOLDER` when selecting an export location.
+
+** Rationale
+Some Org authors prefer hyphenated keyword styles; without support, the exporter silently ignored the setting and later prompts failed, leading to confusing missing-folder errors.
+
+** Key Behavior
+- `#+DESTINATION-FOLDER:` is treated identically to `#+DESTINATION_FOLDER:` during export.
+- Auto-inserted destination lines preserve the delimiter the user already employed.
+- Helper scripts (e.g., `update-image-paths.el`) and metadata scanners detect both spellings.
+- Documentation now reflects the accepted synonyms to prevent drift.
+
+** Implementation
+- Added keyword normalization helper and updated parsing to recognize both delimiters (`ox-astro.el`, `ox-astro-helpers.el`).
+- Extended destination detection utilities and scripts to use the shared regex (`update-image-paths.el`).
+- Documented the alias across README, instructions, and configuration guides.
+
+** Testing
+- Not run yet; export with an Org file containing `#+DESTINATION-FOLDER:` before publishing.
+- Suggested follow-up: `emacs --batch -Q -l test-id-links.el -f ert-run-tests-batch-and-exit`.
+
 * Org-roam ID Link Resolution (2025-10-19)
 
 ** Summary

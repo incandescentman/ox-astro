@@ -208,6 +208,22 @@ Returns a plist with keys :path, :preserve, :nickname, :raw."
             (when (and dir (not (member dir '("" "./"))))
               dir)))))))
 
+(defun org-astro--keyword-value (tree key-or-keys)
+  "Return trimmed value for KEY-OR-KEYS from TREE, or nil if missing.
+
+KEY-OR-KEYS may be a single string keyword or a list of keyword strings.
+This helper respects the first matching keyword encountered in TREE."
+  (let ((search-keys (if (listp key-or-keys) key-or-keys (list key-or-keys))))
+    (cl-some
+     (lambda (key)
+       (org-element-map tree 'keyword
+         (lambda (kw)
+           (when (string-equal key (org-element-property :key kw))
+             (let ((value (org-element-property :value kw)))
+               (when value (string-trim value)))))
+         nil 'first-match))
+     search-keys)))
+
 (defun org-astro--determine-export-filename (file slug)
   "Derive the MDX filename for FILE given SLUG (when present)."
   (if (and slug (not (string-blank-p slug)))
@@ -240,7 +256,7 @@ Returns a plist with keys :path, :preserve, :nickname, :raw."
           (when (re-search-forward "^#\\+ASTRO_POSTS_FOLDER:\\s-*\\(.+\\)$" nil t)
             (setq astro-folder (string-trim (match-string 1))))
           (goto-char (point-min))
-          (when (re-search-forward "^#\\+DESTINATION_FOLDER:\\s-*\\(.+\\)$" nil t)
+          (when (re-search-forward "^#\\+DESTINATION[_-]FOLDER:\\s-*\\(.+\\)$" nil t)
             (setq dest-folder (string-trim (match-string 1))))
           (unless title
             (goto-char (point-min))

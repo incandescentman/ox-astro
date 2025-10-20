@@ -190,8 +190,8 @@ Maps nicknames to destination configurations:
 ```
 
 *Features*:
-- Nickname lookup: =#+DESTINATION_FOLDER: blog=
-- Absolute path support: =#+DESTINATION_FOLDER: /full/path=
+- Nickname lookup: =#+DESTINATION_FOLDER: blog= (alias =#+DESTINATION-FOLDER: blog=)
+- Absolute path support: =#+DESTINATION_FOLDER: /full/path= (alias =#+DESTINATION-FOLDER: /full/path=)
 - Folder structure preservation: Maintains relative paths from source root
 - Whitespace tolerance: Handles trailing/leading spaces gracefully
 

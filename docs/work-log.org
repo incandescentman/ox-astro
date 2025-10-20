@@ -1,6 +1,28 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-10-22
+** Session Summary
+- Enabled `#+DESTINATION-FOLDER` as a synonym for `#+DESTINATION_FOLDER` across the exporter and tooling.
+- Normalized destination keyword detection in helper scripts and refreshed documentation to advertise both forms.
+- Logged the change in CHANGE-LOG with guidance on pending test coverage.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Destination keyword aliasing implemented: `ox-astro.el:97`, `ox-astro-helpers.el:211`
+- [x] Auto-insert preserves user delimiter and absorptive docs updated: `ox-astro.el:309`, `README.org:82`, `docs/concept-map.org:80`
+- [x] Tooling aware of both forms (`update-image-paths.el:72`, config docs)
+- [x] Change log entry added: `CHANGE-LOG.org:5`
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro.el`, `ox-astro-helpers.el`, `update-image-paths.el`, documentation set
+- Known unknowns: Automated test suite not re-run; alias relies on shared keyword helper
+- Recommendations: Export a sample Org file using `#+DESTINATION-FOLDER:` and run `emacs --batch -Q -l test-id-links.el -f ert-run-tests-batch-and-exit`
+
 * 2025-10-10
 ** Session Summary
 - Added DESCRIPTION keyword as fallback for EXCERPT in front matter generation

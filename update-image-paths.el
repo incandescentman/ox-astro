@@ -70,10 +70,10 @@ Returns the new astro-compatible path, or nil if processing failed."
            (replace-regexp-in-string "^-+\\|-+$" "" title))))))))
 
 (defun update-image-paths-get-posts-folder-from-buffer ()
-  "Extract posts folder from #+DESTINATION_FOLDER in current buffer."
+  "Extract posts folder from #+DESTINATION_FOLDER (or hyphen variant) in current buffer."
   (save-excursion
     (goto-char (point-min))
-    (when (re-search-forward "^#\\+DESTINATION_FOLDER:\\s-*\\(.+\\)$" nil t)
+    (when (re-search-forward "^#\\+DESTINATION[_-]FOLDER:\\s-*\\(.+\\)$" nil t)
       (string-trim (match-string 1)))))
 
 (defun update-image-paths-interactive ()
@@ -92,7 +92,7 @@ Returns the new astro-compatible path, or nil if processing failed."
       (return))
       
     (unless posts-folder
-      (user-error "No #+DESTINATION_FOLDER found in buffer"))
+      (user-error "No #+DESTINATION_FOLDER or #+DESTINATION-FOLDER found in buffer"))
       
     (unless slug
       (user-error "No #+SLUG or #+TITLE found in buffer to generate slug"))

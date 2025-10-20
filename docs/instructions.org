@@ -8,7 +8,7 @@
 
 * Export Workflow
 1. Open the source Org buffer
-2. Ensure =#+DESTINATION_FOLDER:= (or =#+ASTRO_POSTS_FOLDER:=) points to a configured nickname
+2. Ensure either =#+DESTINATION_FOLDER:=, =#+DESTINATION-FOLDER:=, or =#+ASTRO_POSTS_FOLDER:= points to a configured nickname
 3. Run =M-x org-astro-export-to-mdx=
 4. Inspect any warnings emitted in the minibuffer or =*Messages*=
 

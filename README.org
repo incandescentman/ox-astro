@@ -79,7 +79,7 @@ With this configuration:
 * How to Use
 
 1.  Open the Org file you want to export.
-2.  Set the destination folder using the `#+DESTINATION_FOLDER` keyword. You can use a nickname from your `org-astro-known-posts-folders` list or provide a full, absolute path to any directory.
+2.  Set the destination folder using the `#+DESTINATION_FOLDER` (or `#+DESTINATION-FOLDER`) keyword. You can use a nickname from your `org-astro-known-posts-folders` list or provide a full, absolute path to any directory.
 3.  Run the command ~M-x org-astro-export-to-mdx~.
 4.  If the destination is not specified in the file, you will be prompted to select one from your pre-configured list.
 5.  The ~.mdx~ file will be generated in the specified destination.
@@ -126,7 +126,7 @@ The exporter automatically generates YAML front matter based on keywords in your
 | ~#+VISIBILITY~         | ~visibility~  | Visibility channel for the post. Common values: ~blog~ (default), ~hidden~, ~example~; any arbitrary string is allowed. |
 | ~#+STATUS~             | ~draft~       | Set to "draft" - post files are created but marked for exclusion from production builds. |
 | ~#+SLUG~               | ~slug~        | URL-friendly slug for the post.                 |
-| ~#+DESTINATION_FOLDER~ | (none)      | Specifies the export destination folder.        |
+| ~#+DESTINATION_FOLDER~ (alias: ~#+DESTINATION-FOLDER~) | (none)      | Specifies the export destination folder.        |
 
 ** Tags & Categories
 
