@@ -28,6 +28,20 @@ Switched gallery exports to import `ImageGallery` from the shared `@jaydixit/ast
 - All future MDX exports consume the single shared ImageGallery implementation, eliminating the prior build failure caused by app-relative imports.
 - Gallery diagnostics confirm each image import matches the generated manifest entries.
 
+* 2025-10-20 Monday - Gallery Export Regression Test
+
+** Summary
+Captured the rigorous gallery org file as a fixture and wired an automated ERT around the exporter.
+
+** Changes
+- Added `test/gallery_test_rigorous.org` and the expected MDX snapshot used for diffing.
+- Implemented `test/image-pipeline-test.el` to export a temporary copy, normalize volatile tokens, and assert six `<ImageGallery>` blocks plus two standalone `<Image />` components.
+- Verified the suite passes via `emacs --batch -Q --eval "(add-to-list 'load-path \".\" t)" -l ert -l test/image-pipeline-test.el -f ert-run-tests-batch-and-exit`.
+
+** Impact
+- Provides end-to-end regression coverage for gallery detection, imports, and rendering so future changes surface immediately.
+- Keeps the test self-contained by isolating exports in temporary projects and cleaning up after itself.
+
 * 2025-10-20 Monday - Stage 3: Render Map + Hero Cleanup
 
 ** Summary
