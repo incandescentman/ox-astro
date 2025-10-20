@@ -37,6 +37,20 @@
 - Review =broken-links.json= and resolve outstanding IDs before publishing
 - Re-export once missing IDs exist—the links will auto-heal on the next run
 
+* Metadata Fields
+- The exporter recognizes both plain and =ASTRO_= prefixed keywords for enriched front matter.
+- Supported mappings:
+  - =#+date_occurred:= → `dateOccurred` (ISO date)
+  - =#+era:= → `era`
+  - =#+place:= → `place`
+  - =#+people:= → `people` array (comma or whitespace separated)
+  - =#+emotions:= → `emotions` array
+  - =#+places:= → `places` array
+  - =#+themes:= → `themes` array
+  - =#+story_type:= → `storyType` (validated against `full-story`, `vignette`, `snapshot`, `fragment`)
+- Arrays accept quoted multi-word tokens (e.g., =#+people: "Mom's apartment"=).
+- After enriching an Org note, re-export to confirm the MDX front matter includes the expected fields.
+
 * Reference
 - Architecture: [[file:design-architecture.org]]
 - Terminology: [[file:concept-map.org]]

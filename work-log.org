@@ -11,6 +11,7 @@ Taught the exporter to surface the full set of org-roam enrichment fields (date 
 - Added `ox-astro-metadata.el` helpers for parsing/normalizing list-style keywords (handles quoted tokens, optional `ASTRO_` prefixes, and story type validation).
 - Registered the new keywords in `ox-astro.el` and wired `org-astro--get-front-matter-data` to emit `dateOccurred`, `era`, `place`, `people`, `emotions`, `places`, `themes`, and `storyType` when present.
 - Updated the change log with guidance for validating org frontmatter slugs and array fields.
+- Rebuilt `org-astro--split-quoted-list` as a small state machine to avoid parenthesis mismatches and correctly tokenize quoted/whitespace-separated values.
 
 ** Impact
 - MDX frontmatter now mirrors the enriched schema expected by `roam-life-web/src/content/config.ts`.
