@@ -32,6 +32,35 @@ The image exporter was skipping the first entry entirely to avoid duplicate hero
 ** Follow-ups
 - If duplicate hero output becomes distracting, consider handling it in the Astro layout instead (e.g., hide the first `<Image />` via CSS when the hero front matter is present).
 
+* 2025-01-06 Monday - Image Pipeline Deep Dive
+
+** Summary
+Reviewed the current image-export pipeline (preflight collection, asset copying, buffer mutations, rendering) to surface maintenance pain points and outline simplification ideas.
+
+** Findings
+- Image discovery happens three different ways (tree traversal, raw buffer scan, paragraph repair), each mutating shared globals. This redundancy keeps behavior robust but makes the flow hard to follow and reason about.
+- Two mutable stores (`info :astro-body-images-imports` and `org-astro--current-body-images-imports`) try to keep the same data in sync. When they drift, downstream code falls back to guesses.
+- “Hero image suppression” leaked into multiple layers (link transcode, paragraph repair) causing special-case branches and state flags.
+- The asset-copy helpers mix responsibilities: they rewrite paths in-place, manage filesystem copies, and emit final MDX imports all in one pass.
+
+** Opportunities
+- Centralize image discovery into a single collector that returns structured entries (source, target, metadata) and reuse it across later phases.
+- Replace global state with an explicit context object threaded through export steps, so each phase reads/writes predictable fields.
+- Separate concerns: one module copies/updates assets, another maps discovered images to MDX `import` entries, and the renderer only formats JSX.
+- Defer hero-specific behavior to the layout layer (or a post-processing step) instead of branching inside the exporter.
+
+** Next Steps
+- Prototype a refactored collector/context on a branch and run regression exports against representative notes.
+- Add focused tests for the new collector to ensure raw-path edge cases remain covered.
+
+** Implementation Plan
+1. Prototype a unified image collector that returns structured results and stores them in an explicit export context. Run regression exports against representative notes.
+2. Split asset copying, buffer rewriting, and MDX import emission into focused helpers that consume the shared context.
+3. Remove hero-specific branching from the exporter and handle duplicate hero presentation inside the Astro layout instead.
+4. Add targeted fixtures and tests that exercise raw-path edge cases to guard the refactored pipeline.
+** Handoff
+- Pick up the unified collector/context prototype (Step 1 of implementation plan).
+- Validate layout-side hero handling to ensure we don't reintroduce suppression logic in the exporter.
 * 2025-10-24 Friday - Enrich org-roam Metadata Export
 
 ** Summary
