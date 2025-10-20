@@ -22,6 +22,18 @@ The updated `roam-life-web` removes the `slug` field from its content schema and
 ** Testing
 - Manual export of `test-slug-generation.org` to confirm front matter omits `slug` while filenames retain it.
 
+* Stop Skipping Hero Images (2025-01-06)
+
+** Summary
+Removed the suppression branch that discarded the first image reference. Exported MDX now includes hero assets anywhere the Org file links them, so the generated `# Images` section is complete.
+
+** Impact
+- All `[[file:...]]` links emit `<Image />` components.
+- No changes required in downstream Astro markup; duplicate hero handling can be managed in the layout if desired.
+
+** Testing
+- `./run-export.sh`
+
 * Extended Metadata Extraction & Refactor (2025-10-24)
 
 ** Summary

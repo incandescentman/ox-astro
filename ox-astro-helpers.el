@@ -941,12 +941,6 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
                    (and image-data (plist-get image-data :var-name))))
         (cond
          ;; Suppress only the very first occurrence of the implicit hero at top
-         ((and (not explicit-hero)
-               image-imports-raw
-               (string-equal path (plist-get (car image-imports-raw) :path))
-               (not (plist-get info :astro-hero-skipped-top)))
-          (plist-put info :astro-hero-skipped-top t)
-          "")
          (image-data
           (let* ((var-name (plist-get image-data :var-name))
                  (alt-text (or desc (org-astro--filename-to-alt-text path) "Image")))

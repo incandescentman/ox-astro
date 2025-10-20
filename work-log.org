@@ -20,6 +20,18 @@ Astro 5 now derives `slug` internally from each file path, so the exporter shoul
 - Run a batch export of representative notes to ensure no consumers depend on `slug` being present in YAML.
 - Consider adding an automated assertion within `test-export.el` for front matter keys.
 
+* 2025-01-06 Monday - Restore Hero Images in Exported Content
+
+** Summary
+The image exporter was skipping the first entry entirely to avoid duplicate hero output, which also removed the image from the generated `# Images` section in the MDX. Dropped the suppression branch so hero assets render wherever the Org file references them.
+
+** Impact
+- All inline `[[file:...]]` references now render `<Image />` components, including the first occurrence.
+- `# Images` sections once again list every linked image.
+
+** Follow-ups
+- If duplicate hero output becomes distracting, consider handling it in the Astro layout instead (e.g., hide the first `<Image />` via CSS when the hero front matter is present).
+
 * 2025-10-24 Friday - Enrich org-roam Metadata Export
 
 ** Summary
