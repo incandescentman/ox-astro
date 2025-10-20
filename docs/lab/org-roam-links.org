@@ -1,0 +1,328 @@
+Here are detailed instructions for your dev:
+
+** Implementing org-roam ID Link Conversion
+*** Current State
+Links in org files like `[[id:char-001-mom][Mom]]` are being converted to plain text `Mom` in the MDX output. We need them to become working markdown links `[[./mom.mdx][Mom]]`.
+*** Required Output Examples
+
+*In `the-time-mom-told-me-about-impermanence.mdx`:*
+#+begin_src markdown
+Who else: Just me and [[../mom.mdx][Mom]]
+#+end_src 
+
+*In `mom.mdx`:*
+#+begin_src markdown
+# Stories Featuring Mom
+
+- [[./the-time-mom-told-me-about-impermanence.mdx][The Time Mom Told Me About Impermanence]]
+- [[./the-phone-call-after-my-first-day-at-openai.mdx][The Phone Call After My First Day at OpenAI]]
+#+end_src 
+
+*In `impermanence.mdx`:*
+#+begin_src markdown
+A recurring theme in stories about [[../mom.mdx][Mom]], who often reminded me...
+
+# Related Themes
+
+- [[./letting-go.mdx][Letting Go]]
+- [[./change-and-transitions.mdx][Change and Transitions]]
+#+end_src 
+
+** Implementation Steps
+*** Step 1: Build the ID-to-Slug Map (BEFORE processing any files)
+
+#+begin_src javascript
+// Map of org-roam IDs to their output slugs
+const idToSlugMap = new Map();
+
+function buildIdToSlugMap(sourceDir) {
+  const orgFiles = findAllOrgFiles(sourceDir); // recursive search
+  
+  for (const orgFilePath of orgFiles) {
+    const content = fs.readFileSync(orgFilePath, 'utf-8');
+    
+    // Extract ID from PROPERTIES drawer
+    // Example: :ID:       char-001-mom
+    const idMatch = content.match(/:ID:\s+(.+)/);
+    
+    if (idMatch) {
+      const id = idMatch[1].trim();
+      
+      // Calculate what the output slug will be
+      const slug = calculateSlug(orgFilePath); // your existing slug logic
+      
+      idToSlugMap.set(id, slug);
+    }
+  }
+  
+  return idToSlugMap;
+}
+
+// Example map after building:
+// {
+//   'char-001-mom' => 'mom',
+//   'story-001-impermanence' => 'the-time-mom-told-me-about-impermanence',
+//   'theme-001-impermanence' => 'impermanence',
+//   ...
+// }
+#+end_src 
+
+*** Step 2: Convert Links During Content Processing
+
+#+begin_src javascript
+function convertOrgLinks(content, currentSlug, idToSlugMap) {
+  // Regex to match: [[id:some-id][Link Text]]
+  const orgLinkRegex = /\[\[id:([^\]]+)\]\[([^\]]+)\]\]/g;
+  
+  return content.replace(orgLinkRegex, (fullMatch, targetId, linkText) => {
+    // Look up target slug
+    const targetSlug = idToSlugMap.get(targetId);
+    
+    if (!targetSlug) {
+      // ID not found --- log warning and return plain text
+      console.warn(`⚠️  Broken link: [[id:${targetId}][${linkText}]] --- target not found`);
+      return linkText; // fallback to plain text
+    }
+    
+    // Calculate relative path
+    const relativePath = calculateRelativePath(currentSlug, targetSlug);
+    
+    // Return markdown link
+    return `[[${relativePath}][${linkText}]]`;
+  });
+}
+#+end_src 
+
+*** Step 3: Calculate Relative Path
+
+Since all MDX files are in the same flat directory (`roam-life-web/`), the relative path logic is simple:
+
+#+begin_src javascript
+function calculateRelativePath(fromSlug, toSlug) {
+  // For flat directory structure, just use ./target.mdx
+  return `./${toSlug}.mdx`;
+}
+#+end_src 
+
+*Note:* If you later organize into subdirectories (stories/, characters/, themes/), you'll need:
+
+#+begin_src javascript
+function calculateRelativePath(fromPath, toPath) {
+  const fromDir = path.dirname(fromPath);
+  let relativePath = path.relative(fromDir, toPath);
+  
+  // Ensure it starts with ./ or ../
+  if (!relativePath.startsWith('.')) {
+    relativePath = './' + relativePath;
+  }
+  
+  return relativePath;
+}
+#+end_src 
+
+** Integration Into Your Exporter
+*** Current Flow (probable):
+#+begin_src javascript
+for (const orgFile of orgFiles) {
+  const content = readOrgFile(orgFile);
+  const mdxContent = convertOrgToMdx(content);  // your existing converter
+  const slug = calculateSlug(orgFile);
+  writeMdxFile(slug, mdxContent);
+}
+#+end_src 
+
+*** Updated Flow:
+#+begin_src javascript
+// STEP 1: Build ID map FIRST (before loop)
+const idToSlugMap = buildIdToSlugMap(sourceDir);
+
+// STEP 2: Process each file
+for (const orgFile of orgFiles) {
+  let content = readOrgFile(orgFile);
+  const slug = calculateSlug(orgFile);
+  
+  // STEP 3: Convert org-roam links BEFORE other conversions
+  content = convertOrgLinks(content, slug, idToSlugMap);
+  
+  // STEP 4: Your existing org-to-mdx conversion
+  const mdxContent = convertOrgToMdx(content);
+  
+  writeMdxFile(slug, mdxContent);
+}
+#+end_src 
+
+** Test Cases
+
+After implementing, verify these conversions work:
+*** Test 1: Link in prose
+*Input* (in `20251019120500-impermanence-story.org`):
+#+begin_src org
+Just me and [[id:char-001-mom][Mom]]
+#+end_src 
+
+*Output* (in `the-time-mom-told-me-about-impermanence.mdx`):
+#+begin_src markdown
+Just me and [[./mom.mdx][Mom]]
+#+end_src 
+
+*** Test 2: Link in list
+*Input* (in `20251019120000-mom.org`):
+#+begin_src org
+- [[id:story-001-impermanence][The Time Mom Told Me About Impermanence]]
+#+end_src 
+
+*Output* (in `mom.mdx`):
+#+begin_src markdown
+- [[./the-time-mom-told-me-about-impermanence.mdx][The Time Mom Told Me About Impermanence]]
+#+end_src 
+
+*** Test 3: Multiple links in one line
+*Input*:
+#+begin_src org
+Stories about [[id:char-001-mom][Mom]] and [[id:theme-001-impermanence][impermanence]]
+#+end_src 
+
+*Output*:
+#+begin_src markdown
+Stories about [[./mom.mdx][Mom]] and [[./impermanence.mdx][impermanence]]
+#+end_src 
+
+*** Test 4: Broken link (ID doesn't exist)
+*Input*:
+#+begin_src org
+My [[id:nonexistent-id][friend]]
+#+end_src 
+
+*Output*:
+#+begin_src markdown
+My friend
+#+end_src 
+
+*Console*:
+#+end_src 
+
+⚠️  Broken link: [[id:nonexistent-id][friend]] --- target not found
+#+end_src 
+
+** Edge Cases to Handle
+
+1. *Links to files not yet exported*: Should gracefully fail to plain text
+2. *Case sensitivity*: IDs should be matched exactly as written
+3. *Whitespace in IDs*: Trim whitespace from extracted IDs
+4. *Special characters in link text*: Preserve them in markdown link text
+5. *Links in code blocks*: Don't convert links inside ``` code blocks (check if needed)
+
+** Debugging Tips
+
+If links aren't working:
+
+1. *Check the ID map*: Log `idToSlugMap` after building to verify all IDs are found
+2. *Check regex matches*: Log each `(targetId, linkText)` pair being converted
+3. *Check slug calculation*: Verify `calculateSlug()` returns what you expect
+4. *Check file paths*: Ensure relative paths are correct for your directory structure
+
+** Expected Console Output During Export
+
+#+end_src 
+
+Building ID-to-slug map...
+Found 8 IDs in org files
+
+Exporting: 20251019120000-mom.org -> mom.mdx
+  ✓ Converted 2 links
+  
+Exporting: 20251019120500-impermanence-story.org -> the-time-mom-told-me-about-impermanence.mdx
+  ✓ Converted 3 links
+  
+⚠️  Broken link in 20251019120700-high-school-draft.org:
+    [[id:friend-unknown][Sarah]] --- target not found
+
+Export complete: 8 files, 15 links converted, 1 broken link
+#+end_src 
+
+** Questions for Your Dev
+
+1. *Does your exporter maintain a slug calculation function?* We need to use the same logic when building the ID map.
+
+2. *Are you planning to keep the flat directory structure* (all MDX in one folder) *or organize into subdirectories* (stories/, characters/, themes/)? This affects relative path calculation.
+
+3. *Do you want a broken links report?* Should we output a JSON file listing all broken links for easy fixing?
+
+
+#+begin_src user Jay Dixit
+so this is a different kind of link from regular links? we need those to continue working as they do now right? 
+#+end_src
+
+
+YES! Great catch. There are *two types of links* in org-mode:
+** 1. ID-based links (org-roam links)
+#+begin_src org
+[[id:char-001-mom][Mom]]
+#+end_src 
+
+These need the *special conversion logic* I described --- look up the ID, find the target file, create relative path.
+** 2. Regular org-mode links
+#+begin_src org
+[[https://example.com][website]]
+[[file:./some-file.org][another note]]
+[[./images/photo.jpg][a photo]]
+#+end_src 
+
+These should continue working as they do now! The existing converter probably already handles them.
+
+** Instructions for Your Dev
+
+*Only convert links that start with `id:`*
+
+The regex should be:
+#+begin_src javascript
+/\[\[id:([^\]]+)\]\[([^\]]+)\]\]/g
+#+end_src 
+
+This specifically matches `[[id:...][...]]` patterns.
+
+*Leave all other link patterns untouched* --- they'll be handled by your existing org-to-markdown conversion logic:
+- `[[https://...][...]]` → `[[https://...][...]]`
+- `[[file:...][...]]` → depends on your current implementation
+- `[[./...][...]]` → depends on your current implementation
+
+** Updated Implementation
+
+#+begin_src javascript
+function convertOrgRoamLinks(content, currentSlug, idToSlugMap) {
+  // ONLY match links that start with "id:"
+  const orgRoamLinkRegex = /\[\[id:([^\]]+)\]\[([^\]]+)\]\]/g;
+  
+  return content.replace(orgRoamLinkRegex, (fullMatch, targetId, linkText) => {
+    const targetSlug = idToSlugMap.get(targetId);
+    
+    if (!targetSlug) {
+      console.warn(`⚠️  Broken link: [[id:${targetId}][${linkText}]]`);
+      return linkText;
+    }
+    
+    return `[[./${targetSlug}.mdx][${linkText}]]`;
+  });
+}
+
+// In your export flow:
+for (const orgFile of orgFiles) {
+  let content = readOrgFile(orgFile);
+  
+  // Step 1: Convert org-roam ID links FIRST
+  content = convertOrgRoamLinks(content, slug, idToSlugMap);
+  
+  // Step 2: Your existing converter handles all other links
+  const mdxContent = convertOrgToMdx(content);
+  
+  writeMdxFile(slug, mdxContent);
+}
+#+end_src 
+
+** Summary for Your Dev
+
+*Only add special handling for `[[id:...][...]]` patterns.*
+
+All other link types (`[[https://...]]`, `[[file:...]]`, etc.) should continue being processed by the existing conversion logic --- don't touch those.
+
+
