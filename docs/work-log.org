@@ -18,6 +18,7 @@
 - [x] ID link docs/tests reinforced Markdown relative outputs: `docs/lab/org-roam-links.org`, `test-id-links.el`, `test-files/id-links/*`
 - [x] Instructions updated to highlight Markdown link outputs: `docs/instructions.org:15`
 - [x] Absolute-path destinations now populate ID map metadata: `ox-astro-helpers.el:181`, `test-id-links.el`
+- [x] Source-root detection auto-falls back to the note's org-roam vault, keeping ID links working even when exporting from another profile: `ox-astro-helpers.el:339`
 
 *IN-PROGRESS (Requires completion)*
 - [ ] None

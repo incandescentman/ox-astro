@@ -336,10 +336,37 @@ This helper respects the first matching keyword encountered in TREE."
             (org-astro--id-map-store map id meta))))))
   map)
 
+(defun org-astro--effective-source-root (source-dir current-file)
+  "Return the best source root to scan for org-roam IDs.
+SOURCE-DIR is the configured `org-astro-source-root-folder'.  If CURRENT-FILE
+is not under SOURCE-DIR, fall back to a detected root by searching for
+`.org-roam.db' or `.git' directories, or ultimately the file's parent."
+  (let* ((configured (and source-dir (expand-file-name source-dir)))
+         (file (and current-file (expand-file-name current-file))))
+    (cond
+     ;; Configured root covers the current file → use it
+     ((and configured file
+           (file-directory-p configured)
+           (string-prefix-p (file-name-as-directory configured)
+                            (file-name-directory file)))
+      configured)
+     ;; Try to detect org-roam style root (presence of .org-roam.db)
+     ((and file (locate-dominating-file file ".org-roam.db")))
+     ;; Fall back to enclosing git repo root if available
+     ((and file (locate-dominating-file file ".git")))
+     ;; As a last resort, use the current file's directory
+     (file
+      (file-name-directory file))
+     (t configured))))
+
 (defun org-astro--ensure-id-map (source-dir current-file)
   "Build an ID map rooted at SOURCE-DIR and ensure CURRENT-FILE is included."
-  (let ((map (org-astro--build-id-map source-dir)))
-    (org-astro--add-file-to-id-map map current-file)))
+  (let* ((root (org-astro--effective-source-root source-dir current-file))
+         ;; Ensure helper functions that rely on `org-astro-source-root-folder'
+         ;; (like relative subdir detection) see the effective root.
+         (org-astro-source-root-folder root))
+    (let ((map (org-astro--build-id-map root)))
+      (org-astro--add-file-to-id-map map current-file))))
 
 (defun org-astro--calculate-relative-mdx-path (from-file to-file)
   "Return a Markdown-friendly relative path from FROM-FILE to TO-FILE."
