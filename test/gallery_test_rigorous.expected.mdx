@@ -1,0 +1,193 @@
+---
+title: Gallery test - rigorous
+author: Jay Dixit
+authorImage: ~/assets/images/authors/jay-dixit-512.png
+publishDate: 2025-08-28T20:39:00Z
+excerpt: "This document tests the gallery detection system with various permutations and edge cases to ensure robust behavior:"
+image: ~/assets/images/posts/gallery-test-rigorous/20250808-2213-Yin-Yang-Tech-Fusion-simple-compose-01k25rea5seqrby5vty43ncs1w.png
+imageAlt: 20250808 2213 Yin Yang Tech Fusion Simple Compose 01k25rea5seqrby5vty43ncs1w
+---
+{/* Source org: /Users/jay/Library/CloudStorage/Dropbox/roam/vibecoding/20250828203848-gallery_test_rigorous.org */}
+import img202508082213YinYangTechFusionSimpleCompose01k25rea5seqrby5vty43ncs1w from '~/assets/images/posts/gallery-test-rigorous/20250808-2213-Yin-Yang-Tech-Fusion-simple-compose-01k25rea5seqrby5vty43ncs1w.png';
+import img202508082208ClassicalMeetsFuturisticSimpleCompose01k25r4n3rf83az17m1gba74ga1 from '~/assets/images/posts/gallery-test-rigorous/20250808-2208-Classical-Meets-Futuristic-simple-compose-01k25r4n3rf83az17m1gba74ga-1-.png';
+import img202508082302SocraticAiYinYangSimpleCompose01k25v7tjne0e9vvm1fvr8bsfk1 from '~/assets/images/posts/gallery-test-rigorous/20250808-2302-Socratic-AI-Yin-Yang-simple-compose-01k25v7tjne0e9vvm1fvr8bsfk-1-.png';
+import img202508082211YinYangFusionLogoSimpleCompose01k25rakrvef9r464gva36n8kp1 from '~/assets/images/posts/gallery-test-rigorous/20250808-2211-Yin-Yang-Fusion-Logo-simple-compose-01k25rakrvef9r464gva36n8kp-1-.png';
+import qr10943 from '~/assets/images/posts/gallery-test-rigorous/QR1-0943.jpg';
+import dscf9229 from '~/assets/images/posts/gallery-test-rigorous/DSCF9229.jpg';
+import sydneySweeneyAtThe2024TorontoInternationalFilmFestivalCroppedRotated1 from '~/assets/images/posts/gallery-test-rigorous/Sydney-Sweeney-at-the-2024-Toronto-International-Film-Festival-cropped-rotated-1-.jpg';
+import jayHeadshots2Scaled from '~/assets/images/posts/gallery-test-rigorous/jay-headshots-2-scaled.jpg';
+import img202506051818ShipDailyMotivationSimpleCompose01jx12qderfbnre6qpjqv5d3jf from '~/assets/images/posts/gallery-test-rigorous/20250605-1818-Ship-Daily-Motivation-simple-compose-01jx12qderfbnre6qpjqv5d3jf.png';
+import img202508082249SocraticAiYinYangSimpleCompose01k25tgyqxeebt1eq1qfn3vpzj from '~/assets/images/posts/gallery-test-rigorous/20250808-2249-Socratic-AI-Yin-Yang-simple-compose-01k25tgyqxeebt1eq1qfn3vpzj.png';
+import img202508082259SocraticAiYinYangSimpleCompose01k25v26fqe7qtees689pbyzyj from '~/assets/images/posts/gallery-test-rigorous/20250808-2259-Socratic-AI-Yin-Yang-simple-compose-01k25v26fqe7qtees689pbyzyj.png';
+import imag502610958245334564829239741694898706627993310n from '~/assets/images/posts/gallery-test-rigorous/imag502610958-245334564829239741694898706627993310n.jpg';
+import dgoodimage from '~/assets/images/posts/gallery-test-rigorous/dgoodimage.png';
+import sL1600 from '~/assets/images/posts/gallery-test-rigorous/s-l1600.webp';
+import img202508121604YinYangDigitalHarmonySimpleCompose01k2f9crs5fxrsgzcfvfmwb1r0 from '~/assets/images/posts/gallery-test-rigorous/20250812-1604-Yin-Yang-Digital-Harmony-simple-compose-01k2f9crs5fxrsgzcfvfmwb1r0.png';
+import img202507270331DigitalGrowthEmblemSimpleCompose01k14vfgd4fsw80tye94jam99b from '~/assets/images/posts/gallery-test-rigorous/20250727-0331-Digital-Growth-Emblem-simple-compose-01k14vfgd4fsw80tye94jam99b.png';
+import img202508251626ColorfulVennDiagramSimpleCompose01k3gxbd8ffcarbh6dy5nh6nvy from '~/assets/images/posts/gallery-test-rigorous/20250825-1626-Colorful-Venn-Diagram-simple-compose-01k3gxbd8ffcarbh6dy5nh6nvy.png';
+import img202508082249AiYinYangDesignSimpleCompose01k25tfgrffzn9ecb85gw4gw6s from '~/assets/images/posts/gallery-test-rigorous/20250808-2249-AI-Yin-Yang-Design-simple-compose-01k25tfgrffzn9ecb85gw4gw6s.png';
+import img202507231541SocraticAiFusionSimpleCompose01k0wcszasfvfbaf8s1khfyqxa from '~/assets/images/posts/gallery-test-rigorous/20250723-1541-Socratic-AI-Fusion-simple-compose-01k0wcszasfvfbaf8s1khfyqxa.png';
+import { Image } from 'astro:assets';
+import ImageGallery from '@jaydixit/astro-utils/components/ImageGallery.astro';
+
+
+# Gallery test - rigorous
+
+# Introduction
+
+This document tests the gallery detection system with various permutations and edge cases to ensure robust behavior:
+
+-   Galleries of exactly 2 images
+-   Mixed sequences (2, then 1, then 5)
+-   Large galleries at the beginning
+-   Individual images interspersed with galleries
+-   Different image formats (JPG, PNG, WebP)
+-   Edge cases and boundary conditions
+
+# Test Case 1: 3-Column Grid Gallery with Lightbox (5 images)
+
+This gallery should display:
+
+-   ****EXPECTED****: 5 images in a 3-column grid layout
+-   ****VISUAL CHECK****: Images should be arranged 3-3-2 (3 in first row, 2 in second)
+-   ****INTERACTION****: Clicking any image should open a lightbox/modal viewer
+-   ****IMAGES****: Mix of AI-generated Yin-Yang designs and one QR code
+
+<ImageGallery
+  images={[
+    { src: img202508082213YinYangTechFusionSimpleCompose01k25rea5seqrby5vty43ncs1w, alt: "20250808 2213 Yin Yang Tech Fusion Simple Compose 01k25rea5seqrby5vty43ncs1w" },
+    { src: img202508082208ClassicalMeetsFuturisticSimpleCompose01k25r4n3rf83az17m1gba74ga1, alt: "20250808 2208 Classical Meets Futuristic Simple Compose 01k25r4n3rf83az17m1gba74ga 1" },
+    { src: img202508082302SocraticAiYinYangSimpleCompose01k25v7tjne0e9vvm1fvr8bsfk1, alt: "20250808 2302 Socratic Ai Yin Yang Simple Compose 01k25v7tjne0e9vvm1fvr8bsfk 1" },
+    { src: img202508082211YinYangFusionLogoSimpleCompose01k25rakrvef9r464gva36n8kp1, alt: "20250808 2211 Yin Yang Fusion Logo Simple Compose 01k25rakrvef9r464gva36n8kp 1" },
+    { src: qr10943, alt: "Qr1 0943" }
+  ]}
+  galleryId="gallery-8990"
+/>
+
+# Test Case 2: 2-Image Gallery with Caption + Solo Image + 3-Image Carousel
+
+This section tests mixing galleries with individual images:
+
+****First Gallery**** (2 images with caption):
+
+-   ****EXPECTED****: 2 images side-by-side with caption "AI Design Collection" below
+-   ****IMAGES****: DSCF camera photo + Sydney Sweeney portrait
+
+<ImageGallery
+  images={[
+    { src: dscf9229, alt: "Dscf9229" },
+    { src: sydneySweeneyAtThe2024TorontoInternationalFilmFestivalCroppedRotated1, alt: "Sydney Sweeney At The 2024 Toronto International Film Festival Cropped Rotated 1" }
+  ]}
+  galleryId="gallery-9552"
+/>
+
+****Solo Image**** (not in gallery):
+
+-   ****EXPECTED****: Single full-width image of Jay headshot
+-   ****VISUAL CHECK****: This should NOT be in a gallery container
+
+<Image src={jayHeadshots2Scaled} alt="Jay Headshots 2 Scaled" />
+
+****Second Gallery**** (3-image carousel with autoplay):
+
+-   ****EXPECTED****: Carousel/slider showing one image at a time
+-   ****INTERACTION****: Should auto-advance between 3 images
+-   ****IMAGES****: Ship Daily Motivation + 2 Socratic AI Yin-Yang designs
+
+<ImageGallery
+  images={[
+    { src: img202506051818ShipDailyMotivationSimpleCompose01jx12qderfbnre6qpjqv5d3jf, alt: "20250605 1818 Ship Daily Motivation Simple Compose 01jx12qderfbnre6qpjqv5d3jf" },
+    { src: img202508082249SocraticAiYinYangSimpleCompose01k25tgyqxeebt1eq1qfn3vpzj, alt: "20250808 2249 Socratic Ai Yin Yang Simple Compose 01k25tgyqxeebt1eq1qfn3vpzj" },
+    { src: img202508082259SocraticAiYinYangSimpleCompose01k25v26fqe7qtees689pbyzyj, alt: "20250808 2259 Socratic Ai Yin Yang Simple Compose 01k25v26fqe7qtees689pbyzyj" }
+  ]}
+  galleryId="gallery-6874"
+/>
+
+# Test Case 3: Mixed Format Gallery (JPG/PNG/WebP) with Interactive Features
+
+This gallery tests different image formats and interactive features:
+
+-   ****EXPECTED****: 3 images with thumbnail strip below
+-   ****FORMATS****: 1 JPG (long filename), 1 PNG (dgoodimage), 1 WebP (s-l1600)
+-   ****INTERACTIONS****: 
+> -   Hover to show zoom button
+> -   Click to zoom in
+> -   Download button visible
+
+<ImageGallery
+  images={[
+    { src: imag502610958245334564829239741694898706627993310n, alt: "Imag502610958 245334564829239741694898706627993310n" },
+    { src: dgoodimage, alt: "Dgoodimage" },
+    { src: sL1600, alt: "S L1600" }
+  ]}
+  galleryId="gallery-8286"
+/>
+
+# Test Case 4: 4-Column Grid Gallery with Lazy Loading (5 images)
+
+This tests performance optimization for larger galleries:
+
+-   ****EXPECTED****: 5 images in 4-column grid (4 in first row, 1 in second)
+-   ****PERFORMANCE****: Images should lazy-load as you scroll
+-   ****IMAGES****: Mix of Yin-Yang designs, Venn diagram, and logos
+-   ****VISUAL CHECK****: Images below the fold should load on scroll
+
+<ImageGallery
+  images={[
+    { src: img202508121604YinYangDigitalHarmonySimpleCompose01k2f9crs5fxrsgzcfvfmwb1r0, alt: "20250812 1604 Yin Yang Digital Harmony Simple Compose 01k2f9crs5fxrsgzcfvfmwb1r0" },
+    { src: img202507270331DigitalGrowthEmblemSimpleCompose01k14vfgd4fsw80tye94jam99b, alt: "20250727 0331 Digital Growth Emblem Simple Compose 01k14vfgd4fsw80tye94jam99b" },
+    { src: img202508251626ColorfulVennDiagramSimpleCompose01k3gxbd8ffcarbh6dy5nh6nvy, alt: "20250825 1626 Colorful Venn Diagram Simple Compose 01k3gxbd8ffcarbh6dy5nh6nvy" },
+    { src: img202508082249AiYinYangDesignSimpleCompose01k25tfgrffzn9ecb85gw4gw6s, alt: "20250808 2249 Ai Yin Yang Design Simple Compose 01k25tfgrffzn9ecb85gw4gw6s" },
+    { src: img202507231541SocraticAiFusionSimpleCompose01k0wcszasfvfbaf8s1khfyqxa, alt: "20250723 1541 Socratic Ai Fusion Simple Compose 01k0wcszasfvfbaf8s1khfyqxa" }
+  ]}
+  galleryId="gallery-8293"
+/>
+
+# Test Case 5: Solo Image + Slideshow Gallery with Custom Navigation
+
+This tests slideshow style with customized navigation:
+
+****Solo Image**** before slideshow:
+
+-   ****EXPECTED****: Single full-width Yin-Yang Tech Fusion image
+-   ****VISUAL CHECK****: Should be standalone, not in gallery
+
+<Image src={img202508082213YinYangTechFusionSimpleCompose01k25rea5seqrby5vty43ncs1w} alt="20250808 2213 Yin Yang Tech Fusion Simple Compose 01k25rea5seqrby5vty43ncs1w" />
+
+****Slideshow Gallery**** (3 images):
+
+-   ****EXPECTED****: Full-width slideshow, one image visible at a time
+-   ****NAVIGATION****: NO arrow buttons, YES dot indicators at bottom
+-   ****INTERACTION****: Click dots to switch between 3 images
+
+<ImageGallery
+  images={[
+    { src: img202508121604YinYangDigitalHarmonySimpleCompose01k2f9crs5fxrsgzcfvfmwb1r0, alt: "20250812 1604 Yin Yang Digital Harmony Simple Compose 01k2f9crs5fxrsgzcfvfmwb1r0" },
+    { src: img202507270331DigitalGrowthEmblemSimpleCompose01k14vfgd4fsw80tye94jam99b, alt: "20250727 0331 Digital Growth Emblem Simple Compose 01k14vfgd4fsw80tye94jam99b" },
+    { src: dgoodimage, alt: "Dgoodimage" }
+  ]}
+  galleryId="gallery-1363"
+/>
+
+# Visual Verification Checklist
+
+When viewing this page on the Astro site, verify these elements:
+
+1.  **Test Case 1**: ☐ 5 images in 3-column grid (3+2 rows) ☐ Lightbox opens on click
+2.  **Test Case 2**: ☐ 2-image gallery with caption ☐ Solo Jay headshot ☐ 3-image auto-playing carousel
+3.  **Test Case 3**: ☐ 3 mixed format images ☐ Thumbnails visible ☐ Zoom works ☐ Download button present
+4.  **Test Case 4**: ☐ 5 images in 4-column grid ☐ Images lazy-load on scroll
+5.  **Test Case 5**: ☐ Solo Yin-Yang image ☐ 3-image slideshow ☐ No arrows ☐ Dot navigation works
+
+**Key Features Tested**:
+
+-   ✅ Automatic image copying from ~/Downloads/ to assets/images/posts/gallery-test-rigorous/
+-   ✅ Gallery blocks with Downloads images processed correctly
+-   ✅ Filenames sanitized for web use (spaces, parentheses, special chars)
+-   ✅ Gallery attributes parsed and passed to ImageGallery component
+-   ✅ Individual images between galleries remain as standalone Image components
+-   ✅ Mixed formats: JPG, PNG, WebP, JPEG all handled correctly
+-   ✅ Import statements generated with proper variable names
+-   ✅ Source file paths updated from Downloads to assets folder locations
+-   ✅ Downloads folder detection no longer incorrectly triggers remote URL processing
+

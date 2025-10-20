@@ -1,0 +1,148 @@
+:PROPERTIES:
+:ID:       20250828T203846.952645
+:END:
+#+TITLE: Gallery test - rigorous
+#+FILETAGS: :document:
+- Links ::
+- Source ::
+
+#+SLUG: gallery-test-rigorous
+#+DESTINATION_FOLDER: jaydocs
+
+#+PUBLISH_DATE: [2025-08-28 Thu 20:39]
+#+EXCERPT: This document tests the gallery detection system with various permutations and edge cases to ensure robust behavior:
+
+* Gallery test - rigorous
+
+
+* Introduction
+
+This document tests the gallery detection system with various permutations and edge cases to ensure robust behavior:
+
+- Galleries of exactly 2 images
+- Mixed sequences (2, then 1, then 5)
+- Large galleries at the beginning
+- Individual images interspersed with galleries
+- Different image formats (JPG, PNG, WebP)
+- Edge cases and boundary conditions
+
+* Test Case 1: 3-Column Grid Gallery with Lightbox (5 images)
+
+This gallery should display:
+- **EXPECTED**: 5 images in a 3-column grid layout
+- **VISUAL CHECK**: Images should be arranged 3-3-2 (3 in first row, 2 in second)
+- **INTERACTION**: Clicking any image should open a lightbox/modal viewer
+- **IMAGES**: Mix of AI-generated Yin-Yang designs and one QR code
+
+#+BEGIN_GALLERY :columns 3 :style grid :lightbox true
+[[/Users/jay/Downloads/20250808_2213_Yin-Yang Tech Fusion_simple_compose_01k25rea5seqrby5vty43ncs1w.png]]
+[[/Users/jay/Downloads/20250808_2208_Classical Meets Futuristic_simple_compose_01k25r4n3rf83az17m1gba74ga (1).png]]
+[[/Users/jay/Downloads/20250808_2302_Socratic AI Yin-Yang_simple_compose_01k25v7tjne0e9vvm1fvr8bsfk (1).png]]
+[[/Users/jay/Downloads/20250808_2211_Yin-Yang Fusion Logo_simple_compose_01k25rakrvef9r464gva36n8kp (1).png]]
+[[/Users/jay/Downloads/QR1_0943.jpg]]
+#+END_GALLERY
+
+* Test Case 2: 2-Image Gallery with Caption + Solo Image + 3-Image Carousel
+
+This section tests mixing galleries with individual images:
+
+**First Gallery** (2 images with caption):
+- **EXPECTED**: 2 images side-by-side with caption "AI Design Collection" below
+- **IMAGES**: DSCF camera photo + Sydney Sweeney portrait
+
+#+BEGIN_GALLERY :caption "AI Design Collection"
+[[/Users/jay/Downloads/DSCF9229.jpg]]
+[[/Users/jay/Downloads/Sydney_Sweeney_at_the_2024_Toronto_International_Film_Festival_(cropped,_rotated) (1).jpg]]
+#+END_GALLERY
+
+**Solo Image** (not in gallery):
+- **EXPECTED**: Single full-width image of Jay headshot
+- **VISUAL CHECK**: This should NOT be in a gallery container
+
+[[/Users/jay/Downloads/jay-headshots-2-scaled.jpg]]
+
+**Second Gallery** (3-image carousel with autoplay):
+- **EXPECTED**: Carousel/slider showing one image at a time
+- **INTERACTION**: Should auto-advance between 3 images
+- **IMAGES**: Ship Daily Motivation + 2 Socratic AI Yin-Yang designs
+
+#+BEGIN_GALLERY :style carousel :autoplay true
+[[/Users/jay/Downloads/20250605_1818_Ship Daily Motivation_simple_compose_01jx12qderfbnre6qpjqv5d3jf.png]]
+[[/Users/jay/Downloads/20250808_2249_Socratic AI Yin-Yang_simple_compose_01k25tgyqxeebt1eq1qfn3vpzj.png]]
+[[/Users/jay/Downloads/20250808_2259_Socratic AI Yin-Yang_simple_compose_01k25v26fqe7qtees689pbyzyj.png]]
+#+END_GALLERY
+
+* Test Case 3: Mixed Format Gallery (JPG/PNG/WebP) with Interactive Features
+
+This gallery tests different image formats and interactive features:
+- **EXPECTED**: 3 images with thumbnail strip below
+- **FORMATS**: 1 JPG (long filename), 1 PNG (dgoodimage), 1 WebP (s-l1600)
+- **INTERACTIONS**: 
+  - Hover to show zoom button
+  - Click to zoom in
+  - Download button visible
+
+#+BEGIN_GALLERY :thumbnails true :zoom true :download true
+[[/Users/jay/Downloads/imag502610958_245334564829239741694898706627993310n.jpg]]
+[[/Users/jay/Downloads/dgoodimage.png]]
+[[/Users/jay/Downloads/s-l1600.webp]]
+
+#+END_GALLERY
+
+* Test Case 4: 4-Column Grid Gallery with Lazy Loading (5 images)
+
+This tests performance optimization for larger galleries:
+- **EXPECTED**: 5 images in 4-column grid (4 in first row, 1 in second)
+- **PERFORMANCE**: Images should lazy-load as you scroll
+- **IMAGES**: Mix of Yin-Yang designs, Venn diagram, and logos
+- **VISUAL CHECK**: Images below the fold should load on scroll
+
+#+BEGIN_GALLERY :columns 4 :style grid :lazy-load true
+[[/Users/jay/Downloads/20250812_1604_Yin-Yang Digital Harmony_simple_compose_01k2f9crs5fxrsgzcfvfmwb1r0.png]]
+[[/Users/jay/Downloads/20250727_0331_Digital Growth Emblem_simple_compose_01k14vfgd4fsw80tye94jam99b.png]]
+[[/Users/jay/Downloads/20250825_1626_Colorful Venn Diagram_simple_compose_01k3gxbd8ffcarbh6dy5nh6nvy.png]]
+[[/Users/jay/Downloads/20250808_2249_AI Yin-Yang Design_simple_compose_01k25tfgrffzn9ecb85gw4gw6s.png]]
+[[/Users/jay/Downloads/20250723_1541_Socratic AI Fusion_simple_compose_01k0wcszasfvfbaf8s1khfyqxa.png]]
+#+END_GALLERY
+
+* Test Case 5: Solo Image + Slideshow Gallery with Custom Navigation
+
+This tests slideshow style with customized navigation:
+
+**Solo Image** before slideshow:
+- **EXPECTED**: Single full-width Yin-Yang Tech Fusion image
+- **VISUAL CHECK**: Should be standalone, not in gallery
+
+[[/Users/jay/Downloads/20250808_2213_Yin-Yang Tech Fusion_simple_compose_01k25rea5seqrby5vty43ncs1w.png]]
+
+**Slideshow Gallery** (3 images):
+- **EXPECTED**: Full-width slideshow, one image visible at a time
+- **NAVIGATION**: NO arrow buttons, YES dot indicators at bottom
+- **INTERACTION**: Click dots to switch between 3 images
+
+#+BEGIN_GALLERY :style slideshow :arrows false :dots true
+[[/Users/jay/Downloads/20250812_1604_Yin-Yang Digital Harmony_simple_compose_01k2f9crs5fxrsgzcfvfmwb1r0.png]]
+[[/Users/jay/Downloads/20250727_0331_Digital Growth Emblem_simple_compose_01k14vfgd4fsw80tye94jam99b.png]]
+[[/Users/jay/Downloads/dgoodimage.png]]
+#+END_GALLERY
+
+* Visual Verification Checklist
+
+When viewing this page on the Astro site, verify these elements:
+
+1. *Test Case 1*: ☐ 5 images in 3-column grid (3+2 rows) ☐ Lightbox opens on click
+2. *Test Case 2*: ☐ 2-image gallery with caption ☐ Solo Jay headshot ☐ 3-image auto-playing carousel
+3. *Test Case 3*: ☐ 3 mixed format images ☐ Thumbnails visible ☐ Zoom works ☐ Download button present
+4. *Test Case 4*: ☐ 5 images in 4-column grid ☐ Images lazy-load on scroll
+5. *Test Case 5*: ☐ Solo Yin-Yang image ☐ 3-image slideshow ☐ No arrows ☐ Dot navigation works
+
+*Key Features Tested*:
+- ✅ Automatic image copying from ~/Downloads/ to assets/images/posts/gallery-test-rigorous/
+- ✅ Gallery blocks with Downloads images processed correctly
+- ✅ Filenames sanitized for web use (spaces, parentheses, special chars)
+- ✅ Gallery attributes parsed and passed to ImageGallery component  
+- ✅ Individual images between galleries remain as standalone Image components
+- ✅ Mixed formats: JPG, PNG, WebP, JPEG all handled correctly
+- ✅ Import statements generated with proper variable names
+- ✅ Source file paths updated from Downloads to assets folder locations
+- ✅ Downloads folder detection no longer incorrectly triggers remote URL processing 
