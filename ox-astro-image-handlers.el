@@ -99,7 +99,7 @@ Each manifest entry is a plist with keys:
           (manifest (make-hash-table :test #'equal))
           (order nil))
      (cl-labels
-         ((register (path origin &rest kvs)
+         ((register-entry (path origin &rest kvs)
                     (when (org-astro--image-path-matches-p path)
                       (let* ((entry (org-astro--image-manifest--ensure manifest path source-file))
                              (occur (apply #'org-astro--image-manifest--normalize-occurrence
@@ -117,7 +117,7 @@ Each manifest entry is a plist with keys:
                   (path (or (org-element-property :path link)
                             (org-element-property :raw-link link))))
              (when (org-astro--image-path-matches-p path)
-               (register path
+               (register-entry path
                          (if (org-astro--image-remote-p path) 'remote-link 'link)
                          :link-type type
                          :description (org-astro--image-manifest--link-description link)
@@ -141,23 +141,23 @@ Each manifest entry is a plist with keys:
                                    (match-string 2 raw)
                                    (match-string 3 raw)
                                    (match-string 4 raw)))))
-                     (register path 'plain-text
+                     (register-entry path 'plain-text
                                :begin begin
                                :line line
                                :context raw))
-                     (setq start (match-end 0))))))))
+                    (setq start (match-end 0))))))))
        ;; Paragraph repair (paths broken by subscript parsing)
        (org-element-map tree 'paragraph
          (lambda (paragraph)
            (let ((path (org-astro--extract-image-path-from-paragraph paragraph)))
              (when path
-               (register path 'paragraph
+               (register-entry path 'paragraph
                          :begin (org-element-property :begin paragraph)
                          :line (org-astro--image-manifest--line-number (org-element-property :begin paragraph))
                          :context (org-element-interpret-data paragraph))))))
        ;; Buffer-level raw scans (underscored paths prior to wrapping)
        (dolist (path (org-astro--collect-raw-image-paths))
-         (register path 'raw-buffer)))
+         (register-entry path 'raw-buffer)))
       ;; Convert hash table into ordered list of plists.
       (mapcar
        (lambda (key)
