@@ -183,6 +183,8 @@ The process is the same for cover images and images in the body of the text:
     <Image src={myPic} alt="My pic" />
     #+end_src
 
+Gallery blocks (`#+BEGIN_GALLERY`) automatically render using the shared `ImageGallery` component exposed by `@jaydixit/astro-utils/components/ImageGallery.astro`, keeping every Astro app on the same implementation.
+
 **Example Workflow**
 
 Simply drop an absolute path to an image on its own line:

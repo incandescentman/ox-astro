@@ -15,6 +15,19 @@ Restored manifest collection after the register-entry refactor and ensured expor
 - Image manifests are stable again, even when callbacks execute outside the original lexical scope.
 - Export pipeline now succeeds on legacy Emacs releases, unblocking gallery exports that previously failed during plist updates.
 
+* 2025-10-20 Monday - Shared ImageGallery Import
+
+** Summary
+Switched gallery exports to import `ImageGallery` from the shared `@jaydixit/astro-utils` package and verified the gallery test org file exports cleanly.
+
+** Changes
+- Updated `ox-astro-handlers.el` to emit the package import instead of a relative path.
+- Exported `20250828203848-gallery_test_rigorous.org` to confirm the component resolves via the shared package.
+
+** Impact
+- All future MDX exports consume the single shared ImageGallery implementation, eliminating the prior build failure caused by app-relative imports.
+- Gallery diagnostics confirm each image import matches the generated manifest entries.
+
 * 2025-10-20 Monday - Stage 3: Render Map + Hero Cleanup
 
 ** Summary

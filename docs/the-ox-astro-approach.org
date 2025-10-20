@@ -103,6 +103,7 @@ Manual gallery blocks can be created using =#+BEGIN_GALLERY= blocks:
 -  **Automatic Import**: All gallery images are automatically imported
 -  **Attributes**: Supports attributes like =columns=, =captions=, etc.
 -  **Link Suppression**: Images within galleries are not duplicated as individual images
+-  **Shared Component**: Imports `ImageGallery` from `@jaydixit/astro-utils/components/ImageGallery.astro` so every Astro app shares the same implementation.
 
 *** 9. Hero Image Handling
 -  **Cover Image**: The first image or =#+COVER_IMAGE= becomes the hero image
@@ -114,7 +115,7 @@ The collected data is used to assemble the final MDX output:
 1.  **Import Injection**: The generated import statement is added at the top of the file.
     #+BEGIN_SRC mdx
     import { Image } from 'astro:assets';
-    import { ImageGallery } from '~/components/ImageGallery';  // if galleries used
+    import ImageGallery from '@jaydixit/astro-utils/components/ImageGallery.astro';  // if galleries used
     import img2025Image from '~/assets/images/posts/my-awesome-post/2025-image.png';
     #+END_SRC
 2.  **Component Transformation**: The original raw image path in the document body is replaced with an Astro =<Image>= component.
