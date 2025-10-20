@@ -154,8 +154,8 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                                (lambda (block)
                                  (string-equal (org-element-property :type block) "GALLERY"))
                                nil t))
-         (image-gallery-import (when has-gallery-blocks
-                                 "import ImageGallery from '../../components/ImageGallery.astro';"))
+        (image-gallery-import (when has-gallery-blocks
+                                 "import ImageGallery from '@jaydixit/astro-utils/components/ImageGallery.astro';"))
          ;; 5. Combine all imports, filtering out nil/empty values
          (all-imports (mapconcat #'identity
                                  (delq nil (list render-imports-string linkpeek-import image-gallery-import manual-imports))
