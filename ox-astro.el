@@ -182,77 +182,50 @@ generated and added to the Org source file."
           (when posts-folder-raw
             (setq info (plist-put info :destination-folder posts-folder-raw)))
           (when posts-folder
-            ;; Collect image manifest in a single pass
-            (let* ((image-manifest (org-astro--build-image-manifest tree info))
-                   (image-paths (mapcar (lambda (entry) (plist-get entry :original-path))
-                                        image-manifest))
-                   ;; Get slug for post-specific folder structure
-                   (title (org-astro--get-title tree info))
+            (let* ((title (org-astro--get-title tree info))
                    (slug (or (plist-get info :slug)
                              (let* ((title-kw (org-element-map tree 'keyword
                                                 (lambda (k)
                                                   (when (string-equal "TITLE" (org-element-property :key k)) k))
                                                 nil 'first-match))
-                                    (title-from-headline (not title-kw))) 
+                                    (title-from-headline (not title-kw)))
                                (when title-from-headline
                                  (org-astro--slugify title)))))
-                  (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
-                 (updated-paths nil))
-              (when image-manifest
-                (setq info (cl-putf info :astro-image-manifest image-manifest)))
-              ;; Process each image and update source buffer paths immediately
-              (message "DEBUG: Processing %d initial images" (length image-paths))
-              (dolist (path image-paths)
-                (message "DEBUG: Processing initial image: %s" path)
-                (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir t))
-                       (clean-filename (org-astro--sanitize-filename (file-name-nondirectory path)))
-                       (target-abs (when astro-path
-                                     (expand-file-name clean-filename (org-astro--get-assets-folder posts-folder sub-dir)))))
-                  (when target-abs
-                    (push target-abs updated-paths))))
+                   (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
+                   (image-manifest (org-astro--build-image-manifest tree info))
+                   (process-result (org-astro--process-image-manifest image-manifest posts-folder sub-dir))
+                   (processed (plist-get process-result :entries))
+                   (context (list :manifest image-manifest
+                                  :processed processed
+                                  :posts-folder posts-folder
+                                  :sub-dir sub-dir)))
+              (setq info (cl-putf info :astro-image-manifest image-manifest))
+              (setq info (cl-putf info :astro-export-context context))
+              (when processed
+                (plist-put info :astro-body-images-imports processed)
+                (setq org-astro--current-body-images-imports processed))
               ;; Process PDFs similarly: copy into public/pdfs and update buffer
               (let ((pdf-paths (org-astro--collect-pdfs-from-tree tree)))
                 (dolist (pdf pdf-paths)
                   (condition-case err
                       (org-astro--process-pdf-path pdf posts-folder sub-dir t)
                     (error (message "ERROR processing PDF %s: %s" pdf err)))))
-              ;; If we updated any paths, save the buffer and refresh the environment
-              (when updated-paths
-                ;; Save the buffer to preserve the path updates
-                (save-buffer)
-                ;; Now refresh the export environment with the updated buffer
+              (when (plist-get process-result :buffer-modified)
+                (setq buffer-modified-p t)
                 (setq info (org-export-get-environment 'astro subtreep))
-                ;; Re-process images after downloads to ensure downloaded images appear in MDX
-                (let* ((updated-tree (org-element-parse-buffer))
-                       (updated-manifest (org-astro--build-image-manifest updated-tree info))
-                       (updated-image-paths (mapcar (lambda (entry) (plist-get entry :original-path))
-                                                    updated-manifest))
-                       (updated-image-imports-data nil))
-                  (when updated-manifest
-                    (setq info (cl-putf info :astro-image-manifest updated-manifest)))
-                  ;; Process the updated paths for import generation
-                  (when posts-folder
-                    (message "DEBUG: Re-processing %d images after downloads" (length updated-image-paths))
-                    (dolist (path updated-image-paths)
-                      (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-                             ;; Check if this is already an asset path and convert it
-                             (astro-path (cond
-                                          ;; If it's already in the assets folder, construct the alias path
-                                          ((and assets-folder
-                                                (string-match-p (regexp-quote (expand-file-name assets-folder)) 
-                                                              (expand-file-name path)))
-                                           (concat "~/assets/images/" sub-dir (file-name-nondirectory path)))
-                                          ;; Otherwise, process it normally
-                                          (t (org-astro--process-image-path path posts-folder sub-dir nil))))
-                             (var-name (when astro-path (org-astro--path-to-var-name (file-name-nondirectory astro-path)))))
-                        (message "DEBUG: Path: %s -> Astro: %s -> Var: %s" path astro-path var-name)
-                        (when (and astro-path var-name)
-                          (push (list :path path :astro-path astro-path :var-name var-name) updated-image-imports-data)))))
-                  ;; Update the info with the new image data
-                  (when updated-image-imports-data
-                    (plist-put info :astro-body-images-imports (nreverse updated-image-imports-data))
-                    (setq org-astro--current-body-images-imports (nreverse updated-image-imports-data))
-                    (message "DEBUG: Updated image imports with %d processed images" (length updated-image-imports-data)))))))
+                (setq tree (org-element-parse-buffer))
+                (let* ((refreshed-manifest (org-astro--build-image-manifest tree info))
+                       (refreshed-result (org-astro--process-image-manifest refreshed-manifest posts-folder sub-dir '(:update-buffer nil)))
+                       (refreshed-processed (plist-get refreshed-result :entries))
+                       (refreshed-context (list :manifest refreshed-manifest
+                                                :processed refreshed-processed
+                                                :posts-folder posts-folder
+                                                :sub-dir sub-dir)))
+                  (setq info (cl-putf info :astro-image-manifest refreshed-manifest))
+                  (setq info (cl-putf info :astro-export-context refreshed-context))
+                  (when refreshed-processed
+                    (plist-put info :astro-body-images-imports refreshed-processed)
+                    (setq org-astro--current-body-images-imports refreshed-processed)))))))
         ;; --- Ensure essential front-matter exists, writing back if not ---
         (save-excursion
           (condition-case err

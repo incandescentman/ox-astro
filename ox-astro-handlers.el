@@ -13,6 +13,7 @@
 ;; Declare functions from other ox-astro modules
 (declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
 (declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
+(declare-function org-astro--process-image-manifest "ox-astro-image-handlers")
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
 (declare-function org-astro--persist-wrap-raw-image-lines "ox-astro-image-handlers")
 (declare-function org-astro--get-assets-folder "ox-astro-helpers")
@@ -50,145 +51,66 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
 
 
 (defun org-astro-prepare-images-filter (tree _backend info)
-  "Find all local images, process them, and store import data in INFO.
-This filter runs on the parse TREE before transcoding. It collects
-all local image links, copies them to the Astro assets
-directory, and prepares a list of import statements to be added
-to the final MDX file. The data is stored in the INFO plist
-under the key `:astro-body-images-imports`.
-
-NOTE: If org-astro--current-body-images-imports is already set,
-preprocessing has already been completed and we skip the processing."
-  ;; Initial debug logging
+  "Ensure image import metadata is present on INFO for later phases."
   (org-astro--dbg-log info "=== Starting prepare-images-filter ===")
-
-  ;; DEBUG: Check current buffer and search for ID links
-  (message "[DEBUG-TREE-BUFFER] Current buffer: %s" (buffer-name))
-  (message "[DEBUG-TREE-BUFFER] Buffer size: %d" (buffer-size))
-  (save-excursion
-    (goto-char (point-min))
-    (let ((id-link-count 0))
-      (while (re-search-forward "\\[\\[id:" nil t)
-        (setq id-link-count (1+ id-link-count)))
-      (message "[DEBUG-TREE-BUFFER] Found %d [[id: patterns in buffer at filter time" id-link-count)))
-
-  ;; DEBUG: Show a snippet of the buffer content around where the link should be
-  (save-excursion
-    (goto-char (point-min))
-    (when (re-search-forward "Who else:" nil t)
-      (let ((start (line-beginning-position))
-            (end (min (+ (point) 200) (point-max))))
-        (message "[DEBUG-CONTENT] Content around 'Who else:': %s"
-                 (buffer-substring-no-properties start end)))))
-
-  ;; DEBUG: Count and log all links in the tree
-  (let ((link-count 0)
-        (id-link-count 0))
-    (org-element-map tree 'link
-      (lambda (link)
-        (setq link-count (1+ link-count))
-        (let ((type (org-element-property :type link))
-              (path (org-element-property :path link)))
-          (when (string= type "id")
-            (setq id-link-count (1+ id-link-count))
-            (message "[DEBUG-TREE] Found ID link in parse tree: id=%s"
-                     path)))))
-    (message "[DEBUG-TREE] Total links in parse tree: %d (ID links: %d)"
-             link-count id-link-count))
-
-  ;; DEBUG: Manually check if we can parse a link from buffer
-  (save-excursion
-    (goto-char (point-min))
-    (when (re-search-forward "\\[\\[id:\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]" nil t)
-      (let* ((id (match-string 1))
-             (desc (match-string 2))
-             (pos (match-beginning 0)))
-        (message "[DEBUG-PARSE] Found link at pos %d: id=%s desc=%s" pos id desc)
-        ;; Try to parse the element at that position
-        (goto-char pos)
-        (let ((element (org-element-context)))
-          (message "[DEBUG-PARSE] Element type at link position: %s" (org-element-type element))))))
-
-  ;; Reset any stale state from previous exports so we never carry images over.
+  ;; Reset transient state so we always repopulate from the most recent context.
   (setq org-astro--current-body-images-imports nil)
   (plist-put info :astro-body-images-imports nil)
-  ;; Also reset LinkPeek flag so imports don't leak across exports
   (plist-put info :astro-uses-linkpeek nil)
-  (let* ((posts-folder-raw (or (plist-get info :destination-folder)
-                               (plist-get info :astro-posts-folder)))
-         ;; Resolve the posts folder using the same logic as in ox-astro.el
-         (folder-config (and posts-folder-raw
-                            (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
-         ;; Extract path from config (handle both old string and new plist formats)
-         (resolved-posts-folder-raw (if (stringp folder-config)
-                                        folder-config
-                                      (plist-get folder-config :path)))
-         ;; Trim whitespace from resolved path to handle configuration errors
-         (resolved-posts-folder (and resolved-posts-folder-raw
-                                     (string-trim resolved-posts-folder-raw)))
-         (posts-folder (cond
-                        ;; If we found it in known folders, use that path
-                        (resolved-posts-folder resolved-posts-folder)
-                        ;; If posts-folder-raw exists and looks like an absolute path, use it directly
-                        ((and posts-folder-raw
-                              (file-name-absolute-p posts-folder-raw)
-                              (file-directory-p (expand-file-name posts-folder-raw)))
-                         posts-folder-raw)
-                        ;; Otherwise, can't resolve - no posts folder
-                        (t nil)))
-         ;; Collect all image references via the centralized manifest.
-         (image-manifest (or (plist-get info :astro-image-manifest)
-                             (org-astro--build-image-manifest tree info)))
-         (image-paths (mapcar (lambda (entry) (plist-get entry :original-path))
-                              image-manifest))
-         ;; Get slug for post-specific folder structure
-         (title (org-astro--get-title tree info))
-         (slug (or (plist-get info :slug)
-                   (let* ((title-kw (org-element-map tree 'keyword
-                                      (lambda (k)
-                                        (when (string-equal "TITLE" (org-element-property :key k)) k))
-                                      nil 'first-match))
-                          (title-from-headline (not title-kw)))
-                     ;; Only auto-generate slug if title came from headline (not from #+TITLE keyword)
-                     (when title-from-headline
-                       (org-astro--slugify title)))))
-         (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
-        image-imports-data)
-    (when posts-folder
-      (when image-manifest
-        (setq info (cl-putf info :astro-image-manifest image-manifest)))
-      (org-astro--dbg-log info "Processing %d images in posts folder: %s" (length image-paths) posts-folder)
-      (org-astro--dbg-log info "Collected image paths: %s" image-paths)
-      (dolist (path image-paths)
-        (org-astro--dbg-log info "Processing image: %s" path)
-        ;; For each image, copy it to assets and get its new path.
-        (let* ((astro-path (org-astro--process-image-path path posts-folder sub-dir t))
-               (var-name (org-astro--path-to-var-name path))
-               (clean-filename (org-astro--sanitize-filename (file-name-nondirectory path)))
-               (target-abs (when astro-path
-                             (expand-file-name clean-filename (org-astro--get-assets-folder posts-folder sub-dir)))))
-          (org-astro--dbg-log info "Generated: var=%s astro=%s target=%s" var-name astro-path target-abs)
-          (when (and astro-path var-name)
-            (push `(:path ,path :var-name ,var-name :astro-path ,astro-path :target-path ,target-abs)
-                  image-imports-data))))
-      (when image-imports-data
-        (org-astro--dbg-log info "Processed %d images for import" (length image-imports-data))
-        (dolist (it image-imports-data)
-          (org-astro--dbg-log info "Import entry: %s" it))
-        (let ((src (or (plist-get info :input-file)
-                       (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
-          ;; Store the source file path in info for buffer updates
-          (when src
-            (plist-put info :astro-source-file src)))))
-    ;; Store the collected data in the info plist for other functions to use.
-    (when image-imports-data
-      (let ((final-data (nreverse image-imports-data)))
-        ;; Store in both places for data persistence across export phases
-        (setq org-astro--current-body-images-imports final-data)
-        (plist-put info :astro-body-images-imports final-data)))
 
-    ;; Return the potentially updated tree
-    tree))
+  (let* ((context (plist-get info :astro-export-context))
+         (_ (when context
+              (let ((manifest (plist-get context :manifest)))
+                (when manifest
+                  (setq info (cl-putf info :astro-image-manifest manifest))))))
+         (processed (plist-get context :processed)))
+    (unless processed
+      (let* ((posts-folder-raw (or (plist-get info :destination-folder)
+                                   (plist-get info :astro-posts-folder)))
+             (folder-config (and posts-folder-raw
+                                 (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
+             (resolved-posts-folder-raw (if (stringp folder-config)
+                                            folder-config
+                                          (plist-get folder-config :path)))
+             (resolved-posts-folder (and resolved-posts-folder-raw
+                                         (string-trim resolved-posts-folder-raw)))
+             (posts-folder (cond
+                            (resolved-posts-folder resolved-posts-folder)
+                            ((and posts-folder-raw
+                                  (file-name-absolute-p posts-folder-raw)
+                                  (file-directory-p (expand-file-name posts-folder-raw)))
+                             posts-folder-raw)
+                            (t nil)))
+             (manifest (or (plist-get info :astro-image-manifest)
+                           (org-astro--build-image-manifest tree info)))
+             (title (org-astro--get-title tree info))
+             (slug (or (plist-get info :slug)
+                       (let* ((title-kw (org-element-map tree 'keyword
+                                          (lambda (k)
+                                            (when (string-equal "TITLE" (org-element-property :key k)) k))
+                                          nil 'first-match))
+                              (title-from-headline (not title-kw)))
+                         (when title-from-headline
+                           (org-astro--slugify title)))))
+             (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
+             (result (when posts-folder
+                       (org-astro--process-image-manifest manifest posts-folder sub-dir)))
+             (processed-result (plist-get result :entries))
+             (refreshed-context (list :manifest manifest
+                                      :processed processed-result
+                                      :posts-folder posts-folder
+                                      :sub-dir sub-dir)))
+        (when manifest
+          (setq info (cl-putf info :astro-image-manifest manifest)))
+        (setq info (cl-putf info :astro-export-context refreshed-context))
+        (setq processed processed-result)))
+
+    ;; Persist the processed list (from either preflight or fallback work).
+    (when processed
+      (plist-put info :astro-body-images-imports processed)
+      (setq org-astro--current-body-images-imports processed)))
+
+  tree)
 
 
 

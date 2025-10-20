@@ -16,6 +16,7 @@
 (declare-function org-astro--dbg-log "ox-astro-helpers")
 (declare-function org-astro--get-assets-folder "ox-astro-helpers")
 (declare-function org-astro--sanitize-filename "ox-astro-helpers")
+(declare-function org-astro--path-to-var-name "ox-astro-helpers")
 (declare-function org-astro--collect-raw-image-paths "ox-astro-helpers")
 (declare-function org-astro--extract-image-path-from-paragraph "ox-astro-helpers")
 
@@ -156,11 +157,114 @@ Each manifest entry is a plist with keys:
        ;; Buffer-level raw scans (underscored paths prior to wrapping)
        (dolist (path (org-astro--collect-raw-image-paths))
          (register path 'raw-buffer)))
-     ;; Convert hash table into ordered list of plists.
-     (mapcar
-      (lambda (key)
-        (gethash key manifest))
+      ;; Convert hash table into ordered list of plists.
+      (mapcar
+       (lambda (key)
+         (gethash key manifest))
       order)))
+
+(defun org-astro--rewrite-org-image-path (original-path new-path)
+  "Rewrite ORIGINAL-PATH to NEW-PATH in the source Org buffer.
+Returns non-nil when the buffer was modified."
+  (when (and original-path new-path
+             (not (string-equal original-path new-path)))
+    (org-astro--update-source-buffer-image-path original-path new-path)))
+
+(defun org-astro--materialize-image (entry posts-folder sub-dir)
+  "Copy or download the image for ENTRY into Astro assets.
+Returns a plist describing the outcome or nil on failure."
+  (let* ((original (plist-get entry :original-path))
+         (assets-folder (and posts-folder
+                             (org-astro--get-assets-folder posts-folder sub-dir))))
+    (when (and original (not (string-empty-p original)) assets-folder)
+      (let* ((expanded-original (when (and original (not (org-astro--image-remote-p original)))
+                                  (expand-file-name (substring-no-properties original))))
+             (assets-root (file-name-as-directory (expand-file-name assets-folder))))
+        (cond
+         ;; Already inside the assets directory – reuse as-is.
+         ((and expanded-original
+               (string-prefix-p assets-root (file-name-directory (expand-file-name expanded-original))))
+          (let* ((filename (file-name-nondirectory expanded-original))
+                 (astro-path (concat "~/assets/images/" sub-dir filename)))
+            (list :astro-path astro-path
+                  :target-path expanded-original
+                  :rewrite-path nil
+                  :status 'existing)))
+
+         ;; Remote URL – download to assets directory.
+         ((org-astro--image-remote-p original)
+          (let* ((full-url (if (string-prefix-p "//" original)
+                               (concat "https:" original)
+                             original))
+                 (downloaded (org-astro--download-remote-image full-url posts-folder sub-dir)))
+            (when downloaded
+              (let* ((filename (file-name-nondirectory downloaded))
+                     (astro-path (concat "~/assets/images/" sub-dir filename)))
+                (list :astro-path astro-path
+                      :target-path downloaded
+                      :rewrite-path downloaded
+                      :status 'remote)))))
+
+         ;; Local file – copy into assets directory with sanitized filename.
+         (t
+          (let* ((source-path expanded-original)
+                 (original-filename (and source-path (file-name-nondirectory source-path)))
+                 (clean-filename (and original-filename (org-astro--sanitize-filename original-filename)))
+                 (target-path (and clean-filename (expand-file-name clean-filename assets-folder))))
+            (cond
+             ((not source-path)
+              (message "[ox-astro][img] Skipping image without resolvable path: %s" original)
+              nil)
+             ((not (file-exists-p source-path))
+              (message "[ox-astro][img] Source image missing: %s" source-path)
+              nil)
+             (t
+              (make-directory assets-folder t)
+              (condition-case err
+                  (copy-file source-path target-path t)
+                (error
+                 (message "[ox-astro][img] Failed to copy %s → %s (%s)" source-path target-path err)
+                 (setq target-path nil)))
+              (when target-path
+                (let ((astro-path (concat "~/assets/images/" sub-dir clean-filename)))
+                  (list :astro-path astro-path
+                        :target-path target-path
+                        :rewrite-path target-path
+                        :status 'copied))))))))))))
+
+(defun org-astro--process-image-manifest (manifest posts-folder sub-dir &optional opts)
+  "Process MANIFEST entries for POSTS-FOLDER/SUB-DIR.
+Returns a plist with keys:
+- :entries — processed image entries suitable for downstream consumers
+- :buffer-modified — non-nil when the source buffer was rewritten."
+  (let* ((update-buffer (if (plist-member opts :update-buffer)
+                            (plist-get opts :update-buffer)
+                          t))
+         (processed nil)
+         (buffer-modified nil))
+    (dolist (entry manifest)
+      (let ((result (org-astro--materialize-image entry posts-folder sub-dir)))
+        (when result
+          (let* ((original (plist-get entry :original-path))
+                 (rewrite (plist-get result :rewrite-path))
+                 (final-path (or rewrite original))
+                 (astro-path (plist-get result :astro-path))
+                 (target-path (plist-get result :target-path))
+                 (occurrences (plist-get entry :occurrences))
+                 (var-name (when astro-path (org-astro--path-to-var-name astro-path))))
+            (when (and update-buffer rewrite
+                       (org-astro--rewrite-org-image-path original rewrite))
+              (setq buffer-modified t))
+            (push (list :path final-path
+                        :original-path original
+                        :astro-path astro-path
+                        :target-path target-path
+                        :var-name var-name
+                        :occurrences occurrences
+                        :source-file (plist-get entry :source-file))
+                  processed)))))
+    (list :entries (nreverse processed)
+          :buffer-modified buffer-modified)))
 
 (defun org-astro--update-image-path-in-buffer (old-path new-path)
   "Replace OLD-PATH with NEW-PATH in the current buffer.

@@ -2,6 +2,24 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
+* 2025-10-20 Monday - Stage 2: Image Materialization Drivers
+
+** Summary
+Hooked the manifest into a dedicated processing pipeline that materializes images, rewrites source paths via targeted helpers, and threads the resulting state through a reusable export context.
+
+** Changes
+- Added `org-astro--materialize-image` and `org-astro--process-image-manifest` to split filesystem work from buffer rewrites and return structured results for downstream consumers.
+- Updated `org-astro-export-to-mdx` to build the manifest, invoke the new driver, refresh the export environment after rewrites, and cache the context on `info` for subsequent phases.
+- Rewrote `org-astro-prepare-images-filter` to reuse the cached context (or lazily build one) instead of re-scanning the buffer, ensuring filters operate on the same processed data without global state churn.
+
+** Impact
+- File copying, remote downloads, and org-buffer rewrites now live in focused helpers, eliminating the previous mix of responsibilities inside the export filter.
+- The export context (`:astro-export-context`) carries manifest and processed entries forward, so later stages no longer rely on duplicative scans or the global fallback.
+- Buffer updates occur exactly once during preflight; subsequent export passes simply consume the processed data, keeping the pipeline deterministic.
+
+** Next Steps
+- Stage 3: Generate a render map (imports + JSX snippets) from the processed entries, have transcoders fetch precomputed JSX, and remove hero-image suppression from the exporter.
+
 * 2025-10-20 Monday - Stage 1: Image Manifest Collector & Context Seeds
 
 ** Summary
