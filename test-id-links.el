@@ -21,8 +21,8 @@
 (ert-deftest org-astro-id-link-converts-to-relative-markdown ()
   (pcase-let* ((`(:source-root ,source-root :posts-root ,posts-root) (test-id-links--paths))
                (story-file (expand-file-name "stories/impermanence-story.org" source-root))
-               (mom-outfile (expand-file-name "characters/20251019120000-mom.mdx" posts-root))
-               (story-outfile (expand-file-name "stories/20251019120500-impermanence-story.mdx" posts-root)))
+               (mom-outfile (expand-file-name "characters/mom.mdx" posts-root))
+               (story-outfile (expand-file-name "stories/the-time-mom-told-me-about-impermanence.mdx" posts-root)))
     (let ((org-astro-source-root-folder source-root)
           (org-astro-known-posts-folders `(("roam" . (:path ,posts-root :preserve-folder-structure t)))))
       (let* ((id-map (org-astro--ensure-id-map org-astro-source-root-folder story-file)))
@@ -37,7 +37,7 @@
             (let* ((parse (org-element-parse-buffer))
                    (link (org-element-map parse 'link #'identity nil t))
                    (info (list :input-file story-file)))
-              (should (equal "[Mom](../characters/20251019120000-mom.mdx)"
+              (should (equal "[Mom](../characters/mom.mdx)"
                              (org-astro-link link "Mom" info)))))
           (should (equal mom-outfile
                          (plist-get (gethash "char-001-mom" id-map) :outfile))))))))
@@ -45,7 +45,7 @@
 (ert-deftest org-astro-id-link-missing-target-records-warning ()
   (pcase-let* ((`(:source-root ,source-root :posts-root ,posts-root) (test-id-links--paths))
                (story-file (expand-file-name "stories/impermanence-story.org" source-root))
-               (story-outfile (expand-file-name "stories/20251019120500-impermanence-story.mdx" posts-root)))
+               (story-outfile (expand-file-name "stories/the-time-mom-told-me-about-impermanence.mdx" posts-root)))
     (let ((org-astro-source-root-folder source-root)
           (org-astro-known-posts-folders `(("roam" . (:path ,posts-root :preserve-folder-structure t)))))
       (let* ((id-map (org-astro--ensure-id-map org-astro-source-root-folder story-file)))
@@ -68,7 +68,7 @@
 
 (ert-deftest org-astro-broken-link-report-writes-json ()
   (pcase-let* ((`(:source-root ,source-root :posts-root ,posts-root) (test-id-links--paths))
-               (story-outfile (expand-file-name "stories/20251019120500-impermanence-story.mdx" posts-root))
+               (story-outfile (expand-file-name "stories/the-time-mom-told-me-about-impermanence.mdx" posts-root))
                (report-path (expand-file-name "broken-links.json" posts-root)))
     (let ((hash (make-hash-table :test #'equal)))
       (puthash story-outfile (list (list :id "missing-id-123" :text "Ghost")) hash)

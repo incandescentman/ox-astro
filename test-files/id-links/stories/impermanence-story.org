@@ -2,7 +2,7 @@
 :ID: story-001-impermanence
 :END:
 #+TITLE: Impermanence Story
-#+SLUG: 20251019120500-impermanence-story
+#+SLUG: the-time-mom-told-me-about-impermanence
 #+DESTINATION_FOLDER: roam
 
 [[id:char-001-mom][Mom]] brought me tea.

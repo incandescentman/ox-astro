@@ -2,31 +2,31 @@ Here are detailed instructions for your dev:
 
 ** Implementing org-roam ID Link Conversion
 *** Current State
-Links in org files like `[[id:char-001-mom][Mom]]` are being converted to plain text `Mom` in the MDX output. We need them to become working markdown links `[[./mom.mdx][Mom]]`.
+Links in org files like `[[id:char-001-mom][Mom]]` are being converted to plain text `Mom` in the MDX output. We need them to become working Markdown links `[Mom](./mom.mdx)`.
 *** Required Output Examples
 
 *In `the-time-mom-told-me-about-impermanence.mdx`:*
 #+begin_src markdown
-Who else: Just me and [[../mom.mdx][Mom]]
-#+end_src 
+Who else: Just me and [Mom](../mom.mdx)
+#+end_src
 
 *In `mom.mdx`:*
 #+begin_src markdown
 # Stories Featuring Mom
 
-- [[./the-time-mom-told-me-about-impermanence.mdx][The Time Mom Told Me About Impermanence]]
-- [[./the-phone-call-after-my-first-day-at-openai.mdx][The Phone Call After My First Day at OpenAI]]
-#+end_src 
+- [The Time Mom Told Me About Impermanence](./the-time-mom-told-me-about-impermanence.mdx)
+- [The Phone Call After My First Day at OpenAI](./the-phone-call-after-my-first-day-at-openai.mdx)
+#+end_src
 
 *In `impermanence.mdx`:*
 #+begin_src markdown
-A recurring theme in stories about [[../mom.mdx][Mom]], who often reminded me...
+A recurring theme in stories about [Mom](../mom.mdx), who often reminded me...
 
 # Related Themes
 
-- [[./letting-go.mdx][Letting Go]]
-- [[./change-and-transitions.mdx][Change and Transitions]]
-#+end_src 
+- [Letting Go](./letting-go.mdx)
+- [Change and Transitions](./change-and-transitions.mdx)
+#+end_src
 
 ** Implementation Steps
 *** Step 1: Build the ID-to-Slug Map (BEFORE processing any files)
@@ -162,8 +162,8 @@ Just me and [[id:char-001-mom][Mom]]
 
 *Output* (in `the-time-mom-told-me-about-impermanence.mdx`):
 #+begin_src markdown
-Just me and [[./mom.mdx][Mom]]
-#+end_src 
+Just me and [Mom](./mom.mdx)
+#+end_src
 
 *** Test 2: Link in list
 *Input* (in `20251019120000-mom.org`):
@@ -173,8 +173,8 @@ Just me and [[./mom.mdx][Mom]]
 
 *Output* (in `mom.mdx`):
 #+begin_src markdown
-- [[./the-time-mom-told-me-about-impermanence.mdx][The Time Mom Told Me About Impermanence]]
-#+end_src 
+- [The Time Mom Told Me About Impermanence](./the-time-mom-told-me-about-impermanence.mdx)
+#+end_src
 
 *** Test 3: Multiple links in one line
 *Input*:
@@ -184,8 +184,8 @@ Stories about [[id:char-001-mom][Mom]] and [[id:theme-001-impermanence][imperman
 
 *Output*:
 #+begin_src markdown
-Stories about [[./mom.mdx][Mom]] and [[./impermanence.mdx][impermanence]]
-#+end_src 
+Stories about [Mom](./mom.mdx) and [impermanence](./impermanence.mdx)
+#+end_src
 
 *** Test 4: Broken link (ID doesn't exist)
 *Input*:
@@ -301,7 +301,7 @@ function convertOrgRoamLinks(content, currentSlug, idToSlugMap) {
       return linkText;
     }
     
-    return `[[./${targetSlug}.mdx][${linkText}]]`;
+    return `[${linkText}](./${targetSlug}.mdx)`;
   });
 }
 
@@ -324,5 +324,3 @@ for (const orgFile of orgFiles) {
 *Only add special handling for `[[id:...][...]]` patterns.*
 
 All other link types (`[[https://...]]`, `[[file:...]]`, etc.) should continue being processed by the existing conversion logic --- don't touch those.
-
-

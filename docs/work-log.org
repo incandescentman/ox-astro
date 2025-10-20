@@ -6,6 +6,7 @@
 - Enabled `#+DESTINATION-FOLDER` as a synonym for `#+DESTINATION_FOLDER` across the exporter and tooling.
 - Normalized destination keyword detection in helper scripts and refreshed documentation to advertise both forms.
 - Logged the change in CHANGE-LOG with guidance on pending test coverage.
+- Updated ID link guidance and fixtures to demonstrate Markdown links with preserved directory structure.
 
 ** Handoff
 
@@ -14,13 +15,14 @@
 - [x] Auto-insert preserves user delimiter and absorptive docs updated: `ox-astro.el:309`, `README.org:82`, `docs/concept-map.org:80`
 - [x] Tooling aware of both forms (`update-image-paths.el:72`, config docs)
 - [x] Change log entry added: `CHANGE-LOG.org:5`
+- [x] ID link docs/tests reinforced Markdown relative outputs: `docs/lab/org-roam-links.org`, `test-id-links.el`, `test-files/id-links/*`
 
 *IN-PROGRESS (Requires completion)*
 - [ ] None
 
 *CONTEXT FOR NEXT SESSION*
 - Files touched: `ox-astro.el`, `ox-astro-helpers.el`, `update-image-paths.el`, documentation set
-- Known unknowns: Automated test suite not re-run; alias relies on shared keyword helper
+- Known unknowns: Automated regression suite beyond `test-id-links.el` not re-run; alias relies on shared keyword helper
 - Recommendations: Export a sample Org file using `#+DESTINATION-FOLDER:` and run `emacs --batch -Q -l test-id-links.el -f ert-run-tests-batch-and-exit`
 
 * 2025-10-10
