@@ -7,6 +7,7 @@
 - Normalized destination keyword detection in helper scripts and refreshed documentation to advertise both forms.
 - Logged the change in CHANGE-LOG with guidance on pending test coverage.
 - Updated ID link guidance and fixtures to demonstrate Markdown links with preserved directory structure.
+- Refreshed operational instructions with the Markdown link behavior for org-roam exports.
 
 ** Handoff
 
@@ -16,6 +17,7 @@
 - [x] Tooling aware of both forms (`update-image-paths.el:72`, config docs)
 - [x] Change log entry added: `CHANGE-LOG.org:5`
 - [x] ID link docs/tests reinforced Markdown relative outputs: `docs/lab/org-roam-links.org`, `test-id-links.el`, `test-files/id-links/*`
+- [x] Instructions updated to highlight Markdown link outputs: `docs/instructions.org:15`
 
 *IN-PROGRESS (Requires completion)*
 - [ ] None

@@ -15,6 +15,7 @@
 * ID-Based Link Resolution
 - The exporter builds an ID→path map by scanning all =.org= files under =org-astro-source-root-folder=
 - During export, =[[id:...][Label]]= links become standard Markdown links pointing to the correct =.mdx= output
+- Relative paths mirror your Org directory structure (e.g., `[Mom](../characters/mom.mdx)`); configure destinations with =:preserve-folder-structure t= to keep nested collections aligned
 - Missing IDs trigger a warning and the link degrades to plain text while remaining readable
 - After export, check =broken-links.json= in the destination root for unresolved IDs
 - Fix missing targets by adding the note (with matching =:ID:=) and re-exporting
