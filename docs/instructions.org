@@ -1,0 +1,35 @@
+#+TITLE: ox-astro Operational Instructions
+#+DATE: 2025-10-19
+
+* Pre-Session Ritual
+- Read the latest entry in =docs/work-log.org= for active context
+- Check =docs/codebase-wisdom.org= for relevant gotchas
+- Review =docs/design-architecture.org= for any architecture implications
+
+* Export Workflow
+1. Open the source Org buffer
+2. Ensure =#+DESTINATION_FOLDER:= (or =#+ASTRO_POSTS_FOLDER:=) points to a configured nickname
+3. Run =M-x org-astro-export-to-mdx=
+4. Inspect any warnings emitted in the minibuffer or =*Messages*=
+
+* ID-Based Link Resolution
+- The exporter builds an ID→path map by scanning all =.org= files under =org-astro-source-root-folder=
+- During export, =[[id:...][Label]]= links become standard Markdown links pointing to the correct =.mdx= output
+- Missing IDs trigger a warning and the link degrades to plain text while remaining readable
+- After export, check =broken-links.json= in the destination root for unresolved IDs
+- Fix missing targets by adding the note (with matching =:ID:=) and re-exporting
+
+* Configuration Checklist
+- Set =org-astro-source-root-folder= to the top-level directory containing your org-roam notes
+- Add a destination nickname with =:preserve-folder-structure t= if you want exports to mirror the roam hierarchy
+- Verify your notes include =:ID:= drawers when you expect cross-note linking
+
+* Verifying Broken Links
+- Open the generated MDX file and click through the links to confirm navigation
+- Review =broken-links.json= and resolve outstanding IDs before publishing
+- Re-export once missing IDs exist—the links will auto-heal on the next run
+
+* Reference
+- Architecture: [[file:design-architecture.org]]
+- Terminology: [[file:concept-map.org]]
+- Debugging wisdom: [[file:codebase-wisdom.org]]

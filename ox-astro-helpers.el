@@ -4,6 +4,7 @@
 
 (require 'subr-x) ; for string-trim, string-trim-right
 (require 'cl-lib)
+(require 'json)
 
 ;; Declare functions from other ox-astro modules
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
@@ -16,6 +17,21 @@
 ;; Declare global variable for data persistence across export phases
 (defvar org-astro--current-body-images-imports nil
   "Global storage for body image imports to persist across export phases.")
+
+(defvar org-astro--id-path-map nil
+  "Hash table mapping org-roam IDs to export metadata for the current run.")
+
+(defvar org-astro--broken-link-accumulator nil
+  "Hash table mapping output files to unresolved org-roam ID links.")
+
+(defvar org-astro--broken-link-warnings-issued nil
+  "Hash table used to deduplicate warnings for missing org-roam IDs.")
+
+(defvar org-astro--current-outfile nil
+  "Absolute path to the MDX file currently being generated.")
+
+(defvar org-astro--current-output-root nil
+  "Root output directory for the current export destination.")
 
 ;; Simple debug logging function that writes directly to file
 (defun org-astro--debug-log-direct (fmt &rest args)
@@ -144,6 +160,251 @@
       (when log
         (concat (mapconcat (lambda (s) (format "{/* %s */}" s)) (nreverse log) "\n")
                 "\n\n")))))
+
+;; Org-roam ID link helpers
+(defun org-astro--normalize-display-path (path)
+  "Return PATH relative to `org-astro-source-root-folder' when possible."
+  (when path
+    (let* ((abs (expand-file-name path))
+           (root (and org-astro-source-root-folder
+                      (expand-file-name org-astro-source-root-folder))))
+      (cond
+       ((and root (file-directory-p root) (string-prefix-p root abs))
+        (file-relative-name abs root))
+       (t
+        (file-name-nondirectory abs))))))
+
+(defun org-astro--resolve-destination-config (value)
+  "Resolve VALUE (nickname or path) to an output directory description.
+Returns a plist with keys :path, :preserve, :nickname, :raw."
+  (let* ((trim (and value (string-trim value)))
+         (config (and trim
+                      (cdr (cl-find trim org-astro-known-posts-folders
+                                    :test (lambda (needle pair)
+                                            (string= needle (string-trim (car pair))))))))
+         (path (cond
+                ((stringp config) config)
+                ((listp config) (plist-get config :path))
+                ((and trim (file-name-absolute-p trim)) trim)
+                (t nil)))
+         (preserve (and (listp config)
+                        (plist-get config :preserve-folder-structure))))
+    (when path
+      (setq path (expand-file-name path)))
+    (list :path path
+          :preserve preserve
+          :nickname (when (and trim config) trim)
+          :raw trim)))
+
+(defun org-astro--relative-subdir-for-file (file &optional source-root)
+  "Return relative directory for FILE under SOURCE-ROOT preserving structure."
+  (let* ((root (and (or source-root org-astro-source-root-folder)
+                    (expand-file-name (or source-root org-astro-source-root-folder))))
+         (abs-file (expand-file-name file)))
+    (when (and root (file-directory-p root) (string-prefix-p root abs-file))
+      (let ((relative (file-relative-name abs-file root)))
+        (unless (string-prefix-p ".." relative)
+          (let ((dir (file-name-directory relative)))
+            (when (and dir (not (member dir '("" "./"))))
+              dir)))))))
+
+(defun org-astro--determine-export-filename (file slug)
+  "Derive the MDX filename for FILE given SLUG (when present)."
+  (if (and slug (not (string-blank-p slug)))
+      (concat slug ".mdx")
+    (let* ((base (file-name-base file))
+           (trimmed (replace-regexp-in-string "^[0-9]+-" "" base))
+           (hyphenated (replace-regexp-in-string "_" "-" trimmed)))
+      (concat hyphenated ".mdx"))))
+
+(defun org-astro--collect-org-file-export-metadata (file)
+  "Return metadata plist describing how FILE exports, including IDs."
+  (condition-case err
+      (with-temp-buffer
+        (insert-file-contents file)
+        (let ((case-fold-search t)
+              (ids nil)
+              slug title astro-folder dest-folder)
+          (goto-char (point-min))
+          (while (re-search-forward "^:ID:\\s-*\\(.+\\)$" nil t)
+            (let ((id (string-trim (match-string 1))))
+              (when (and id (not (string-empty-p id)))
+                (cl-pushnew id ids :test #'equal))))
+          (goto-char (point-min))
+          (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" nil t)
+            (setq slug (string-trim (match-string 1))))
+          (goto-char (point-min))
+          (when (re-search-forward "^#\\+TITLE:\\s-*\\(.+\\)$" nil t)
+            (setq title (string-trim (match-string 1))))
+          (goto-char (point-min))
+          (when (re-search-forward "^#\\+ASTRO_POSTS_FOLDER:\\s-*\\(.+\\)$" nil t)
+            (setq astro-folder (string-trim (match-string 1))))
+          (goto-char (point-min))
+          (when (re-search-forward "^#\\+DESTINATION_FOLDER:\\s-*\\(.+\\)$" nil t)
+            (setq dest-folder (string-trim (match-string 1))))
+          (unless title
+            (goto-char (point-min))
+            (when (re-search-forward "^\\*+ \\(.+\\)$" nil t)
+              (setq title (string-trim (match-string 1)))))
+          (let* ((slug-final (if (and slug (not (string-blank-p slug)))
+                                 slug
+                               (when (and title (not (string-blank-p title)))
+                                 (org-astro--slugify title))))
+                 (destination-info (org-astro--resolve-destination-config
+                                    (or astro-folder dest-folder)))
+                 (posts-folder (plist-get destination-info :path))
+                 (preserve (plist-get destination-info :preserve))
+                 (relative-subdir (and preserve
+                                       (org-astro--relative-subdir-for-file file)))
+                 (pub-dir (cond
+                           ((and posts-folder relative-subdir)
+                            (expand-file-name relative-subdir posts-folder))
+                           (posts-folder posts-folder)
+                           (t nil)))
+                 (filename (org-astro--determine-export-filename file slug-final))
+                 (outfile (when pub-dir
+                            (expand-file-name filename pub-dir))))
+            (list :id-list (nreverse ids)
+                  :slug slug-final
+                  :title title
+                  :posts-folder posts-folder
+                  :preserve preserve
+                  :relative-subdir relative-subdir
+                  :outfile outfile
+                  :filename filename
+                  :destination-raw (plist-get destination-info :raw)
+                  :source file))))
+    (error
+     (message "[ox-astro] Failed to inspect %s for ID metadata: %s"
+              file (error-message-string err))
+     nil)))
+
+(defun org-astro--id-map-store (map id meta)
+  "Store ID mapping derived from META into MAP."
+  (let ((entry (list :source (plist-get meta :source)
+                     :outfile (plist-get meta :outfile)
+                     :filename (plist-get meta :filename)
+                     :posts-folder (plist-get meta :posts-folder)
+                     :relative-subdir (plist-get meta :relative-subdir)
+                     :preserve (plist-get meta :preserve)
+                     :slug (plist-get meta :slug)
+                     :title (plist-get meta :title)
+                     :destination-raw (plist-get meta :destination-raw))))
+    (when-let ((existing (gethash id map)))
+      (unless (string-equal (plist-get existing :source)
+                            (plist-get meta :source))
+        (message "[ox-astro] Duplicate org-roam ID %s found in %s (already mapped to %s)"
+                 id (plist-get meta :source) (plist-get existing :source))))
+    (puthash id entry map)))
+
+(defun org-astro--build-id-map (source-dir)
+  "Build and return a hash table mapping org-roam IDs in SOURCE-DIR."
+  (let* ((root (and source-dir (expand-file-name source-dir)))
+         (map (make-hash-table :test #'equal)))
+    (if (and root (file-directory-p root))
+        (dolist (file (directory-files-recursively root "\\.org\\'"))
+          (let ((meta (org-astro--collect-org-file-export-metadata file)))
+            (when meta
+              (dolist (id (plist-get meta :id-list))
+                (when (and id (not (string-blank-p id)))
+                  (org-astro--id-map-store map id meta))))))
+      (when root
+        (message "[ox-astro] ID map skipped: source directory %s not found" root)))
+    map))
+
+(defun org-astro--add-file-to-id-map (map file)
+  "Ensure FILE's IDs are present in MAP."
+  (when (and map file (file-exists-p file))
+    (let ((meta (org-astro--collect-org-file-export-metadata file)))
+      (when meta
+        (dolist (id (plist-get meta :id-list))
+          (when (and id (not (string-blank-p id)))
+            (org-astro--id-map-store map id meta))))))
+  map)
+
+(defun org-astro--ensure-id-map (source-dir current-file)
+  "Build an ID map rooted at SOURCE-DIR and ensure CURRENT-FILE is included."
+  (let ((map (org-astro--build-id-map source-dir)))
+    (org-astro--add-file-to-id-map map current-file)))
+
+(defun org-astro--calculate-relative-mdx-path (from-file to-file)
+  "Return a Markdown-friendly relative path from FROM-FILE to TO-FILE."
+  (when (and from-file to-file)
+    (let* ((from-dir (file-name-directory from-file))
+           (relative (file-relative-name to-file from-dir)))
+      (cond
+       ((or (null relative)
+            (string= relative "")
+            (string= relative "."))
+        "./")
+       ((or (string-prefix-p "./" relative)
+            (string-prefix-p "../" relative))
+        (if (string= relative "./")
+            "./"
+          relative))
+       (t
+        (concat "./" relative))))))
+
+(defun org-astro--record-missing-id-link (info target-id desc)
+  "Log and record a missing TARGET-ID using INFO and DESC.
+Returns fallback text that should be inserted into the document."
+  (let* ((text (or (and desc (string-trim desc)) target-id))
+         (source-file (or (plist-get info :input-file)
+                          (and (buffer-file-name)
+                               (expand-file-name (buffer-file-name)))))
+         (display (org-astro--normalize-display-path source-file))
+         (warning-key (format "%s::%s::%s"
+                              (or org-astro--current-outfile "[unknown]")
+                              target-id text)))
+    (unless (and org-astro--broken-link-warnings-issued
+                 (gethash warning-key org-astro--broken-link-warnings-issued))
+      (message "⚠️  Broken link in %s:\n    [[id:%s][%s]] - target not found"
+               (or display "unknown")
+               target-id text)
+      (when org-astro--broken-link-warnings-issued
+        (puthash warning-key t org-astro--broken-link-warnings-issued)))
+    (when (and org-astro--broken-link-accumulator org-astro--current-outfile)
+      (let* ((existing (gethash org-astro--current-outfile org-astro--broken-link-accumulator))
+             (new-entry (list :id target-id :text text :source source-file)))
+        (unless (cl-find-if (lambda (item)
+                              (and (string= (plist-get item :id) target-id)
+                                   (string= (plist-get item :text) text)))
+                            existing)
+          (puthash org-astro--current-outfile (cons new-entry existing)
+                   org-astro--broken-link-accumulator))))
+    text))
+
+(defun org-astro--write-broken-link-report (links-hash output-root)
+  "Persist LINKS-HASH as JSON inside OUTPUT-ROOT.
+Existing reports are cleared when there are no broken links."
+  (when output-root
+    (let* ((report-path (expand-file-name "broken-links.json" output-root))
+           (entries nil))
+      (maphash
+       (lambda (outfile items)
+         (let* ((abs-outfile (expand-file-name outfile))
+                (abs-root (and output-root (expand-file-name output-root)))
+                (relative (if (and abs-root (string-prefix-p abs-root abs-outfile))
+                              (file-relative-name abs-outfile abs-root)
+                            (or (org-astro--normalize-display-path outfile)
+                                (file-name-nondirectory outfile))))
+                (payload (mapcar (lambda (item)
+                                   (list (cons "id" (plist-get item :id))
+                                         (cons "text" (plist-get item :text))))
+                                 (nreverse items))))
+           (push (cons relative payload) entries)))
+       links-hash)
+      (if entries
+          (let* ((sorted (sort entries (lambda (a b) (string< (car a) (car b)))))
+                 (json-object-type 'alist)
+                 (json-array-type 'list)
+                 (json-encoding-pretty-print t))
+            (with-temp-file report-path
+              (insert (json-encode sorted)))
+            (message "[ox-astro] Wrote broken link report to %s" report-path))
+        (when (file-exists-p report-path)
+          (delete-file report-path)
+          (message "[ox-astro] Cleared broken link report at %s (no broken links)" report-path))))))
 
 ;; Insert or replace a #+KEY: VALUE line in the top keyword block.
 (defun org-astro--upsert-keyword (key value)
@@ -640,6 +901,33 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
   (let* ((type (org-element-property :type link))
          (path (org-element-property :path link)))
     (cond
+     ;; org-roam ID links → resolve to relative Markdown links
+     ((string= type "id")
+      (let* ((target-id path)
+             (entry (and org-astro--id-path-map
+                         (gethash target-id org-astro--id-path-map)))
+             (link-text (if (and desc (not (string-blank-p desc)))
+                            desc
+                          (or (and entry (plist-get entry :title))
+                              target-id))))
+        (if (and entry org-astro--current-outfile)
+            (let* ((target-outfile (or (plist-get entry :outfile)
+                                       (let* ((posts-folder (plist-get entry :posts-folder))
+                                              (filename (plist-get entry :filename))
+                                              (relative-dir (plist-get entry :relative-subdir)))
+                                         (when (and posts-folder filename)
+                                           (let ((base (if (and relative-dir (not (string-blank-p relative-dir)))
+                                                           (expand-file-name relative-dir posts-folder)
+                                                         posts-folder)))
+                                             (expand-file-name filename base)))))))
+              (if (and target-outfile)
+                  (let ((relative (org-astro--calculate-relative-mdx-path
+                                   org-astro--current-outfile target-outfile)))
+                    (if relative
+                        (format "[%s](%s)" link-text relative)
+                      (org-astro--record-missing-id-link info target-id link-text)))
+                (org-astro--record-missing-id-link info target-id link-text)))
+          (org-astro--record-missing-id-link info target-id link-text))))
      ;; Local file image links → render Image component using imports
      ((and (or (string= type "file")
                (and (null type) path (string-prefix-p "/" path)))

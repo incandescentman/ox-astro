@@ -373,38 +373,50 @@ generated and added to the Org source file."
             (org-astro--debug-log-direct "Export starting - Output file: %s" outfile)
             (org-astro--dbg-update-output-file info outfile))
 
-          (if pub-dir
-              (progn
-                (make-directory pub-dir t)
-                ;; First export pass
-                (message "Running first export pass...")
-                (org-export-to-file 'astro outfile async subtreep visible-only body-only)
-                ;; Clear import state for second pass
-                (setq org-astro--current-body-images-imports nil)
-                ;; Second export pass to ensure all images appear
-                (message "Running second export pass to ensure complete image processing...")
-                (org-export-to-file 'astro outfile async subtreep visible-only body-only)
-                ;; Log completion and ensure clipboard copy
-                (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-                  (org-astro--debug-log-direct "Export complete: %s" outfile)
-                  ;; Copy file paths to clipboard
-                  (let* ((source-file (buffer-file-name))
-                         (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
-                         (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
-                                                 source-file outfile debug-file))
-                         (pbcopy (executable-find "pbcopy")))
-                    (when pbcopy
-                      (condition-case _
-                          (with-temp-buffer
-                            (insert clipboard-text)
-                            (call-process-region (point-min) (point-max) pbcopy nil nil nil)
-                            (message "File paths copied to clipboard!"))
-                        (error nil)))))
-                (message "Export complete! All images should now be visible.")
-                outfile)  ; Return the output file path
+          (let* ((org-astro--id-path-map
+                  (org-astro--ensure-id-map org-astro-source-root-folder
+                                            (and (buffer-file-name)
+                                                 (expand-file-name (buffer-file-name)))))
+                 (org-astro--current-outfile outfile)
+                 (org-astro--current-output-root pub-dir-base)
+                 (org-astro--broken-link-accumulator (make-hash-table :test #'equal))
+                 (org-astro--broken-link-warnings-issued (make-hash-table :test #'equal)))
+            (if pub-dir
+                (progn
+                  (make-directory pub-dir t)
+                  ;; First export pass
+                  (message "Running first export pass...")
+                  (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                  ;; Clear import state for second pass
+                  (setq org-astro--current-body-images-imports nil)
+                  ;; Second export pass to ensure complete image processing
+                  (message "Running second export pass to ensure complete image processing...")
+                  (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                  ;; Persist any broken ID links detected during export
+                  (when org-astro--broken-link-accumulator
+                    (org-astro--write-broken-link-report org-astro--broken-link-accumulator
+                                                         org-astro--current-output-root))
+                  ;; Log completion and ensure clipboard copy
+                  (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+                    (org-astro--debug-log-direct "Export complete: %s" outfile)
+                    ;; Copy file paths to clipboard
+                    (let* ((source-file (buffer-file-name))
+                           (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
+                           (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
+                                                   source-file outfile debug-file))
+                           (pbcopy (executable-find "pbcopy")))
+                      (when pbcopy
+                        (condition-case _
+                            (with-temp-buffer
+                              (insert clipboard-text)
+                              (call-process-region (point-min) (point-max) pbcopy nil nil nil)
+                              (message "File paths copied to clipboard!"))
+                          (error nil)))))
+                  (message "Export complete! All images should now be visible.")
+                  outfile)  ; Return the output file path
               (progn
                 (message "Astro export cancelled: No posts folder selected.")
-                nil)))))));
+                nil))))))));
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

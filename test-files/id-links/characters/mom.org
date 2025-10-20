@@ -1,0 +1,8 @@
+:PROPERTIES:
+:ID: char-001-mom
+:END:
+#+TITLE: Mom
+#+SLUG: 20251019120000-mom
+#+DESTINATION_FOLDER: roam
+
+Mom profile note.

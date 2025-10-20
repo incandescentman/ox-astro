@@ -30,6 +30,7 @@ Then, add the following to your Emacs configuration (~init.el~):
 - **Interactive Workflow**: Prompts for a destination folder if one isn't specified, making it easy to work with multiple Astro projects.
 - **Advanced Formatting**: Intelligently handles Org-specific syntax (like TODOs and tables) and converts it to the correct Markdown equivalent.
 - **org-roam Integration**: Respects org-roam file structure and properties blocks.
+- **ID Link Resolution**: Converts `[[id:...]]` org-roam links into relative Markdown links that work out of the box in Astro.
 - **Subtree Export**: Export individual subtrees as standalone blog posts.
 - **Mixed Link Support**: Preserves existing Markdown links while processing Org links and converting raw URLs into custom components.
 - **Slug Filenames for Subtrees**: When exporting a subtree (or when the buffer is narrowed to a subtree), the output filename uses the subtree's ~#+SLUG~ as ~slug.mdx~.
@@ -41,6 +42,7 @@ Before using ox-astro, you need to configure your project paths:
 1. Run ~M-x customize-group RET org-export-astro RET~
 2. Edit the "Org Astro Known Posts Folders" setting
 3. Add your Astro project paths with memorable nicknames
+4. Set ~org-astro-source-root-folder~ to the directory that contains your org-roam notes (used for ID link resolution)
 
 ** Basic Configuration
 
@@ -81,6 +83,13 @@ With this configuration:
 3.  Run the command ~M-x org-astro-export-to-mdx~.
 4.  If the destination is not specified in the file, you will be prompted to select one from your pre-configured list.
 5.  The ~.mdx~ file will be generated in the specified destination.
+
+** Cross-Note Links
+
+- Ensure each linked note has an =~:ID:= property in its PROPERTIES drawer
+- Set ~org-astro-source-root-folder~ so the exporter can build a cross-file ID map
+- After export, review =broken-links.json= in the destination root for any unresolved IDs
+- Missing IDs appear as warnings and degrade to readable plain text; add the target note and re-export to fix the link
 
 ** Subtree Export
 

@@ -2,6 +2,30 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Org-roam ID Link Resolution (2025-10-19)
+
+** Summary
+ID-based org-roam links (`[[id:...][Label]]`) are now resolved to relative Markdown links during export, producing Astro-friendly `[Label](../path/to/file.mdx)` references.
+
+** Rationale
+Astro renders standard Markdown links, so converting org-roam IDs preserves intra-site navigation without requiring Org-style syntax. A preflight scan builds an ID→file map so links resolve even before the target note is exported.
+
+** Key Behavior
+- Builds an ID map across all `.org` files under `org-astro-source-root-folder`
+- Resolves destinations with preserved folder hierarchy and slugged filenames
+- Logs unresolved IDs with human-readable warnings
+- Writes `broken-links.json` in the export root listing any missing targets
+- Falls back to plain link text in the MDX body when IDs are missing
+
+** Implementation
+- Added ID map utilities and broken link reporting helpers in `ox-astro-helpers.el`
+- Taught `org-astro-link` to translate `id:` links into relative Markdown
+- Wrapped `org-astro-export-to-mdx` execution with the new state, persisting diagnostics post-export
+- Added ERT coverage and fixtures (`test-id-links.el`, `test-files/id-links/`)
+
+** Testing
+`emacs --batch -Q -l test-id-links.el -f ert-run-tests-batch-and-exit`
+
 * DESCRIPTION as Synonym for EXCERPT (2025-10-10)
 
 ** Summary
