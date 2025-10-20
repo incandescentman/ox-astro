@@ -22,38 +22,37 @@ or double quotes retain internal spacing; quotes are stripped in the result."
     (let* ((len (length s))
            (i 0)
            (quote-char nil)
-           (buf (list))
-           (items (list))
+           (token nil)
+           (items nil)
            (has-comma (string-match-p "," s)))
-      (cl-labels ((push-char (c) (setq buf (cons c buf)))
-                  (flush-buf ()
-                    (when buf
-                      (let* ((str (apply #'string (nreverse buf)))
+      (cl-labels ((push-char (c) (setq token (cons c token)))
+                  (finish-token ()
+                    (when token
+                      (let* ((str (apply #'string (nreverse token)))
                              (trimmed (org-trim str)))
                         (when (> (length trimmed) 0)
                           (setq items (cons trimmed items))))
-                      (setq buf nil))))
+                      (setq token nil))))
         (while (< i len)
           (let ((ch (aref s i)))
-            (cond
-             (quote-char
-              (if (= ch quote-char)
-                  (progn
-                    (flush-buf)
-                    (setq quote-char nil))
-                (push-char ch)))
-             (t
+            (if quote-char
+                (if (= ch quote-char)
+                    (progn
+                      (finish-token)
+                      (setq quote-char nil))
+                  (push-char ch))
               (cond
-               ((and (null buf) (memq ch '(?\s ?\t ?\n))))
-               ((and (null buf) (memq ch '(?\" ?')))
+               ((memq ch '(?\s ?\t ?\n))
+                (unless has-comma
+                  (finish-token)))
+               ((= ch ?,)
+                (finish-token))
+               ((and (null token) (memq ch '(?\" ?')))
                 (setq quote-char ch))
-               (((if has-comma
-                     (= ch ?,)
-                   (memq ch '(?, ?\s ?\t ?\n))))
-                (flush-buf))
-               (t (push-char ch)))) )
+               (t
+                (push-char ch)))))
           (setq i (1+ i)))
-        (flush-buf)
+        (finish-token)
         (nreverse items)))))
 
 (defun org-astro--keyword-first-value (tree keys)
