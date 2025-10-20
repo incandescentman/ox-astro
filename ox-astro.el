@@ -35,7 +35,7 @@
 ;;     (require 'ox-astro))
 ;;
 ;; # Workflow
-;; 
+;;
 ;; This exporter is designed for a one-post-per-file workflow.
 ;; A single Org file exports to a single .mdx file. If #+DESTINATION_FOLDER is not
 ;; set, files are exported to a subdirectory named "astro-posts". This can
@@ -113,10 +113,10 @@ functions filtered out."
   (interactive)
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
-    (org-astro--with-export-sanitization
-      (let ((org-astro--export-in-progress t))
-        (org-export-to-buffer 'astro "*Astro MDX Export*"
-          async subtreep visible-only body-only)))))
+      (org-astro--with-export-sanitization
+        (let ((org-astro--export-in-progress t))
+          (org-export-to-buffer 'astro "*Astro MDX Export*"
+            async subtreep visible-only body-only)))))
 
 ;;;###autoload
 (defun org-astro-export-to-mdx (&optional async subtreep visible-only body-only)
@@ -126,356 +126,356 @@ generated and added to the Org source file."
   (interactive)
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
-    (org-astro--with-export-sanitization
-      (let ((info (org-export-get-environment 'astro subtreep))
-            ;; Detect if the user is currently narrowed to a subtree.
-            (was-narrowed (buffer-narrowed-p))
-            (buffer-modified-p nil))
-        ;; DEBUG: Check buffer at very start
-        (save-excursion
-          (goto-char (point-min))
-          (let ((id-link-count 0))
-            (while (re-search-forward "\\[\\[id:" nil t)
-              (setq id-link-count (1+ id-link-count)))
-            (message "[DEBUG-START] At function start: Found %d [[id: patterns in buffer" id-link-count)))
-        ;; Clear any stale image import state before running export filters.
-        (setq org-astro--current-body-images-imports nil)
-        ;; --- AUTO-NORMALIZE: Convert org headings to markdown in user/prompt/quote blocks ---
-        ;; This must run BEFORE org-mode parses the buffer, otherwise asterisks at start
-        ;; of lines inside src blocks will be interpreted as org headlines and break the block.
-        (org-astro--normalize-user-blocks)
-        ;; DEBUG: Check buffer after normalize
-        (save-excursion
-          (goto-char (point-min))
-          (let ((id-link-count 0))
-            (while (re-search-forward "\\[\\[id:" nil t)
-              (setq id-link-count (1+ id-link-count)))
-            (message "[DEBUG-AFTER-NORMALIZE] After normalize: Found %d [[id: patterns in buffer" id-link-count)))
-        ;; --- PREPROCESSING: Process and update all image paths BEFORE export ---
-        (let* ((tree (org-element-parse-buffer))
-               (destination-keyword (org-astro--keyword-value tree '("DESTINATION_FOLDER" "DESTINATION-FOLDER")))
-               (posts-folder-raw-input (or (plist-get info :destination-folder)
-                                           (plist-get info :astro-posts-folder)
-                                           destination-keyword))
-               ;; Trim whitespace from the folder name to handle config errors
-               (posts-folder-raw (and posts-folder-raw-input
-                                      (string-trim posts-folder-raw-input)))
-               ;; Resolve the posts folder using the same logic as in handlers
-               ;; Use a more forgiving lookup that ignores whitespace differences
-               (folder-config (and posts-folder-raw
-                                   (cdr (cl-find posts-folder-raw org-astro-known-posts-folders
-                                                 :test (lambda (needle pair)
-                                                         (string= needle (string-trim (car pair))))))))
-               ;; Extract path from config (handle both old string and new plist formats)
-               (resolved-posts-folder-raw (if (stringp folder-config)
-                                              folder-config
-                                            (plist-get folder-config :path)))
-               (resolved-posts-folder (and resolved-posts-folder-raw
-                                           (string-trim resolved-posts-folder-raw)))
-               (posts-folder (cond
-                              (resolved-posts-folder resolved-posts-folder)
-                              ((and posts-folder-raw
-                                    (file-name-absolute-p posts-folder-raw)
-                                    (file-directory-p (expand-file-name posts-folder-raw)))
-                               posts-folder-raw)
-                              (t nil))))
-          (when posts-folder-raw
-            (setq info (plist-put info :destination-folder posts-folder-raw)))
-          (when posts-folder
-            (let* ((title (org-astro--get-title tree info))
-                   (slug (or (plist-get info :slug)
-                             (let* ((title-kw (org-element-map tree 'keyword
-                                                (lambda (k)
-                                                  (when (string-equal "TITLE" (org-element-property :key k)) k))
-                                                nil 'first-match))
-                                    (title-from-headline (not title-kw)))
-                               (when title-from-headline
-                                 (org-astro--slugify title)))))
-                   (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
-                   (image-manifest (org-astro--build-image-manifest tree info))
-                   (process-result (org-astro--process-image-manifest image-manifest posts-folder sub-dir))
-                   (processed (plist-get process-result :entries))
-                   (context (list :manifest image-manifest
-                                  :processed processed
-                                  :posts-folder posts-folder
-                                  :sub-dir sub-dir)))
-              (setq info (cl-putf info :astro-image-manifest image-manifest))
-              (setq info (cl-putf info :astro-export-context context))
-              (when processed
-                (plist-put info :astro-body-images-imports processed)
-                (setq org-astro--current-body-images-imports processed))
-              ;; Process PDFs similarly: copy into public/pdfs and update buffer
-              (let ((pdf-paths (org-astro--collect-pdfs-from-tree tree)))
-                (dolist (pdf pdf-paths)
-                  (condition-case err
-                      (org-astro--process-pdf-path pdf posts-folder sub-dir t)
-                    (error (message "ERROR processing PDF %s: %s" pdf err)))))
-              (when (plist-get process-result :buffer-modified)
-                (setq buffer-modified-p t)
-                (setq info (org-export-get-environment 'astro subtreep))
-                (setq tree (org-element-parse-buffer))
-                (let* ((refreshed-manifest (org-astro--build-image-manifest tree info))
-                       (refreshed-result (org-astro--process-image-manifest refreshed-manifest posts-folder sub-dir '(:update-buffer nil)))
-                       (refreshed-processed (plist-get refreshed-result :entries))
-                       (refreshed-context (list :manifest refreshed-manifest
-                                                :processed refreshed-processed
-                                                :posts-folder posts-folder
-                                                :sub-dir sub-dir)))
-                  (setq info (cl-putf info :astro-image-manifest refreshed-manifest))
-                  (setq info (cl-putf info :astro-export-context refreshed-context))
-                  (when refreshed-processed
-                    (plist-put info :astro-body-images-imports refreshed-processed)
-                    (setq org-astro--current-body-images-imports refreshed-processed)))))))
-        ;; --- Ensure essential front-matter exists, writing back if not ---
-        (save-excursion
-          (condition-case err
-              (let* ((tree (org-element-parse-buffer))
-                     (title-present (plist-get info :title))
-                     (excerpt-present (or (plist-get info :astro-excerpt) (plist-get info :excerpt)))
-                     (date-present (or (plist-get info :astro-publish-date) (plist-get info :publish-date) (plist-get info :date))))
+      (org-astro--with-export-sanitization
+        (let ((info (org-export-get-environment 'astro subtreep))
+              ;; Detect if the user is currently narrowed to a subtree.
+              (was-narrowed (buffer-narrowed-p))
+              (buffer-modified-p nil))
+          ;; DEBUG: Check buffer at very start
+          (save-excursion
+            (goto-char (point-min))
+            (let ((id-link-count 0))
+              (while (re-search-forward "\\[\\[id:" nil t)
+                (setq id-link-count (1+ id-link-count)))
+              (message "[DEBUG-START] At function start: Found %d [[id: patterns in buffer" id-link-count)))
+          ;; Clear any stale image import state before running export filters.
+          (setq org-astro--current-body-images-imports nil)
+          ;; --- AUTO-NORMALIZE: Convert org headings to markdown in user/prompt/quote blocks ---
+          ;; This must run BEFORE org-mode parses the buffer, otherwise asterisks at start
+          ;; of lines inside src blocks will be interpreted as org headlines and break the block.
+          (org-astro--normalize-user-blocks)
+          ;; DEBUG: Check buffer after normalize
+          (save-excursion
+            (goto-char (point-min))
+            (let ((id-link-count 0))
+              (while (re-search-forward "\\[\\[id:" nil t)
+                (setq id-link-count (1+ id-link-count)))
+              (message "[DEBUG-AFTER-NORMALIZE] After normalize: Found %d [[id: patterns in buffer" id-link-count)))
+          ;; --- PREPROCESSING: Process and update all image paths BEFORE export ---
+          (let* ((tree (org-element-parse-buffer))
+                 (destination-keyword (org-astro--keyword-value tree '("DESTINATION_FOLDER" "DESTINATION-FOLDER")))
+                 (posts-folder-raw-input (or (plist-get info :destination-folder)
+                                             (plist-get info :astro-posts-folder)
+                                             destination-keyword))
+                 ;; Trim whitespace from the folder name to handle config errors
+                 (posts-folder-raw (and posts-folder-raw-input
+                                        (string-trim posts-folder-raw-input)))
+                 ;; Resolve the posts folder using the same logic as in handlers
+                 ;; Use a more forgiving lookup that ignores whitespace differences
+                 (folder-config (and posts-folder-raw
+                                     (cdr (cl-find posts-folder-raw org-astro-known-posts-folders
+                                                   :test (lambda (needle pair)
+                                                           (string= needle (string-trim (car pair))))))))
+                 ;; Extract path from config (handle both old string and new plist formats)
+                 (resolved-posts-folder-raw (if (stringp folder-config)
+                                                folder-config
+                                                (plist-get folder-config :path)))
+                 (resolved-posts-folder (and resolved-posts-folder-raw
+                                             (string-trim resolved-posts-folder-raw)))
+                 (posts-folder (cond
+                                (resolved-posts-folder resolved-posts-folder)
+                                ((and posts-folder-raw
+                                      (file-name-absolute-p posts-folder-raw)
+                                      (file-directory-p (expand-file-name posts-folder-raw)))
+                                 posts-folder-raw)
+                                (t nil))))
+            (when posts-folder-raw
+              (setq info (plist-put info :destination-folder posts-folder-raw)))
+            (when posts-folder
+              (let* ((title (org-astro--get-title tree info))
+                     (slug (or (plist-get info :slug)
+                               (let* ((title-kw (org-element-map tree 'keyword
+                                                  (lambda (k)
+                                                    (when (string-equal "TITLE" (org-element-property :key k)) k))
+                                                  nil 'first-match))
+                                      (title-from-headline (not title-kw)))
+                                 (when title-from-headline
+                                   (org-astro--slugify title)))))
+                     (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
+                     (image-manifest (org-astro--build-image-manifest tree info))
+                     (process-result (org-astro--process-image-manifest image-manifest posts-folder sub-dir))
+                     (processed (plist-get process-result :entries))
+                     (context (list :manifest image-manifest
+                                    :processed processed
+                                    :posts-folder posts-folder
+                                    :sub-dir sub-dir)))
+                (setq info (cl-putf info :astro-image-manifest image-manifest))
+                (setq info (cl-putf info :astro-export-context context))
+                (when processed
+                  (plist-put info :astro-body-images-imports processed)
+                  (setq org-astro--current-body-images-imports processed))
+                ;; Process PDFs similarly: copy into public/pdfs and update buffer
+                (let ((pdf-paths (org-astro--collect-pdfs-from-tree tree)))
+                  (dolist (pdf pdf-paths)
+                    (condition-case err
+                        (org-astro--process-pdf-path pdf posts-folder sub-dir t)
+                      (error (message "ERROR processing PDF %s: %s" pdf err)))))
+                (when (plist-get process-result :buffer-modified)
+                  (setq buffer-modified-p t)
+                  (setq info (org-export-get-environment 'astro subtreep))
+                  (setq tree (org-element-parse-buffer))
+                  (let* ((refreshed-manifest (org-astro--build-image-manifest tree info))
+                         (refreshed-result (org-astro--process-image-manifest refreshed-manifest posts-folder sub-dir '(:update-buffer nil)))
+                         (refreshed-processed (plist-get refreshed-result :entries))
+                         (refreshed-context (list :manifest refreshed-manifest
+                                                  :processed refreshed-processed
+                                                  :posts-folder posts-folder
+                                                  :sub-dir sub-dir)))
+                    (setq info (cl-putf info :astro-image-manifest refreshed-manifest))
+                    (setq info (cl-putf info :astro-export-context refreshed-context))
+                    (when refreshed-processed
+                      (plist-put info :astro-body-images-imports refreshed-processed)
+                      (setq org-astro--current-body-images-imports refreshed-processed)))))))
+          ;; --- Ensure essential front-matter exists, writing back if not ---
+          (save-excursion
+            (condition-case err
+                (let* ((tree (org-element-parse-buffer))
+                       (title-present (plist-get info :title))
+                       (excerpt-present (or (plist-get info :astro-excerpt) (plist-get info :excerpt)))
+                       (date-present (or (plist-get info :astro-publish-date) (plist-get info :publish-date) (plist-get info :date))))
 
-                ;; 1. Handle Title and Slug
-                ;; First handle title generation from headline if no #+TITLE keyword
-                (let* ((title-kw (org-element-map tree 'keyword
-                                   (lambda (k)
-                                     (when (string-equal "TITLE" (org-element-property :key k)) k))
-                                   nil 'first-match))
-                       (slug-kw (org-element-map tree 'keyword
-                                  (lambda (k)
-                                    (when (string-equal "SLUG" (org-element-property :key k)) k))
-                                  nil 'first-match))
-                       (title-from-headline (not title-kw)))
-                  ;; Add title from headline if missing
-                  (when title-from-headline
-                    (let* ((headline (org-element-map tree 'headline 'identity nil 'first-match))
-                           (title    (when headline
-                                       (org-astro--safe-export (org-element-property :title headline) info))))
-                      (when (and title (not (string-blank-p title)))
-                        (org-astro--upsert-keyword-after-roam "TITLE" title)
+                  ;; 1. Handle Title and Slug
+                  ;; First handle title generation from headline if no #+TITLE keyword
+                  (let* ((title-kw (org-element-map tree 'keyword
+                                     (lambda (k)
+                                       (when (string-equal "TITLE" (org-element-property :key k)) k))
+                                     nil 'first-match))
+                         (slug-kw (org-element-map tree 'keyword
+                                    (lambda (k)
+                                      (when (string-equal "SLUG" (org-element-property :key k)) k))
+                                    nil 'first-match))
+                         (title-from-headline (not title-kw)))
+                    ;; Add title from headline if missing
+                    (when title-from-headline
+                      (let* ((headline (org-element-map tree 'headline 'identity nil 'first-match))
+                             (title    (when headline
+                                         (org-astro--safe-export (org-element-property :title headline) info))))
+                        (when (and title (not (string-blank-p title)))
+                          (org-astro--upsert-keyword-after-roam "TITLE" title)
+                          (setq buffer-modified-p t))))
+
+                    ;; ALWAYS add slug if missing (whether title comes from keyword or headline)
+                    (unless slug-kw
+                      (let* ((title (or (plist-get info :title)
+                                        (org-astro--get-title tree info)))
+                             (slug (when title (org-astro--slugify title))))
+                        (when (and slug (not (string-blank-p slug)))
+                          (org-astro--upsert-keyword-after-roam "SLUG" slug)
+                          (setq buffer-modified-p t)))))
+
+                  ;; 2. Handle Excerpt (only if missing), placed after org-roam preamble
+                  (unless excerpt-present
+                    (let ((excerpt-text (org-astro--get-excerpt tree info)))
+                      (when (and excerpt-text (not (string-blank-p excerpt-text)))
+                        (org-astro--upsert-keyword-after-roam "EXCERPT" excerpt-text)
                         (setq buffer-modified-p t))))
 
-                  ;; ALWAYS add slug if missing (whether title comes from keyword or headline)
-                  (unless slug-kw
-                    (let* ((title (or (plist-get info :title)
-                                      (org-astro--get-title tree info)))
-                           (slug (when title (org-astro--slugify title))))
-                      (when (and slug (not (string-blank-p slug)))
-                        (org-astro--upsert-keyword-after-roam "SLUG" slug)
-                        (setq buffer-modified-p t)))))
-
-                ;; 2. Handle Excerpt (only if missing), placed after org-roam preamble
-                (unless excerpt-present
-                  (let ((excerpt-text (org-astro--get-excerpt tree info)))
-                    (when (and excerpt-text (not (string-blank-p excerpt-text)))
-                      (org-astro--upsert-keyword-after-roam "EXCERPT" excerpt-text)
+                  ;; 3. Handle Date (only if missing), placed after org-roam preamble
+                  (unless date-present
+                    (let ((date-str (format-time-string (org-time-stamp-format 'long 'inactive) (current-time))))
+                      (org-astro--upsert-keyword-after-roam "PUBLISH_DATE" date-str)
                       (setq buffer-modified-p t))))
+              (error (message "[ox-astro] Preflight skipped due to: %S" err))))
 
-                ;; 3. Handle Date (only if missing), placed after org-roam preamble
-                (unless date-present
-                  (let ((date-str (format-time-string (org-time-stamp-format 'long 'inactive) (current-time))))
-                    (org-astro--upsert-keyword-after-roam "PUBLISH_DATE" date-str)
-                    (setq buffer-modified-p t))))
-            (error (message "[ox-astro] Preflight skipped due to: %S" err))))
+          ;; If we modified the buffer, save it and refresh the export environment
+          (when buffer-modified-p
+            (save-buffer)
+            (setq info (org-export-get-environment 'astro)))
 
-        ;; If we modified the buffer, save it and refresh the export environment
-        (when buffer-modified-p
-          (save-buffer)
-          (setq info (org-export-get-environment 'astro)))
+          ;; --- Original export logic continues below ---
+          (let* ((posts-folder-from-file-raw (or (plist-get info :astro-posts-folder)
+                                                 (plist-get info :destination-folder)))
+                 ;; Trim whitespace from the folder name to handle config errors
+                 (posts-folder-from-file (and posts-folder-from-file-raw
+                                              (string-trim posts-folder-from-file-raw)))
+                 ;; Look up the folder config - now returns a plist
+                 ;; Use a more forgiving lookup that ignores whitespace differences
+                 (folder-config (cdr (cl-find posts-folder-from-file org-astro-known-posts-folders
+                                              :test (lambda (needle pair)
+                                                      (string= needle (string-trim (car pair)))))))
+                 ;; Extract path from the plist (handle both old and new formats)
+                 (resolved-posts-folder-raw (if (stringp folder-config)
+                                                ;; Old format: just a string path
+                                                folder-config
+                                                ;; New format: plist with :path
+                                                (plist-get folder-config :path)))
+                 ;; Extract preserve-folder-structure flag
+                 (preserve-folder-structure (and (listp folder-config)
+                                                 (plist-get folder-config :preserve-folder-structure)))
+                 ;; Store the selected folder nickname for later use
+                 (selected-folder-nickname posts-folder-from-file)
+                 ;; Trim whitespace from resolved path to handle configuration errors
+                 (resolved-posts-folder (and resolved-posts-folder-raw
+                                             (string-trim resolved-posts-folder-raw)))
+                 (posts-folder
+                  (cond
+                   ;; If we found it in known folders, use that path (no prompt needed)
+                   (resolved-posts-folder resolved-posts-folder)
+                   ;; If posts-folder-from-file exists and looks like an absolute path, use it directly
+                   ((and posts-folder-from-file
+                         (file-name-absolute-p posts-folder-from-file)
+                         (file-directory-p (expand-file-name posts-folder-from-file)))
+                    posts-folder-from-file)
+                   ;; If posts-folder-from-file is specified (e.g., nickname) but wasn't resolved above,
+                   ;; it means the nickname doesn't exist in org-astro-known-posts-folders
+                   ;; In this case, we should NOT prompt - just fail with an error message
+                   (posts-folder-from-file
+                    (error "DESTINATION_FOLDER '%s' not found in org-astro-known-posts-folders. Please check your configuration." posts-folder-from-file))
+                   ;; Only prompt if no DESTINATION_FOLDER was specified at all
+                   (t
+                    (let* ((selection (completing-read "Select a posts folder: "
+                                                       org-astro-known-posts-folders
+                                                       nil t))
+                           (selected-config (cdr (assoc selection org-astro-known-posts-folders)))
+                           ;; Handle both old and new formats
+                           (selected-path-raw (if (stringp selected-config)
+                                                  selected-config
+                                                  (plist-get selected-config :path)))
+                           ;; Trim whitespace from selected path
+                           (selected-path (and selected-path-raw
+                                               (string-trim selected-path-raw))))
+                      ;; Update the variables for the selected folder
+                      (setq selected-folder-nickname selection)
+                      (setq preserve-folder-structure (and (listp selected-config)
+                                                           (plist-get selected-config :preserve-folder-structure)))
+                      (when selected-path
+                        ;; Add the DESTINATION_FOLDER keyword to the org file
+                        (save-excursion
+                          (goto-char (point-min))
+                          (if (re-search-forward "^#\\+DESTINATION[_-]FOLDER:" nil t)
+                              ;; Update existing DESTINATION keyword, preserving user's delimiter
+                              (let* ((matched (match-string 0))
+                                     (use-hyphen (and matched (string-match-p "DESTINATION-FOLDER" matched)))
+                                     (keyword (if use-hyphen "DESTINATION-FOLDER" "DESTINATION_FOLDER")))
+                                (beginning-of-line)
+                                (kill-line)
+                                (insert (format "#+%s: %s" keyword selection)))
+                              (org-astro--upsert-keyword-after-roam "DESTINATION_FOLDER" selection)))
+                        (save-buffer))
+                      selected-path))))
+                 (pub-dir-base (when posts-folder
+                                 (file-name-as-directory
+                                  (expand-file-name (org-trim posts-folder)))))
+                 ;; Calculate the subdirectory if preserving folder structure for this destination
+                 (preserved-subdir
+                  (when (and preserve-folder-structure
+                             pub-dir-base
+                             (buffer-file-name))
+                    (let* ((source-file (expand-file-name (buffer-file-name)))
+                           (source-root-raw (org-astro--effective-source-root
+                                             org-astro-source-root-folder source-file))
+                           (source-root (and source-root-raw (expand-file-name source-root-raw)))
+                           (relative-path nil)
+                           (source-root-dir (and source-root
+                                                 (file-name-as-directory
+                                                  (expand-file-name source-root)))))
+                      ;; Check if source file is under the effective source root
+                      (when (and source-root-dir
+                                 (string-prefix-p source-root-dir
+                                                  (file-name-directory source-file)))
+                        (setq relative-path (file-relative-name source-file source-root)))
+                      ;; Extract directory part of relative path (remove filename)
+                      (when relative-path
+                        (let ((dir (file-name-directory relative-path)))
+                          (when (and dir (not (string= dir "./")))
+                            dir))))))
+                 ;; Combine base directory with preserved subdirectory
+                 (pub-dir (if preserved-subdir
+                              (file-name-as-directory
+                               (expand-file-name preserved-subdir pub-dir-base))
+                              pub-dir-base))
+                 (default-outfile (org-export-output-file-name ".mdx" subtreep pub-dir))
+                 (out-dir (file-name-directory default-outfile))
+                 (out-filename (file-name-nondirectory default-outfile))
+                 ;; Prefer a SLUG found in the narrowed region (subtree) first,
+                 ;; then fall back to searching the full buffer, and finally use
+                 ;; the value currently in the export environment.
+                 (slug-filename (let ((slug-in-narrow
+                                       (save-excursion
+                                         (goto-char (point-min))
+                                         (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" (point-max) t)
+                                           (org-trim (match-string 1)))))
+                                      (slug-in-full
+                                       (save-excursion
+                                         (save-restriction)
+                                         (widen)
+                                         (goto-char (point-min))
+                                         (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" nil t)
+                                           (org-trim (match-string 1)))))
+                                      (slug-in-info (let ((val (plist-get info :slug)))
+                                                      (when (and val (stringp val))
+                                                        (org-trim val)))))
+                                  (or slug-in-narrow slug-in-full slug-in-info)))
+                 (final-filename
+                  ;; Prefer slug-based filenames whenever we have a usable slug,
+                  ;; regardless of whether we're exporting a subtree or full file.
+                  (if (and slug-filename (not (string-blank-p slug-filename)))
+                      (concat slug-filename ".mdx")
+                      ;; Fallback to default filename processing when no slug exists.
+                      (replace-regexp-in-string
+                       "_" "-"
+                       (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
+                 (outfile (expand-file-name final-filename out-dir)))
 
-        ;; --- Original export logic continues below ---
-        (let* ((posts-folder-from-file-raw (or (plist-get info :astro-posts-folder)
-                                               (plist-get info :destination-folder)))
-               ;; Trim whitespace from the folder name to handle config errors
-               (posts-folder-from-file (and posts-folder-from-file-raw
-                                            (string-trim posts-folder-from-file-raw)))
-               ;; Look up the folder config - now returns a plist
-               ;; Use a more forgiving lookup that ignores whitespace differences
-               (folder-config (cdr (cl-find posts-folder-from-file org-astro-known-posts-folders
-                                            :test (lambda (needle pair)
-                                                    (string= needle (string-trim (car pair)))))))
-               ;; Extract path from the plist (handle both old and new formats)
-               (resolved-posts-folder-raw (if (stringp folder-config)
-                                              ;; Old format: just a string path
-                                              folder-config
-                                            ;; New format: plist with :path
-                                            (plist-get folder-config :path)))
-               ;; Extract preserve-folder-structure flag
-               (preserve-folder-structure (and (listp folder-config)
-                                               (plist-get folder-config :preserve-folder-structure)))
-               ;; Store the selected folder nickname for later use
-               (selected-folder-nickname posts-folder-from-file)
-               ;; Trim whitespace from resolved path to handle configuration errors
-               (resolved-posts-folder (and resolved-posts-folder-raw
-                                           (string-trim resolved-posts-folder-raw)))
-               (posts-folder
-                (cond
-                 ;; If we found it in known folders, use that path (no prompt needed)
-                 (resolved-posts-folder resolved-posts-folder)
-                 ;; If posts-folder-from-file exists and looks like an absolute path, use it directly
-                 ((and posts-folder-from-file
-                       (file-name-absolute-p posts-folder-from-file)
-                       (file-directory-p (expand-file-name posts-folder-from-file)))
-                  posts-folder-from-file)
-                 ;; If posts-folder-from-file is specified (e.g., nickname) but wasn't resolved above,
-                 ;; it means the nickname doesn't exist in org-astro-known-posts-folders
-                 ;; In this case, we should NOT prompt - just fail with an error message
-                 (posts-folder-from-file
-                  (error "DESTINATION_FOLDER '%s' not found in org-astro-known-posts-folders. Please check your configuration." posts-folder-from-file))
-                 ;; Only prompt if no DESTINATION_FOLDER was specified at all
-                 (t
-                  (let* ((selection (completing-read "Select a posts folder: "
-                                                     org-astro-known-posts-folders
-                                                     nil t))
-                         (selected-config (cdr (assoc selection org-astro-known-posts-folders)))
-                         ;; Handle both old and new formats
-                         (selected-path-raw (if (stringp selected-config)
-                                               selected-config
-                                             (plist-get selected-config :path)))
-                         ;; Trim whitespace from selected path
-                         (selected-path (and selected-path-raw
-                                             (string-trim selected-path-raw))))
-                    ;; Update the variables for the selected folder
-                    (setq selected-folder-nickname selection)
-                    (setq preserve-folder-structure (and (listp selected-config)
-                                                         (plist-get selected-config :preserve-folder-structure)))
-                    (when selected-path
-                      ;; Add the DESTINATION_FOLDER keyword to the org file
-                      (save-excursion
-                        (goto-char (point-min))
-                        (if (re-search-forward "^#\\+DESTINATION[_-]FOLDER:" nil t)
-                            ;; Update existing DESTINATION keyword, preserving user's delimiter
-                            (let* ((matched (match-string 0))
-                                   (use-hyphen (and matched (string-match-p "DESTINATION-FOLDER" matched)))
-                                   (keyword (if use-hyphen "DESTINATION-FOLDER" "DESTINATION_FOLDER")))
-                              (beginning-of-line)
-                              (kill-line)
-                              (insert (format "#+%s: %s" keyword selection)))
-                          (org-astro--upsert-keyword-after-roam "DESTINATION_FOLDER" selection)))
-                      (save-buffer))
-                    selected-path))))
-               (pub-dir-base (when posts-folder
-                               (file-name-as-directory
-                                (expand-file-name (org-trim posts-folder)))))
-               ;; Calculate the subdirectory if preserving folder structure for this destination
-               (preserved-subdir
-                (when (and preserve-folder-structure
-                           pub-dir-base
-                           (buffer-file-name))
-                  (let* ((source-file (expand-file-name (buffer-file-name)))
-                         (source-root-raw (org-astro--effective-source-root
-                                           org-astro-source-root-folder source-file))
-                         (source-root (and source-root-raw (expand-file-name source-root-raw)))
-                         (relative-path nil)
-                         (source-root-dir (and source-root
-                                               (file-name-as-directory
-                                                (expand-file-name source-root)))))
-                    ;; Check if source file is under the effective source root
-                    (when (and source-root-dir
-                               (string-prefix-p source-root-dir
-                                                (file-name-directory source-file)))
-                      (setq relative-path (file-relative-name source-file source-root)))
-                    ;; Extract directory part of relative path (remove filename)
-                    (when relative-path
-                      (let ((dir (file-name-directory relative-path)))
-                        (when (and dir (not (string= dir "./"))) 
-                          dir))))))
-               ;; Combine base directory with preserved subdirectory
-               (pub-dir (if preserved-subdir
-                           (file-name-as-directory
-                            (expand-file-name preserved-subdir pub-dir-base))
-                         pub-dir-base))
-               (default-outfile (org-export-output-file-name ".mdx" subtreep pub-dir))
-               (out-dir (file-name-directory default-outfile))
-               (out-filename (file-name-nondirectory default-outfile))
-               ;; Prefer a SLUG found in the narrowed region (subtree) first,
-               ;; then fall back to searching the full buffer, and finally use
-               ;; the value currently in the export environment.
-               (slug-filename (let ((slug-in-narrow
-                                     (save-excursion
-                                       (goto-char (point-min))
-                                       (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" (point-max) t)
-                                         (org-trim (match-string 1)))))
-                                    (slug-in-full
-                                     (save-excursion
-                                       (save-restriction)
-                                       (widen)
-                                       (goto-char (point-min))
-                                       (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" nil t)
-                                         (org-trim (match-string 1)))))
-                                    (slug-in-info (let ((val (plist-get info :slug))) 
-                                                    (when (and val (stringp val))
-                                                      (org-trim val)))))
-                              (or slug-in-narrow slug-in-full slug-in-info)))
-               (final-filename
-                ;; Prefer slug-based filenames whenever we have a usable slug,
-                ;; regardless of whether we're exporting a subtree or full file.
-                (if (and slug-filename (not (string-blank-p slug-filename)))
-                    (concat slug-filename ".mdx")
-                  ;; Fallback to default filename processing when no slug exists.
-                  (replace-regexp-in-string
-                   "_" "-"
-                   (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
-               (outfile (expand-file-name final-filename out-dir)))
+            ;; Update debug system with actual output file path now that we know it
+            (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+              (org-astro--debug-log-direct "Export starting - Output file: %s" outfile)
+              (org-astro--dbg-update-output-file info outfile))
 
-          ;; Update debug system with actual output file path now that we know it
-          (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-            (org-astro--debug-log-direct "Export starting - Output file: %s" outfile)
-            (org-astro--dbg-update-output-file info outfile))
-
-          (let* ((org-astro--export-in-progress t)  ; Signal that astro export is active
-                 (org-astro--id-path-map
-                  (org-astro--ensure-id-map org-astro-source-root-folder
-                                            (and (buffer-file-name)
-                                                 (expand-file-name (buffer-file-name)))))
-                 (org-astro--current-outfile outfile)
-                 (org-astro--current-output-root pub-dir-base)
-                 (org-astro--broken-link-accumulator (make-hash-table :test #'equal))
-                 (org-astro--broken-link-warnings-issued (make-hash-table :test #'equal)))
-            (if pub-dir
-                (progn
-                  (make-directory pub-dir t)
-                  ;; First export pass
-                  (message "Running first export pass...")
-                  (message "[DEBUG-EXPORT] Calling org-export-to-file with backend: astro")
-                  (message "[DEBUG-EXPORT] Backend details: %S" (org-export-get-backend 'astro))
-                  ;; DEBUG: Check if ID links exist in buffer before export
-                  (save-excursion
-                    (goto-char (point-min))
-                    (let ((id-link-count 0))
-                      (while (re-search-forward "\\[\\[id:" nil t)
-                        (setq id-link-count (1+ id-link-count)))
-                      (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count)))
-                  (org-export-to-file 'astro outfile async subtreep visible-only body-only)
-                  ;; Clear import state for second pass
-                  (setq org-astro--current-body-images-imports nil)
-                  ;; Second export pass to ensure complete image processing
-                  (message "Running second export pass to ensure complete image processing...")
-                  (org-export-to-file 'astro outfile async subtreep visible-only body-only)
-                  ;; Persist any broken ID links detected during export
-                  (when org-astro--broken-link-accumulator
-                    (org-astro--write-broken-link-report org-astro--broken-link-accumulator
-                                                         org-astro--current-output-root))
-                  ;; Log completion and ensure clipboard copy
-                  (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-                    (org-astro--debug-log-direct "Export complete: %s" outfile)
-                    ;; Copy file paths to clipboard
-                    (let* ((source-file (buffer-file-name))
-                           (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
-                           (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
-                                                   source-file outfile debug-file))
-                           (pbcopy (executable-find "pbcopy")))
-                      (when pbcopy
-                        (condition-case _
-                            (with-temp-buffer
-                              (insert clipboard-text)
-                              (call-process-region (point-min) (point-max) pbcopy nil nil nil)
-                              (message "File paths copied to clipboard!"))
-                          (error nil)))))
-                  (message "Export complete! All images should now be visible.")
-                  outfile)  ; Return the output file path
-              (progn
-                (message "Astro export cancelled: No posts folder selected.")
-                nil)))))))))
+            (let* ((org-astro--export-in-progress t)  ; Signal that astro export is active
+                   (org-astro--id-path-map
+                    (org-astro--ensure-id-map org-astro-source-root-folder
+                                              (and (buffer-file-name)
+                                                   (expand-file-name (buffer-file-name)))))
+                   (org-astro--current-outfile outfile)
+                   (org-astro--current-output-root pub-dir-base)
+                   (org-astro--broken-link-accumulator (make-hash-table :test #'equal))
+                   (org-astro--broken-link-warnings-issued (make-hash-table :test #'equal)))
+              (if pub-dir
+                  (progn
+                    (make-directory pub-dir t)
+                    ;; First export pass
+                    (message "Running first export pass...")
+                    (message "[DEBUG-EXPORT] Calling org-export-to-file with backend: astro")
+                    (message "[DEBUG-EXPORT] Backend details: %S" (org-export-get-backend 'astro))
+                    ;; DEBUG: Check if ID links exist in buffer before export
+                    (save-excursion
+                      (goto-char (point-min))
+                      (let ((id-link-count 0))
+                        (while (re-search-forward "\\[\\[id:" nil t)
+                          (setq id-link-count (1+ id-link-count)))
+                        (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count)))
+                    (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                    ;; Clear import state for second pass
+                    (setq org-astro--current-body-images-imports nil)
+                    ;; Second export pass to ensure complete image processing
+                    (message "Running second export pass to ensure complete image processing...")
+                    (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                    ;; Persist any broken ID links detected during export
+                    (when org-astro--broken-link-accumulator
+                      (org-astro--write-broken-link-report org-astro--broken-link-accumulator
+                                                           org-astro--current-output-root))
+                    ;; Log completion and ensure clipboard copy
+                    (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+                      (org-astro--debug-log-direct "Export complete: %s" outfile)
+                      ;; Copy file paths to clipboard
+                      (let* ((source-file (buffer-file-name))
+                             (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
+                             (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
+                                                     source-file outfile debug-file))
+                             (pbcopy (executable-find "pbcopy")))
+                        (when pbcopy
+                          (condition-case _
+                              (with-temp-buffer
+                                (insert clipboard-text)
+                                (call-process-region (point-min) (point-max) pbcopy nil nil nil)
+                                (message "File paths copied to clipboard!"))
+                            (error nil)))))
+                    (message "Export complete! All images should now be visible.")
+                    outfile)  ; Return the output file path
+                  (progn
+                    (message "Astro export cancelled: No posts folder selected.")
+                    nil))))))))
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -499,8 +499,8 @@ resolved to plain text in the temporary export buffer."
                 ;; Only resolve if it's in the current file
                 (when (and file (string= file (buffer-file-name (buffer-base-buffer))))
                   (funcall orig-fun link info search)))))))
-    ;; Not during astro export, use original behavior
-    (funcall orig-fun link info search)))
+      ;; Not during astro export, use original behavior
+      (funcall orig-fun link info search)))
 
 (advice-add 'org-export-resolve-id-link :around #'org-astro--preserve-id-links)
 
