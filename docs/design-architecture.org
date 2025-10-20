@@ -226,6 +226,11 @@ Links are processed in transcoding phase (not final filter) to avoid regex compl
 
 * Data Flow Diagrams
 
+** Manifest Collector
+- Single pass driven by `org-astro--build-image-manifest`
+- Local helper defined via `cl-labels (register-entry ...)` for consistent scope
+- Result cached to `:astro-image-manifest` and reused across export phases
+
 ** Image Processing Flow
 ```
 User writes Org file

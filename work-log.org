@@ -12,7 +12,7 @@ Completed the exporter refactor by precomputing render data, simplifying transco
 - Simplified `org-astro-prepare-images-filter`, `org-astro-body-filter`, and the MDX transcoders (`org-astro-link`, `org-astro-paragraph`, `org-astro-plain-text`, final output filter) to look up render records instead of reconstructing data or skipping the first image.
 - Removed hero-specific imports/filters so every image is emitted uniformly; layout code can now decide how to present hero media.
 - Added `test-files/image-rendering/` fixtures and `test-image-rendering.el` to assert imports, JSX output, and alt text for local, spaced, underscored, repeated, and remote images.
-- Reworked the manifest helper as a lexical closure (`register-entry`) to prevent stale references (`org-astro--manifest-register`) from breaking gallery exports.
+- Reintroduced the manifest helper as a `cl-labels` local function (`register-entry`) so all `org-element-map` callbacks share the same scope and gallery exports stay stable.
 
 ** Impact
 - Rendering is now deterministic: every phase reads the same precomputed JSX, eliminating duplicated logic and hero-based conditionals.
@@ -390,3 +390,8 @@ The problem was discovered in a real blog post with complex conversational conte
 
 ** Status
 ✅ **RESOLVED** - Automatic normalization implemented and integrated. Future exports will handle this automatically.
+
+* Session Handoff
+- Completed: Stage 3 render-map refactor; manifest helper fixed via `cl-labels` closure
+- Next: Check downstream hero layout behavior; run `emacs --batch -Q -L . -l test-image-rendering.el` after image changes
+- Context: Core files touched — `ox-astro-image-handlers.el`, `ox-astro-helpers.el`, `ox-astro-handlers.el`; test fixtures in `test-files/image-rendering/`
