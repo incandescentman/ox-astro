@@ -2,6 +2,26 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Remove Slug from MDX Front Matter (2025-01-06)
+
+** Summary
+Astro 5 collections now key entries by generated IDs, so exported MDX front matter no longer needs a `slug` field. The exporter still manages `#+SLUG` keywords for filenames and asset folders, but the YAML payload now matches the simplified schema.
+
+** Rationale
+The updated `roam-life-web` removes the `slug` field from its content schema and routes pages via the collection entry `id`. Emitting `slug` in MDX front matter caused schema validation failures during `astro check`.
+
+** Key Behavior
+- `org-astro--get-front-matter-data` no longer emits a `slug` key; all other metadata is unchanged.
+- Exported filenames, asset copy paths, and Org source updates continue to rely on the slug when present.
+- Existing Org files keep their `#+SLUG:` keyword for consistency and image/PDF folder generation.
+
+** Implementation
+- Trimmed the `slug` entry from the front matter alist in `ox-astro-helpers.el`.
+- Updated documentation and tests to reflect that slugs stay in filenames and asset folders but not in MDX front matter.
+
+** Testing
+- Manual export of `test-slug-generation.org` to confirm front matter omits `slug` while filenames retain it.
+
 * Extended Metadata Extraction & Refactor (2025-10-24)
 
 ** Summary

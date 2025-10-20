@@ -851,7 +851,6 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
          (draft (when (and status (string= (downcase (org-trim status)) "draft")) "true")))
     ;; Return the alist of final data - include visibility as a string when provided
     `((title . ,title)
-      ,@(when slug `((slug . ,slug)))
       (author . ,author)
       (authorImage . ,author-image)
       (publishDate . ,publish-date)

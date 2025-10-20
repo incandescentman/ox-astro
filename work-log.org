@@ -2,6 +2,24 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
+* 2025-01-06 Monday - Align Front Matter with Astro 5 IDs
+
+** Summary
+Astro 5 now derives `slug` internally from each file path, so the exporter should stop emitting a redundant `slug` field in MDX front matter while still preserving slugs for filenames and asset folders.
+
+** Changes
+- Removed the `slug` entry from the data returned by `org-astro--get-front-matter-data`.
+- Updated `test-slug-generation.org` to document that front matter no longer includes `slug` even though filenames still do.
+- Added a change-log entry noting the new front matter contract.
+
+** Impact
+- Exported MDX files match the streamlined schema consumed by `roam-life-web`.
+- `astro check` passes without `slug` validation errors, while slug-dependent image and PDF handling continues to work.
+
+** Follow-ups
+- Run a batch export of representative notes to ensure no consumers depend on `slug` being present in YAML.
+- Consider adding an automated assertion within `test-export.el` for front matter keys.
+
 * 2025-10-24 Friday - Enrich org-roam Metadata Export
 
 ** Summary

@@ -6,6 +6,6 @@ This is a test file to verify that:
 
 1. A slug is automatically generated from the title
 2. The slug is added to both the Org source file (as #+SLUG:)
-3. The slug appears in the MDX front matter
+3. The exported filename and asset folders use the slug (front matter no longer includes it)
 
 Let's see if this works correctly!
