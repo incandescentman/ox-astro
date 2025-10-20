@@ -82,3 +82,14 @@
 - *The Fix:* Changed export block handler to completely strip ALL leading whitespace: `(replace-regexp-in-string "^[ \t]+" "" content)`
 - *Prevention:* Export blocks must output completely unindented content to avoid triggering the blockquote conversion logic
 - *Actionable insight:* The final-output filter's blockquote conversion is aggressive - any content that should stay verbatim must have zero indentation
+
+** Gotcha: User export hooks can strip org-roam links
+- *Date:* 2025-10-20
+- *Trigger:* User config added `org-export-id-link-removal` to `org-export-before-parsing-functions`, so Astro exports lost every `[[id:...]]` link.
+- *Mechanism:* The hook runs inside Org's temporary export buffer, deleting ID objects before we ever build the parse tree; our transcoders never fire.
+- *Clue we missed:* The regression only happened on the user's machine—our exports still worked. Divergent behavior means "check user hooks/config" before blaming core code.
+- *Fix:* Added `org-astro--with-export-sanitization` and a blocklist that temporarily removes known-destructive hooks from both `org-export-before-processing-functions` and `org-export-before-parsing-functions` during Astro exports.
+- *Prevention:*
+  - When debugging export differences, diff `org-export-before-*-functions` between environments early.
+  - Keep the blocklist updated if new destructive hooks appear.
+  - Prefer adding guardrails in the exporter rather than relying on users to disable their tweaks.

@@ -1,10 +1,14 @@
 #+TITLE: ox-astro Operational Instructions
-#+DATE: 2025-10-19
+#+DATE: 2025-10-20
 
 * Pre-Session Ritual
 - Read the latest entry in =docs/work-log.org= for active context
 - Check =docs/codebase-wisdom.org= for relevant gotchas
 - Review =docs/design-architecture.org= for any architecture implications
+- Compare your local export hooks when behavior diverges. Run
+  =(list org-export-before-processing-functions org-export-before-parsing-functions)=
+  and ensure nothing custom strips =[[id:...]]= links. Divergent results between
+  machines usually mean a hook or config difference, not exporter code.
 
 * Export Workflow
 1. Open the source Org buffer
@@ -15,6 +19,9 @@
 * ID-Based Link Resolution
 - The exporter builds an ID→path map by scanning all =.org= files under =org-astro-source-root-folder=
 - During export, =[[id:...][Label]]= links become standard Markdown links pointing to the correct =.mdx= output
+- Astro export now sanitizes known-destructive hooks (e.g., =org-export-id-link-removal=), but
+  always double-check local hook lists if links disappear—the sanitization only helps when the
+  hook name is on our blocklist.
 - Relative paths mirror your Org directory structure (e.g., `[Mom](../characters/mom.mdx)`); configure destinations with =:preserve-folder-structure t= to keep nested collections aligned
 - Missing IDs trigger a warning and the link degrades to plain text while remaining readable
 - After export, check =broken-links.json= in the destination root for unresolved IDs

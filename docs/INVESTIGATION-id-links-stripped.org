@@ -281,3 +281,29 @@ Output: ~/roam-life-web/stories/the-time-mom-told-me-about-impermanence.mdx~
 
 The transition from 3 links → 0 links happens when the buffer changes from
 the original to the ~<2>~ temporary copy.
+
+* Resolution (2025-10-20)
+
+** Root Cause
+
+A user-level customization added ~org-export-id-link-removal~ to
+~org-export-before-parsing-functions~. That hook deletes every ~[[id:...]]~
+link right before Org parses the temporary export buffer, leaving only the
+description text (~Mom~). Because the hook runs inside the export copy, our
+transcoders never see any link objects.
+
+** Fix
+
+ox-astro now sanitizes Org's export hooks during Astro exports. We maintain a
+blocklist (currently containing ~org-export-id-link-removal~) and temporarily
+remove any matching functions from both ~org-export-before-processing-functions~
+and ~org-export-before-parsing-functions~ while the export runs. This prevents
+external configuration from stripping ID links before our pipeline executes.
+
+** Verification
+
+- Added automated test ~org-astro-export-sanitizes-id-stripping-hooks~ to ensure
+  the sanitization helper removes blocklisted hooks without mutating the user's
+  configuration.
+- Re-ran ~test-id-links.el~ suite; all tests (including the new one) pass with
+  the hook blocklist in place.

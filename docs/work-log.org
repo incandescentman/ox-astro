@@ -28,6 +28,28 @@
 - Known unknowns: Automated regression suite beyond `test-id-links.el` not re-run; alias relies on shared keyword helper
 - Recommendations: Export a sample Org file using `#+DESTINATION-FOLDER:` and run `emacs --batch -Q -l test-id-links.el -f ert-run-tests-batch-and-exit`
 
+* 2025-10-20
+** Session Summary
+- ID links disappearing traced to user hook `org-export-id-link-removal` running during export copy.
+- Added hook sanitization helper and wrapped Astro exports so blocklisted hooks are removed.
+- Documented investigation resolution and added regression test for hook scrubbing.
+- Lesson learned: when a feature works locally but fails for the user, inspect their hooks/config before blaming exporter internals.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Hook sanitization macro + export wrappers: `ox-astro.el:69`
+- [x] Regression test `org-astro-export-sanitizes-id-stripping-hooks`: `test-id-links.el:113`
+- [x] Investigation doc updated with root cause and fix: `docs/INVESTIGATION-id-links-stripped.org:285`
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro.el`, `test-id-links.el`, `docs/INVESTIGATION-id-links-stripped.org`
+- Known unknowns: Need live export from org-roam vault to confirm hook sanitization covers whole pipeline.
+- Recommendations: Verify no other user hooks in init files rewrite links or other elements during export.
+
 * 2025-10-10
 ** Session Summary
 - Added DESCRIPTION keyword as fallback for EXCERPT in front matter generation

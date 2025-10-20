@@ -110,6 +110,20 @@
         (should (string-suffix-p "/test-theme.mdx"
                                  (plist-get meta :outfile)))))))
 
+(ert-deftest org-astro-export-sanitizes-id-stripping-hooks ()
+  (let ((original-parsing '(org-export-id-link-removal helper-hook))
+        (original-processing '(helper-hook org-export-id-link-removal)))
+    (let ((org-export-before-parsing-functions original-parsing)
+          (org-export-before-processing-functions original-processing))
+      (org-astro--with-export-sanitization
+        (should-not (memq 'org-export-id-link-removal org-export-before-parsing-functions))
+        (should-not (memq 'org-export-id-link-removal org-export-before-processing-functions))
+        (should (equal '(helper-hook) org-export-before-parsing-functions))
+        (should (equal '(helper-hook) org-export-before-processing-functions)))
+      ;; Outside the macro, original bindings remain unchanged.
+      (should (equal original-parsing org-export-before-parsing-functions))
+      (should (equal original-processing org-export-before-processing-functions)))))
+
 (provide 'test-id-links)
 
 ;;; test-id-links.el ends here

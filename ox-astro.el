@@ -64,6 +64,47 @@
 ;; Placement helper: insert keywords after org-roam preamble (- Links :: / - Source ::)
 ;; (Placement helper removed for now — using existing insertion helper.)
 
+;; Export hook management -----------------------------------------------------
+
+(defvar org-astro--parsing-hook-blocklist
+  '(org-export-id-link-removal)
+  "Functions removed from Org export parsing hooks during Astro exports.
+This prevents external configuration from stripping org-roam ID links before
+our custom transcoders run.")
+
+(defun org-astro--sanitize-export-hook-list (hooks)
+  "Return HOOKS without entries listed in `org-astro--parsing-hook-blocklist'.
+The return value is a cons cell (SANITIZED . REMOVED) where REMOVED holds any
+functions filtered out."
+  (let ((sanitized (copy-sequence (or hooks '())))
+        (removed nil))
+    (dolist (fn org-astro--parsing-hook-blocklist)
+      (when (memq fn sanitized)
+        (setq sanitized (delq fn sanitized))
+        (push fn removed)))
+    (cons sanitized (nreverse removed))))
+
+(defmacro org-astro--with-export-sanitization (&rest body)
+  "Execute BODY with export hooks sanitized for Astro-specific requirements."
+  (declare (indent 0) (debug t))
+  `(let* ((processing-sanitization
+           (org-astro--sanitize-export-hook-list org-export-before-processing-functions))
+          (org-export-before-processing-functions (car processing-sanitization))
+          (org-export-before-processing-hook org-export-before-processing-functions)
+          (parsing-sanitization
+           (org-astro--sanitize-export-hook-list org-export-before-parsing-functions))
+          (org-export-before-parsing-functions (car parsing-sanitization))
+          (org-export-before-parsing-hook org-export-before-parsing-functions))
+     (let ((removed-processing (cdr processing-sanitization))
+           (removed-parsing (cdr parsing-sanitization)))
+       (when removed-processing
+         (org-astro--debug-log-direct "Disabled before-processing hook(s): %S"
+                                      removed-processing))
+       (when removed-parsing
+         (org-astro--debug-log-direct "Disabled before-parsing hook(s): %S"
+                                      removed-parsing)))
+     ,@body))
+
 
 ;;;###autoload
 (defun org-astro-export-as-mdx (&optional async subtreep visible-only body-only)
@@ -71,8 +112,10 @@
   (interactive)
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
-    (org-export-to-buffer 'astro "*Astro MDX Export*"
-      async subtreep visible-only body-only)))
+    (org-astro--with-export-sanitization
+      (let ((org-astro--export-in-progress t))
+        (org-export-to-buffer 'astro "*Astro MDX Export*"
+          async subtreep visible-only body-only)))))
 
 ;;;###autoload
 (defun org-astro-export-to-mdx (&optional async subtreep visible-only body-only)
@@ -82,6 +125,7 @@ generated and added to the Org source file."
   (interactive)
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
+    (org-astro--with-export-sanitization
       (let ((info (org-export-get-environment 'astro subtreep))
             ;; Detect if the user is currently narrowed to a subtree.
             (was-narrowed (buffer-narrowed-p))
@@ -453,7 +497,7 @@ generated and added to the Org source file."
                   outfile)  ; Return the output file path
               (progn
                 (message "Astro export cancelled: No posts folder selected.")
-                nil))))))));
+                nil)))))))))
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
