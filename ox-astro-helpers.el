@@ -6,6 +6,26 @@
 (require 'cl-lib)
 (require 'json)
 
+;; Compatibility helpers for older Emacs builds.
+(unless (fboundp 'cl-putf)
+  (defun cl-putf (plist indicator value &rest pairs)
+    "Fallback implementation of `cl-putf' for older Emacs.
+PLIST is the property list to update.  INDICATOR and VALUE define
+the first key/value pair to store, and PAIRS can supply additional
+indicator/value pairs.  Returns the updated plist."
+    (let ((result plist)
+          (key indicator)
+          (val value)
+          (rest pairs))
+      (while key
+        (setq result (plist-put result key val))
+        (setq key (car rest))
+        (setq rest (cdr rest))
+        (when key
+          (setq val (car rest))
+          (setq rest (cdr rest))))
+      result)))
+
 ;; Declare functions from other ox-astro modules
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
 (declare-function org-astro--process-pdf-path "ox-astro-pdf-handlers")

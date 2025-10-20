@@ -2,6 +2,19 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
+* 2025-10-20 Monday - Manifest Closure + Compatibility Shim
+
+** Summary
+Restored manifest collection after the register-entry refactor and ensured exports run on Emacs builds that lack native `cl-putf`.
+
+** Changes
+- Routed every manifest callback through a captured `register-entry` function so `org-element-map` invocations no longer raise `void-function` errors.
+- Added a guarded `cl-putf` implementation in `ox-astro-helpers.el` for older Emacs installations.
+
+** Impact
+- Image manifests are stable again, even when callbacks execute outside the original lexical scope.
+- Export pipeline now succeeds on legacy Emacs releases, unblocking gallery exports that previously failed during plist updates.
+
 * 2025-10-20 Monday - Stage 3: Render Map + Hero Cleanup
 
 ** Summary
