@@ -8,10 +8,11 @@
 (require 'org)
 (require 'ox)
 (require 'ox-astro-config)
+(require 'cl-lib)
 
 ;; Declare functions from other ox-astro modules
 (declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
-(declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
+(declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
 (declare-function org-astro--persist-wrap-raw-image-lines "ox-astro-image-handlers")
 (declare-function org-astro--get-assets-folder "ox-astro-helpers")
@@ -135,11 +136,11 @@ preprocessing has already been completed and we skip the processing."
                          posts-folder-raw)
                         ;; Otherwise, can't resolve - no posts folder
                         (t nil)))
-         ;; Collect all image links from the document body using multiple strategies.
-         (image-paths-from-tree (org-astro--collect-images-from-tree tree))
-         ;; Also collect from raw buffer content to catch underscore paths and fix subtree issues
-         (image-paths-from-raw (org-astro--collect-raw-images-from-tree-region tree))
-         (image-paths (delete-dups (append image-paths-from-tree image-paths-from-raw)))
+         ;; Collect all image references via the centralized manifest.
+         (image-manifest (or (plist-get info :astro-image-manifest)
+                             (org-astro--build-image-manifest tree info)))
+         (image-paths (mapcar (lambda (entry) (plist-get entry :original-path))
+                              image-manifest))
          ;; Get slug for post-specific folder structure
          (title (org-astro--get-title tree info))
          (slug (or (plist-get info :slug)
@@ -152,8 +153,10 @@ preprocessing has already been completed and we skip the processing."
                      (when title-from-headline
                        (org-astro--slugify title)))))
          (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
-         image-imports-data)
+        image-imports-data)
     (when posts-folder
+      (when image-manifest
+        (setq info (cl-putf info :astro-image-manifest image-manifest)))
       (org-astro--dbg-log info "Processing %d images in posts folder: %s" (length image-paths) posts-folder)
       (org-astro--dbg-log info "Collected image paths: %s" image-paths)
       (dolist (path image-paths)

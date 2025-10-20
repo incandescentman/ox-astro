@@ -2,6 +2,25 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
+* 2025-10-20 Monday - Stage 1: Image Manifest Collector & Context Seeds
+
+** Summary
+Implemented the first stage of the refactor plan by introducing a single-pass image manifest that centralizes discovery, records metadata, and seeds an explicit export context.
+
+** Changes
+- Added `org-astro--build-image-manifest` in `ox-astro-image-handlers.el` to capture every image reference (links, raw paths, paragraph repairs, buffer scans) as structured entries with occurrence metadata.
+- Updated `ox-astro.el` and `ox-astro-handlers.el` preflight/filter logic to consume the manifest, cache it on the export `info` plist, and derive path lists from the manifest rather than re-scanning via ad-hoc helpers.
+- Adjusted `org-astro--collect-images-from-tree` to delegate to the manifest builder, keeping existing callers working while ensuring all discovery flows through the new collector.
+
+** Impact
+- Image detection now runs through a single code path, ensuring preflight and export filters share the same discovery logic and metadata.
+- The manifest (including occurrence descriptors) is stored on `info`, laying the groundwork for a threaded export context that will replace the current dual global/plist storage.
+- Preflight and filter runs no longer juggle separate tree vs. raw scans, reducing divergent behaviour and simplifying future refactors.
+
+** Next Steps
+- Stage 2: Use the manifest to drive filesystem copying and buffer rewrites via dedicated helpers that emit canonical asset paths without mixing concerns.
+- Stage 3: Replace importer/transcoder reliance on globals with manifest-derived JSX data and drop hero-image suppression from the exporter once layout handling is ready.
+
 * 2025-01-06 Monday - Align Front Matter with Astro 5 IDs
 
 ** Summary

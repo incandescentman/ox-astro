@@ -56,6 +56,7 @@
 
 ;; Declare functions from handler modules
 (declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
+(declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
 (declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
 (declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
@@ -181,10 +182,10 @@ generated and added to the Org source file."
           (when posts-folder-raw
             (setq info (plist-put info :destination-folder posts-folder-raw)))
           (when posts-folder
-            ;; Collect image paths
-            (let* ((image-paths-from-tree (org-astro--collect-images-from-tree tree))
-                   (image-paths-from-raw (org-astro--collect-raw-images-from-tree-region tree))
-                   (image-paths (delete-dups (append image-paths-from-tree image-paths-from-raw)))
+            ;; Collect image manifest in a single pass
+            (let* ((image-manifest (org-astro--build-image-manifest tree info))
+                   (image-paths (mapcar (lambda (entry) (plist-get entry :original-path))
+                                        image-manifest))
                    ;; Get slug for post-specific folder structure
                    (title (org-astro--get-title tree info))
                    (slug (or (plist-get info :slug)
@@ -195,8 +196,10 @@ generated and added to the Org source file."
                                     (title-from-headline (not title-kw))) 
                                (when title-from-headline
                                  (org-astro--slugify title)))))
-                   (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
-                  (updated-paths nil))
+                  (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
+                 (updated-paths nil))
+              (when image-manifest
+                (setq info (cl-putf info :astro-image-manifest image-manifest)))
               ;; Process each image and update source buffer paths immediately
               (message "DEBUG: Processing %d initial images" (length image-paths))
               (dolist (path image-paths)
@@ -221,10 +224,12 @@ generated and added to the Org source file."
                 (setq info (org-export-get-environment 'astro subtreep))
                 ;; Re-process images after downloads to ensure downloaded images appear in MDX
                 (let* ((updated-tree (org-element-parse-buffer))
-                       (updated-image-paths-from-tree (org-astro--collect-images-from-tree updated-tree))
-                       (updated-image-paths-from-raw (org-astro--collect-raw-images-from-tree-region updated-tree))
-                       (updated-image-paths (delete-dups (append updated-image-paths-from-tree updated-image-paths-from-raw)))
+                       (updated-manifest (org-astro--build-image-manifest updated-tree info))
+                       (updated-image-paths (mapcar (lambda (entry) (plist-get entry :original-path))
+                                                    updated-manifest))
                        (updated-image-imports-data nil))
+                  (when updated-manifest
+                    (setq info (cl-putf info :astro-image-manifest updated-manifest)))
                   ;; Process the updated paths for import generation
                   (when posts-folder
                     (message "DEBUG: Re-processing %d images after downloads" (length updated-image-paths))

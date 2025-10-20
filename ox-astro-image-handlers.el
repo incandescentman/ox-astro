@@ -8,16 +8,159 @@
 (require 'org)
 (require 'ox)
 (require 'ox-astro-config)
+(require 'cl-lib)
+(require 'subr-x)
 
 ;; Declare functions from ox-astro-helpers
 (declare-function org-astro--debug-log-direct "ox-astro-helpers")
 (declare-function org-astro--dbg-log "ox-astro-helpers")
 (declare-function org-astro--get-assets-folder "ox-astro-helpers")
 (declare-function org-astro--sanitize-filename "ox-astro-helpers")
+(declare-function org-astro--collect-raw-image-paths "ox-astro-helpers")
+(declare-function org-astro--extract-image-path-from-paragraph "ox-astro-helpers")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMAGE HANDLING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconst org-astro--image-extension-regexp
+  "\\.\\(png\\|jpe?g\\|jpeg\\|gif\\|svg\\|webp\\)"
+  "Regular expression that matches supported image file extensions.")
+
+(defun org-astro--image-remote-p (path)
+  "Return non-nil when PATH references a remote image."
+  (and (stringp path)
+       (or (string-prefix-p "http://" path)
+           (string-prefix-p "https://" path)
+           (string-prefix-p "//" path))))
+
+(defun org-astro--image-query-stripped-path (path)
+  "Return PATH without trailing query or fragment components."
+  (if (and (stringp path)
+           (string-match "\\`\\([^?#]+\\)[?#]" path))
+      (match-string 1 path)
+    path))
+
+(defun org-astro--image-path-matches-p (path)
+  "Return non-nil when PATH looks like an image reference."
+  (when (stringp path)
+    (let ((candidate (org-astro--image-query-stripped-path path)))
+      (and candidate
+           (string-match-p org-astro--image-extension-regexp candidate)))))
+
+(defun org-astro--image-manifest--ensure (manifest-table key source-file)
+  "Ensure KEY exists in MANIFEST-TABLE with SOURCE-FILE metadata.
+Return the manifest entry plist."
+  (or (gethash key manifest-table)
+      (let ((entry (list :original-path key
+                         :source-file source-file
+                         :remote (org-astro--image-remote-p key)
+                         :occurrences nil)))
+        (puthash key entry manifest-table)
+        entry)))
+
+(defun org-astro--image-manifest--line-number (position)
+  "Return line number at buffer POSITION, or nil when POSITION is nil."
+  (when position
+    (save-excursion
+      (goto-char position)
+      (line-number-at-pos position))))
+
+(defun org-astro--image-manifest--link-description (link)
+  "Return the string description for LINK if present."
+  (let ((begin (org-element-property :contents-begin link))
+        (end (org-element-property :contents-end link)))
+    (when (and begin end)
+      (string-trim (buffer-substring-no-properties begin end)))))
+
+(defun org-astro--image-manifest--normalize-occurrence (&rest kvs)
+  "Normalize key/value pairs KVS into a plist without nil entries."
+  (let (result)
+    (while kvs
+      (let ((key (pop kvs))
+            (value (pop kvs)))
+        (when value
+          (setq result (plist-put result key value)))))
+    result))
+
+(defun org-astro--build-image-manifest (tree info)
+  "Collect all image references for TREE/INFO into a manifest.
+Each manifest entry is a plist with keys:
+- :original-path — raw path as discovered
+- :source-file  — absolute source filename when available
+- :remote       — non-nil when the reference is remote
+- :occurrences  — list of occurrence plists with metadata."
+  (org-with-wide-buffer
+   (let* ((source-file (or (plist-get info :input-file)
+                           (and (buffer-file-name)
+                                (expand-file-name (buffer-file-name)))))
+          (manifest (make-hash-table :test #'equal))
+          (order nil))
+     (cl-labels
+         ((register (path origin &rest kvs)
+                    (when (org-astro--image-path-matches-p path)
+                      (let* ((entry (org-astro--image-manifest--ensure manifest path source-file))
+                             (occur (apply #'org-astro--image-manifest--normalize-occurrence
+                                           :origin origin
+                                           kvs))
+                             (occurrences (plist-get entry :occurrences)))
+                        (setq entry (plist-put entry :occurrences (append occurrences (list occur))))
+                        (puthash path entry manifest)
+                        (unless (member path order)
+                          (setq order (append order (list path))))))))
+       ;; Link-based references ([[file:...]] and remote URLs)
+       (org-element-map tree 'link
+         (lambda (link)
+           (let* ((type (or (org-element-property :type link) "file"))
+                  (path (or (org-element-property :path link)
+                            (org-element-property :raw-link link))))
+             (when (org-astro--image-path-matches-p path)
+               (register path
+                         (if (org-astro--image-remote-p path) 'remote-link 'link)
+                         :link-type type
+                         :description (org-astro--image-manifest--link-description link)
+                         :begin (org-element-property :begin link)
+                         :end (org-element-property :end link)
+                         :line (org-astro--image-manifest--line-number (org-element-property :begin link)))))))
+       ;; Raw plain-text occurrences (absolute paths, assets paths, remote URLs)
+       (org-element-map tree 'plain-text
+         (lambda (plain)
+           (let* ((raw (org-element-property :value plain)))
+             (when (stringp raw)
+               (let* ((begin (org-element-property :begin plain))
+                      (line (org-astro--image-manifest--line-number begin))
+                      (regex (concat "\\(/[^[:space:]]+" org-astro--image-extension-regexp "\\)\\b\\|"
+                                     "\\(https?://[^[:space:]]+" org-astro--image-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
+                                     "\\(//[^[:space:]]+" org-astro--image-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
+                                     "\\(assets/images/[^[:space:]]+" org-astro--image-extension-regexp "\\)"))
+                      (start 0))
+                 (while (string-match regex raw start)
+                   (let ((path (or (match-string 1 raw)
+                                   (match-string 2 raw)
+                                   (match-string 3 raw)
+                                   (match-string 4 raw)))))
+                     (register path 'plain-text
+                               :begin begin
+                               :line line
+                               :context raw))
+                     (setq start (match-end 0))))))))
+       ;; Paragraph repair (paths broken by subscript parsing)
+       (org-element-map tree 'paragraph
+         (lambda (paragraph)
+           (let ((path (org-astro--extract-image-path-from-paragraph paragraph)))
+             (when path
+               (register path 'paragraph
+                         :begin (org-element-property :begin paragraph)
+                         :line (org-astro--image-manifest--line-number (org-element-property :begin paragraph))
+                         :context (org-element-interpret-data paragraph))))))
+       ;; Buffer-level raw scans (underscored paths prior to wrapping)
+       (dolist (path (org-astro--collect-raw-image-paths))
+         (register path 'raw-buffer)))
+     ;; Convert hash table into ordered list of plists.
+     (mapcar
+      (lambda (key)
+        (gethash key manifest))
+      order)))
 
 (defun org-astro--update-image-path-in-buffer (old-path new-path)
   "Replace OLD-PATH with NEW-PATH in the current buffer.

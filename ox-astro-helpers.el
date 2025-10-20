@@ -10,7 +10,7 @@
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
 (declare-function org-astro--process-pdf-path "ox-astro-pdf-handlers")
 (declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
-(declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
+(declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
 (declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
 (declare-function org-astro--update-source-buffer-image-path "ox-astro-image-handlers")
 (declare-function org-astro--parse-tags "ox-astro-metadata")
@@ -1249,50 +1249,13 @@ literally - convert org headings to markdown equivalents."
 ;;; Main Export Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun org-astro--collect-images-from-tree (tree)
+(defun org-astro--collect-images-from-tree (tree &optional info)
   "Collect all image paths from the parse TREE.
-  This includes both `[[file:...]]` links and raw image paths on their own line."
-  (let (images)
-    ;; 1. Collect from `link` elements
-    (org-element-map tree 'link
-      (lambda (link)
-        (let ((type (org-element-property :type link))
-              (path (org-element-property :path link)))
-          (when (and (string= type "file")
-                     (string-match-p "\\(png\\|jpg\\|jpeg\\|gif\\|svg\\|webp\\)$" path))
-            (push path images)))))
-    ;; 2. Collect from raw paths in all plain-text elements
-    (org-element-map tree 'plain-text
-      (lambda (text-element)
-        (let* ((raw-text (org-element-property :value text-element))
-               (lines (when (stringp raw-text) (split-string raw-text "\n"))))
-          (dolist (line lines)
-            (let ((text (org-trim line)))
-              (when (and text
-                         ;; Match absolute paths OR paths containing "assets/images"
-                         (or (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" text)
-                             (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" text)))
-                (push text images)))))))
-    ;; 3. Collect from paragraphs that contain subscript elements (broken up image paths)
-    (org-element-map tree 'paragraph
-      (lambda (paragraph)
-        (let ((reconstructed-path (org-astro--extract-image-path-from-paragraph paragraph)))
-          (when (and reconstructed-path
-                     (or (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" reconstructed-path)
-                         (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" reconstructed-path)))
-            (push reconstructed-path images)))))
-    ;; 4. Collect remote image URLs from plain-text elements
-    (org-element-map tree 'plain-text
-      (lambda (text-element)
-        (let* ((raw-text (org-element-property :value text-element))
-               (lines (when (stringp raw-text) (split-string raw-text "\n"))))
-          (dolist (line lines)
-            (let ((text (org-trim line)))
-              (when (and text
-                         (string-match-p "^https?://.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" text))
-                (push text images)))))))
-    ;; Return a list with no duplicates
-    (delete-dups (nreverse images))))
+When INFO is provided, forward it to the manifest builder so callers
+can share a single discovery pass."
+  (let ((manifest (org-astro--build-image-manifest tree info)))
+    (mapcar (lambda (entry) (plist-get entry :original-path))
+            manifest)))
 
 (defun org-astro--collect-raw-image-paths ()
   "Collect image paths from raw buffer content, before org-mode parsing.
