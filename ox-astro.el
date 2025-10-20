@@ -326,10 +326,17 @@ generated and added to the Org source file."
                            pub-dir-base
                            (buffer-file-name))
                   (let* ((source-file (expand-file-name (buffer-file-name)))
-                         (source-root (expand-file-name org-astro-source-root-folder))
-                         (relative-path nil))
-                    ;; Check if source file is under the configured source root
-                    (when (string-prefix-p source-root source-file)
+                         (source-root-raw (org-astro--effective-source-root
+                                           org-astro-source-root-folder source-file))
+                         (source-root (and source-root-raw (expand-file-name source-root-raw)))
+                         (relative-path nil)
+                         (source-root-dir (and source-root
+                                               (file-name-as-directory
+                                                (expand-file-name source-root)))))
+                    ;; Check if source file is under the effective source root
+                    (when (and source-root-dir
+                               (string-prefix-p source-root-dir
+                                                (file-name-directory source-file)))
                       (setq relative-path (file-relative-name source-file source-root)))
                     ;; Extract directory part of relative path (remove filename)
                     (when relative-path
