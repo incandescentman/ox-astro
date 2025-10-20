@@ -86,12 +86,26 @@ generated and added to the Org source file."
             ;; Detect if the user is currently narrowed to a subtree.
             (was-narrowed (buffer-narrowed-p))
             (buffer-modified-p nil))
+        ;; DEBUG: Check buffer at very start
+        (save-excursion
+          (goto-char (point-min))
+          (let ((id-link-count 0))
+            (while (re-search-forward "\\[\\[id:" nil t)
+              (setq id-link-count (1+ id-link-count)))
+            (message "[DEBUG-START] At function start: Found %d [[id: patterns in buffer" id-link-count)))
         ;; Clear any stale image import state before running export filters.
         (setq org-astro--current-body-images-imports nil)
         ;; --- AUTO-NORMALIZE: Convert org headings to markdown in user/prompt/quote blocks ---
         ;; This must run BEFORE org-mode parses the buffer, otherwise asterisks at start
         ;; of lines inside src blocks will be interpreted as org headlines and break the block.
         (org-astro--normalize-user-blocks)
+        ;; DEBUG: Check buffer after normalize
+        (save-excursion
+          (goto-char (point-min))
+          (let ((id-link-count 0))
+            (while (re-search-forward "\\[\\[id:" nil t)
+              (setq id-link-count (1+ id-link-count)))
+            (message "[DEBUG-AFTER-NORMALIZE] After normalize: Found %d [[id: patterns in buffer" id-link-count)))
         ;; --- PREPROCESSING: Process and update all image paths BEFORE export ---
         (let* ((tree (org-element-parse-buffer))
                (destination-keyword (org-astro--keyword-value tree '("DESTINATION_FOLDER" "DESTINATION-FOLDER")))
@@ -386,7 +400,8 @@ generated and added to the Org source file."
             (org-astro--debug-log-direct "Export starting - Output file: %s" outfile)
             (org-astro--dbg-update-output-file info outfile))
 
-          (let* ((org-astro--id-path-map
+          (let* ((org-astro--export-in-progress t)  ; Signal that astro export is active
+                 (org-astro--id-path-map
                   (org-astro--ensure-id-map org-astro-source-root-folder
                                             (and (buffer-file-name)
                                                  (expand-file-name (buffer-file-name)))))
@@ -399,6 +414,15 @@ generated and added to the Org source file."
                   (make-directory pub-dir t)
                   ;; First export pass
                   (message "Running first export pass...")
+                  (message "[DEBUG-EXPORT] Calling org-export-to-file with backend: astro")
+                  (message "[DEBUG-EXPORT] Backend details: %S" (org-export-get-backend 'astro))
+                  ;; DEBUG: Check if ID links exist in buffer before export
+                  (save-excursion
+                    (goto-char (point-min))
+                    (let ((id-link-count 0))
+                      (while (re-search-forward "\\[\\[id:" nil t)
+                        (setq id-link-count (1+ id-link-count)))
+                      (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count)))
                   (org-export-to-file 'astro outfile async subtreep visible-only body-only)
                   ;; Clear import state for second pass
                   (setq org-astro--current-body-images-imports nil)
@@ -433,6 +457,38 @@ generated and added to the Org source file."
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Advice to prevent org-export from resolving cross-file ID links to plain text
+;; during the buffer copy phase. This preserves the [[id:...][...]] syntax so our
+;; custom link transcoder can handle them.
+(defvar org-astro--export-in-progress nil
+  "Flag to track when astro export is in progress.")
+
+(defun org-astro--preserve-id-links (orig-fun link info &optional search)
+  "Advice for `org-export-resolve-id-link' to preserve cross-file ID links during astro export.
+When astro export is active, return nil for cross-file ID links so they aren't
+resolved to plain text in the temporary export buffer."
+  (if org-astro--export-in-progress
+      ;; During astro export, only resolve internal links (within same file)
+      (let ((id (org-element-property :path link)))
+        (when id
+          (let ((match (org-id-find id)))
+            (when match
+              (let ((file (car match)))
+                ;; Only resolve if it's in the current file
+                (when (and file (string= file (buffer-file-name (buffer-base-buffer))))
+                  (funcall orig-fun link info search)))))))
+    ;; Not during astro export, use original behavior
+    (funcall orig-fun link info search)))
+
+(advice-add 'org-export-resolve-id-link :around #'org-astro--preserve-id-links)
+
+(defun org-astro-link-wrapper (link desc info)
+  "Debug wrapper around org-astro-link to verify it's being called."
+  (message "[DEBUG-WRAPPER] org-astro-link-wrapper CALLED! type=%s path=%s"
+           (org-element-property :type link)
+           (org-element-property :path link))
+  (org-astro-link link desc info))
+
 (org-export-define-derived-backend 'astro 'md
   :menu-entry
   '(?a "Export to Astro"
@@ -445,7 +501,7 @@ generated and added to the Org source file."
 
   :translate-alist
   '((src-block . org-astro-src-block)
-    (link . org-astro-link)
+    (link . org-astro-link-wrapper)
     (headline . org-astro-heading)
     (paragraph . org-astro-paragraph)
     (plain-text . org-astro-plain-text)

@@ -1,0 +1,283 @@
+#+TITLE: Investigation: org-roam ID Links Being Stripped During Export
+#+DATE: 2025-10-20
+#+AUTHOR: Claude Code Investigation
+
+* Problem Statement
+
+org-roam ID links are being exported as plain text instead of preserving link markup.
+
+** Example
+
+Source org file contains:
+#+begin_example
+- Who else: Just me and [[id:char-001-mom][Mom]]
+- [[id:theme-001-impermanence][Impermanence]]
+- [[id:theme-002-letting-go][Letting Go]]
+#+end_example
+
+Exported MDX output shows:
+#+begin_example
+- Who else: Just me and Mom
+- Impermanence
+- Letting Go
+#+end_example
+
+The link markup is completely stripped, leaving only the description text.
+
+* Investigation Timeline
+
+** Initial Hypothesis: Link Transcoder Not Being Called
+
+Added debug messages to ~org-astro-link~ function to verify it was being invoked.
+
+*Result:* NO debug messages appeared. The link transcoder was never called.
+
+** Second Hypothesis: Backend Registration Issue
+
+Checked if the astro backend was properly registered with the link transcoder.
+
+*Evidence:*
+#+begin_src elisp
+(org-export-get-backend 'astro)
+#+end_src
+
+Shows:
+#+begin_example
+(link . org-astro-link-wrapper)
+#+end_example
+
+*Result:* Backend is correctly registered. The function exists (~fboundp~ returns ~t~).
+
+** Third Hypothesis: Links Not in Parse Tree
+
+Added debug to parse-tree filter to count link elements before transcoding.
+
+*Evidence:*
+#+begin_example
+[DEBUG-TREE] Total links in parse tree: 0 (ID links: 0)
+#+end_example
+
+*Result:* Links don't exist as link elements in the parse tree at all!
+
+** Fourth Hypothesis: Links Removed During Preprocessing
+
+Added debug messages at multiple points in the export pipeline to track when links disappear.
+
+*Evidence - At export function start:*
+#+begin_example
+[DEBUG-START] At function start: Found 3 [[id: patterns in buffer
+#+end_example
+
+*Evidence - After normalize-user-blocks:*
+#+begin_example
+[DEBUG-AFTER-NORMALIZE] After normalize: Found 3 [[id: patterns in buffer
+#+end_example
+
+*Evidence - Right before org-export-to-file:*
+#+begin_example
+[DEBUG-BUFFER] Found 3 [[id: patterns in buffer before export
+#+end_example
+
+*Evidence - Inside parse-tree filter (AFTER org-export creates temp buffer):*
+#+begin_example
+[DEBUG-TREE-BUFFER] Current buffer: 20251019120500-impermanence-story.org<2>
+[DEBUG-TREE-BUFFER] Found 0 [[id: patterns in buffer at filter time
+[DEBUG-CONTENT] Content around 'Who else:': - Who else: Just me and Mom
+#+end_example
+
+*Result:* Links exist in the source buffer but are GONE in the temporary export buffer!
+
+* Root Cause Analysis
+
+** The Smoking Gun
+
+Notice the buffer name changes:
+- Original buffer: ~20251019120500-impermanence-story.org~
+- Export buffer: ~20251019120500-impermanence-story.org<2>~ (temporary copy)
+
+The ~<2>~ suffix indicates ~org-export-to-file~ creates a temporary buffer copy.
+
+** What Happens in the Temporary Buffer
+
+When we examine the actual content:
+
+*Original line:*
+#+begin_example
+- Who else: Just me and [[id:char-001-mom][Mom]]
+#+end_example
+
+*Line in temporary export buffer:*
+#+begin_example
+- Who else: Just me and Mom
+#+end_example
+
+The ID link has been **resolved to its description text**.
+
+** The Export Pipeline Problem
+
+org-export-to-file execution order:
+1. Creates temporary buffer copy
+2. During copy: **resolves cross-file ID links**
+3. Parse tree is built from the modified buffer
+4. Parse-tree filters run (our code) - links already gone
+5. Transcoding happens (our custom transcoders) - no links to transcode
+6. Output filters run
+
+The resolution happens in step 2, BEFORE our code ever runs.
+
+** Why org-export Resolves the Links
+
+The parent ~md~ backend's preprocessing calls ~org-export-resolve-id-link~ for all ID links.
+
+For cross-file links:
+- ~org-export-resolve-id-link~ is designed to handle internal links (same file)
+- For external files, it can't include the target in the export scope
+- Default fallback behavior: return the description text as plain text
+- This is happening even though ~org-id-find~ works correctly
+
+*Verification that org-id works:*
+#+begin_src elisp
+(org-id-find "char-001-mom")
+;; => ("/Users/jay/Library/CloudStorage/Dropbox/roam-life/characters/20251019120000-mom.org" . 1)
+#+end_src
+
+So the issue is NOT that org-id can't find the files.
+
+* Configuration Context
+
+** Variables Are Set Correctly
+
+~org-astro-source-root-folder~: ~/Users/jay/Library/CloudStorage/Dropbox/roam-life~
+
+This is verified to be correct in Emacs.
+
+** Destination Folders Are Configured
+
+The "roam-life" destination exists in ~org-astro-known-posts-folders~.
+
+** org-roam Is Loaded
+
+~(featurep 'org-roam)~ returns ~t~.
+
+** Target Files Exist with Proper IDs
+
+All target files exist and have correct ~:ID:~ properties:
+- ~/roam-life/characters/20251019120000-mom.org~ has ~:ID: char-001-mom~
+- ~/roam-life/themes/20251019120200-impermanence.org~ has ~:ID: theme-001-impermanence~
+- ~/roam-life/themes/20251019120300-letting-go.org~ has ~:ID: theme-002-letting-go~
+
+* Key Findings Summary
+
+1. ✓ Custom link transcoder ~org-astro-link~ is correctly registered
+2. ✓ Function exists and is loaded
+3. ✓ Links exist in source buffer throughout all preprocessing
+4. ✗ Links are **stripped during org-export-to-file's buffer copy operation**
+5. ✗ By the time parse-tree filters run, links are already plain text
+6. ✗ Custom transcoders never receive link elements because they don't exist
+7. ✓ ~org-id-find~ works correctly - this is NOT an org-id configuration issue
+8. ✗ The parent ~md~ backend's link resolution is converting cross-file ID links to plain text
+
+* The Exact Problem
+
+~org-export-to-file~ (or its parent ~org-export-as~) creates a temporary buffer where:
+
+1. It copies the source buffer content
+2. **During the copy**, it calls preprocessing functions
+3. The markdown backend's preprocessing resolves ID links
+4. For cross-file ID links, ~org-export-resolve-id-link~ returns a plain-text fallback
+5. The link syntax ~[[id:foo][Bar]]~ becomes just ~Bar~ in the temp buffer
+6. Parse tree is built from this modified buffer
+7. No link elements exist, so our custom transcoder is never invoked
+
+* What We've Tried
+
+** Attempt 1: Advice on org-export-resolve-id-link
+
+Added advice to prevent cross-file ID link resolution during astro export.
+
+*Code:*
+#+begin_src elisp
+(defun org-astro--preserve-id-links (orig-fun link info &optional search)
+  "Advice for `org-export-resolve-id-link' to preserve cross-file ID links."
+  (if org-astro--export-in-progress
+      ;; Only resolve internal links during astro export
+      (let ((id (org-element-property :path link)))
+        (when id
+          (let ((match (org-id-find id)))
+            (when match
+              (let ((file (car match)))
+                (when (and file (string= file (buffer-file-name (buffer-base-buffer))))
+                  (funcall orig-fun link info search)))))))
+    ;; Normal behavior when not exporting
+    (funcall orig-fun link info search)))
+
+(advice-add 'org-export-resolve-id-link :around #'org-astro--preserve-id-links)
+#+end_src
+
+*Result:* Did not work. Links still stripped.
+
+* Next Investigation Steps
+
+** Identify Exact Function Stripping Links
+
+Need to trace deeper into org-export internals to find EXACTLY which function
+is converting the link syntax to plain text during buffer copy.
+
+Candidates:
+- ~org-export--prepare-file-contents~
+- ~org-export-as~ buffer preparation phase
+- Parent backend's preprocessing hooks
+- org-export's link expansion during buffer copy
+
+** Check if This is Actually org-export-resolve-id-link
+
+Our advice may not be catching the right function. Need to verify if
+~org-export-resolve-id-link~ is actually being called, or if something else
+is resolving the links.
+
+** Investigate Alternative: Prevent Buffer Copy Modifications
+
+Look for org-export options or hooks that prevent link resolution during
+the buffer copy phase.
+
+** Consider Workaround: Pre-export Link Transformation
+
+Transform ID links to a different syntax before export, then transform back
+during transcoding. E.g., ~[[id:foo][Bar]]~ → ~{{ID_LINK::foo::Bar}}~ → markdown link.
+
+* Open Questions
+
+1. Which specific org-export function is resolving the ID links to plain text?
+2. Is this happening in ~org-export-resolve-id-link~ or somewhere else?
+3. Why didn't our advice on ~org-export-resolve-id-link~ prevent it?
+4. Does the md backend have other preprocessing that resolves links?
+5. Can we override the buffer copy behavior in derived backends?
+
+* References
+
+** Source Files with Debug Code
+
+- ~/ox-astro.el~ (lines 89-108): Debug messages showing link count at various stages
+- ~/ox-astro.el~ (lines 465-482): Advice on org-export-resolve-id-link
+- ~/ox-astro-handlers.el~ (lines 64-100): Parse tree filter debug messages
+
+** Test File
+
+Source: ~/roam-life/stories/20251019120500-impermanence-story.org~
+Output: ~/roam-life-web/stories/the-time-mom-told-me-about-impermanence.mdx~
+
+** Debug Output Pattern
+
+#+begin_example
+[DEBUG-START] At function start: Found 3 [[id: patterns in buffer
+[DEBUG-AFTER-NORMALIZE] After normalize: Found 3 [[id: patterns in buffer
+[DEBUG-BUFFER] Found 3 [[id: patterns in buffer before export
+[ox-astro] === Starting prepare-images-filter ===
+[DEBUG-TREE-BUFFER] Current buffer: 20251019120500-impermanence-story.org<2>
+[DEBUG-TREE-BUFFER] Found 0 [[id: patterns in buffer at filter time
+[DEBUG-CONTENT] Content around 'Who else:': - Who else: Just me and Mom
+[DEBUG-TREE] Total links in parse tree: 0 (ID links: 0)
+#+end_example
+
+The transition from 3 links → 0 links happens when the buffer changes from
+the original to the ~<2>~ temporary copy.

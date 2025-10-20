@@ -60,6 +60,54 @@ NOTE: If org-astro--current-body-images-imports is already set,
 preprocessing has already been completed and we skip the processing."
   ;; Initial debug logging
   (org-astro--dbg-log info "=== Starting prepare-images-filter ===")
+
+  ;; DEBUG: Check current buffer and search for ID links
+  (message "[DEBUG-TREE-BUFFER] Current buffer: %s" (buffer-name))
+  (message "[DEBUG-TREE-BUFFER] Buffer size: %d" (buffer-size))
+  (save-excursion
+    (goto-char (point-min))
+    (let ((id-link-count 0))
+      (while (re-search-forward "\\[\\[id:" nil t)
+        (setq id-link-count (1+ id-link-count)))
+      (message "[DEBUG-TREE-BUFFER] Found %d [[id: patterns in buffer at filter time" id-link-count)))
+
+  ;; DEBUG: Show a snippet of the buffer content around where the link should be
+  (save-excursion
+    (goto-char (point-min))
+    (when (re-search-forward "Who else:" nil t)
+      (let ((start (line-beginning-position))
+            (end (min (+ (point) 200) (point-max))))
+        (message "[DEBUG-CONTENT] Content around 'Who else:': %s"
+                 (buffer-substring-no-properties start end)))))
+
+  ;; DEBUG: Count and log all links in the tree
+  (let ((link-count 0)
+        (id-link-count 0))
+    (org-element-map tree 'link
+      (lambda (link)
+        (setq link-count (1+ link-count))
+        (let ((type (org-element-property :type link))
+              (path (org-element-property :path link)))
+          (when (string= type "id")
+            (setq id-link-count (1+ id-link-count))
+            (message "[DEBUG-TREE] Found ID link in parse tree: id=%s"
+                     path)))))
+    (message "[DEBUG-TREE] Total links in parse tree: %d (ID links: %d)"
+             link-count id-link-count))
+
+  ;; DEBUG: Manually check if we can parse a link from buffer
+  (save-excursion
+    (goto-char (point-min))
+    (when (re-search-forward "\\[\\[id:\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]" nil t)
+      (let* ((id (match-string 1))
+             (desc (match-string 2))
+             (pos (match-beginning 0)))
+        (message "[DEBUG-PARSE] Found link at pos %d: id=%s desc=%s" pos id desc)
+        ;; Try to parse the element at that position
+        (goto-char pos)
+        (let ((element (org-element-context)))
+          (message "[DEBUG-PARSE] Element type at link position: %s" (org-element-type element))))))
+
   ;; Reset any stale state from previous exports so we never carry images over.
   (setq org-astro--current-body-images-imports nil)
   (plist-put info :astro-body-images-imports nil)
