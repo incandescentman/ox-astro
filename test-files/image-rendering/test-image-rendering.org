@@ -1,0 +1,27 @@
+#+TITLE: Image Rendering Test
+#+SLUG: image-rendering-test
+#+DESTINATION_FOLDER: test-export
+
+This file exercises multiple image references so the export pipeline can be
+validated end-to-end.
+
+* Linked Images
+- Described local image → [[file:images/local-photo.png][Local Photo Described]]
+- Undescribed local image → [[file:images/local-photo.png]]
+
+* Raw Absolute Path
+The exporter should rewrite this raw path and still render an Image component:
+{{ABS_LOCAL}}
+
+* Remote Image
+https://example.com/assets/remote-fixture.png
+
+* Paths With Spaces
+- Described: [[file:images/space name image.jpg][Space Name]]
+- Raw: {{ABS_SPACE}}
+
+* Underscore Variants
+- [[file:images/underscore_image.PNG]]
+
+# Local photo referenced a second time to ensure duplicates render.
+Another reminder of the same file: [[file:images/local-photo.png][Third mention]]
