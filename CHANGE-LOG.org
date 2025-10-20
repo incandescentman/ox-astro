@@ -2,6 +2,29 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Extended Metadata Extraction & Refactor (2025-10-24)
+
+** Summary
+The exporter now maps org-roam metadata (`DATE_OCCURRED`, `ERA`, `PLACES`, `THEMES`, `STORY_TYPE` and their `ASTRO_*` variants) into MDX front matter, and the parsing logic lives in a dedicated `ox-astro-metadata.el` helper module.
+
+** Rationale
+roam-life-web and similar front-ends rely on enriched metadata (eras, locations, themes, story types) for navigation. Centralizing the parsing utilities keeps `ox-astro-helpers.el` maintainable as new fields are added.
+
+** Key Behavior
+- `dateOccurred`, `era`, `places`, `themes`, and `storyType` are emitted in front matter when present.
+- Both plain and `ASTRO_` keyword forms are supported for each new attribute.
+- List-style keywords respect quoted multi-word tokens (e.g., `"New Haven"`).
+- Metadata parsing helpers are shared via `ox-astro-metadata.el`.
+
+** Implementation
+- Registered the new exporter options in `ox-astro.el`.
+- Extracted keyword parsing and list-splitting utilities into `ox-astro-metadata.el`.
+- Updated `org-astro--get-front-matter-data` to call the new helpers and include the extra fields.
+
+** Testing
+- Manual export of a representative org-roam note with the new keywords (recommended).
+- Follow-up idea: add fixture coverage for `ox-astro-metadata` in an ERT test.
+
 * Hyphenated Destination Keyword Support (2025-10-22)
 
 ** Summary

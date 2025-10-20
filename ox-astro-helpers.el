@@ -13,6 +13,13 @@
 (declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
 (declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
 (declare-function org-astro--update-source-buffer-image-path "ox-astro-image-handlers")
+(declare-function org-astro--parse-tags "ox-astro-metadata")
+(declare-function org-astro--parse-categories "ox-astro-metadata")
+(declare-function org-astro--parse-places "ox-astro-metadata")
+(declare-function org-astro--parse-themes "ox-astro-metadata")
+(declare-function org-astro--get-date-occurred "ox-astro-metadata")
+(declare-function org-astro--get-era "ox-astro-metadata")
+(declare-function org-astro--get-story-type "ox-astro-metadata")
 
 ;; Declare global variable for data persistence across export phases
 (defvar org-astro--current-body-images-imports nil
@@ -767,95 +774,7 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
    ;; If all else fails:
    ""))
 
-(defun org-astro--split-quoted-list (s)
-  "Split S by commas/whitespace; preserve items within matching quotes.
 
-Separators are commas, spaces, tabs, or newlines. Items may be wrapped in
-single or double quotes to preserve spaces or commas. Quotes are stripped."
-  (when (and s (stringp s))
-    (let* ((len (length s))
-           (i 0)
-           (quote-char nil)
-           (buf (list))
-           (items (list))
-           (has-comma (string-match-p "," s)))
-      (cl-labels ((push-char (c) (setq buf (cons c buf)))
-                  (flush-buf ()
-                    (when buf
-                      (let* ((str (apply #'string (nreverse buf)))
-                             (trimmed (org-trim str)))
-                        (when (> (length trimmed) 0)
-                          (setq items (cons trimmed items))))
-                      (setq buf nil))))
-        (while (< i len)
-          (let ((ch (aref s i)))
-            (cond
-             ;; Inside a quoted token
-             (quote-char
-              (if (= ch quote-char)
-                  (progn
-                    ;; End of quoted token; push and reset
-                    (flush-buf)
-                    (setq quote-char nil))
-                  (push-char ch)))
-             ;; Not in quotes
-             (t
-              (cond
-               ;; Skip leading whitespace when waiting to start a token
-               ((and (null buf) (or (= ch ?\s) (= ch ?\t) (= ch ?\n)))
-                ;; ignore
-                )
-               ;; Start of quoted token (only if buffer empty)
-               ((and (or (= ch ?\") (= ch ?')) (null buf))
-                (setq quote-char ch))
-               ;; Separator logic: if any comma exists in S, use comma-only separation;
-               ;; otherwise fall back to splitting on whitespace and commas.
-               ((if has-comma
-                    (= ch ?,)
-                  (or (= ch ?,) (= ch ?\s) (= ch ?\t) (= ch ?\n)))
-                (flush-buf))
-               ;; Regular character
-               (t (push-char ch))))))
-          (setq i (1+ i)))
-        ;; Flush any remaining buffer
-        (flush-buf)
-        (nreverse items)))))
-
-(defun org-astro--keyword-raw-tags (tree)
-  "Return raw value for ASTRO_TAGS or TAGS keyword from TREE."
-  (org-element-map tree 'keyword
-    (lambda (k)
-      (let ((key (org-element-property :key k)))
-        (cond
-         ((string= key "ASTRO_TAGS") (org-element-property :value k))
-         ((string= key "TAGS") (org-element-property :value k)))))
-    nil 'first-match))
-
-(defun org-astro--keyword-raw-categories (tree)
-  "Return raw value for ASTRO_CATEGORIES or CATEGORIES keyword from TREE."
-  (org-element-map tree 'keyword
-    (lambda (k)
-      (let ((key (org-element-property :key k)))
-        (cond
-         ((string= key "ASTRO_CATEGORIES") (org-element-property :value k))
-         ((string= key "CATEGORIES") (org-element-property :value k)))))
-    nil 'first-match))
-
-(defun org-astro--parse-tags (tree info)
-  "Return a list of tags using raw keyword when available.
-  Prefers ASTRO_TAGS over TAGS. Supports quoted multi-word items."
-  (let* ((tags-raw (or (org-astro--keyword-raw-tags tree)
-                       (plist-get info :astro-tags)
-                       (plist-get info :tags))))
-    (org-astro--split-quoted-list tags-raw)))
-
-(defun org-astro--parse-categories (tree info)
-  "Return a list of categories using raw keyword when available.
-  Prefers ASTRO_CATEGORIES over CATEGORIES. Supports quoted multi-word items."
-  (let* ((categories-raw (or (org-astro--keyword-raw-categories tree)
-                             (plist-get info :astro-categories)
-                             (plist-get info :categories))))
-    (org-astro--split-quoted-list categories-raw)))
 
 (defun org-astro--get-publish-date (info)
   "Extract and format the publish date from INFO.
@@ -893,6 +812,7 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
                         (plist-get info :cover-image-alt)
                         (and final-image (org-astro--filename-to-alt-text final-image)))))
     (list final-image image-alt)))
+
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
   (let* ((posts-folder (or (plist-get info :destination-folder)
@@ -906,10 +826,15 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
          (tags (org-astro--parse-tags tree info))
          (categories (org-astro--parse-categories tree info))
          (publish-date (org-astro--get-publish-date info))
+         (date-occurred (org-astro--get-date-occurred tree info))
          (author-image (org-astro--get-author-image info posts-folder))
          (cover-image-data (org-astro--get-cover-image info posts-folder))
          (image (car cover-image-data))
          (image-alt (cadr cover-image-data))
+         (era (org-astro--get-era tree info))
+         (places (org-astro--parse-places tree info))
+         (themes-list (org-astro--parse-themes tree info))
+         (story-type (org-astro--get-story-type tree info))
          (visibility (let ((v (plist-get info :visibility)))
                        (when (and v (not (string-empty-p (org-trim v))))
                          (org-trim v))))
@@ -927,8 +852,13 @@ single or double quotes to preserve spaces or commas. Quotes are stripped."
       (excerpt . ,excerpt)
       (image . ,image)
       (imageAlt . ,image-alt)
+      ,@(when date-occurred `((dateOccurred . ,date-occurred)))
       (tags . ,tags)
+      ,@(when places `((places . ,places)))
+      ,@(when themes-list `((themes . ,themes-list)))
+      ,@(when story-type `((storyType . ,story-type)))
       (categories . ,categories)
+      ,@(when era `((era . ,era)))
       ,@(when visibility `((visibility . ,visibility)))
       ,@(when theme `((theme . ,theme)))
       ,@(when draft `((draft . ,draft))))))
@@ -1403,6 +1333,8 @@ Recognizes MDX, MARKDOWN, and MD export blocks and passes their content through 
           (replace-regexp-in-string "^[ \t]+" "" content))
       ;; For other types, fall back to HTML backend
       (org-export-with-backend 'html export-block nil info))))
+
+(require 'ox-astro-metadata)
 
 (provide 'ox-astro-helpers)
 ;;; ox-astro-helpers.el ends here
