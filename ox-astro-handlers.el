@@ -202,10 +202,16 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     ;; Indented blocks to blockquotes (but skip JSX components)
     (let* ((lines (split-string s "\n"))
            (in-jsx-component nil)
+           (in-front-matter nil)
            (processed-lines
             (mapcar (lambda (line)
                       ;; Track if we're inside a JSX component
                       (cond
+                       ;; Front matter delimiter toggles
+                       ((string= line "---")
+                        (let ((result line))
+                          (setq in-front-matter (not in-front-matter))
+                          result))
                        ;; Opening JSX component tag (like <ImageGallery)
                        ((string-match-p "^\\s-*<[A-Z]" line)
                         (setq in-jsx-component t)
@@ -219,7 +225,8 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                         (setq in-jsx-component nil)
                         line)
                        ;; Don't convert indented lines inside JSX components
-                       ((and in-jsx-component (string-prefix-p "    " line))
+                       ((and (or in-jsx-component in-front-matter)
+                             (string-prefix-p "    " line))
                         line)
                        ;; Convert regular indented lines to blockquotes
                        ((string-prefix-p "    " line)

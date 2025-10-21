@@ -1,6 +1,28 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-10-26
+** Session Summary
+- Exporter now preserves `#+MEDIA`, `#+INCOMPLETE`, and the connection keywords so regenerated MDX matches the enriched schema in life-web.
+- Front-matter generator learned how to embed nested YAML blocks, enabling us to emit the `connections` map without rewriting the serializer.
+- Metadata parsers gained normalization for attachment lists and boolean draft flags, keeping input tolerance consistent with other list fields.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Keyword plumbing (`ox-astro.el:560-596`) covers media, incomplete, and connection variants alongside existing metadata.
+- [x] Parsers for media/incomplete/connections added to `ox-astro-metadata.el:160-225`, trimming empty items and coercing booleans.
+- [x] Front-matter assembly & YAML output updated to handle raw nested blocks (`ox-astro-helpers.el:774-990`).
+- [x] Work log updated; standalone `CHANGE-LOG.org` entry removed per guidance.
+
+*IN-PROGRESS (Requires completion)*
+- [ ] Run an end-to-end export on representative notes to confirm the new fields align with life-web ingestion (attachments, draft flags, connections).
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro.el`, `ox-astro-metadata.el`, `ox-astro-helpers.el`
+- Known unknowns: No automated fixture yet for nested connection emission; consider adding an ERT around `org-astro--format-connections-yaml`.
+- Recommendations: Re-export one of the new story org files and verify `media`, `incomplete`, and `connections` materialize correctly in the MDX front matter.
+
 * 2025-10-22
 ** Session Summary
 - Enabled `#+DESTINATION-FOLDER` as a synonym for `#+DESTINATION_FOLDER` across the exporter and tooling.

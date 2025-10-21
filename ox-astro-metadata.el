@@ -103,6 +103,18 @@ or double quotes retain internal spacing; quotes are stripped in the result."
   "Return raw value for ASTRO_EMOTIONS or EMOTIONS keyword from TREE."
   (org-astro--keyword-first-value tree '("ASTRO_EMOTIONS" "EMOTIONS")))
 
+(defun org-astro--keyword-raw-media (tree)
+  "Return raw value for ASTRO_MEDIA or MEDIA keyword from TREE."
+  (org-astro--keyword-first-value tree '("ASTRO_MEDIA" "MEDIA")))
+
+(defun org-astro--keyword-raw-incomplete (tree)
+  "Return raw value for ASTRO_INCOMPLETE or INCOMPLETE keyword from TREE."
+  (org-astro--keyword-first-value tree '("ASTRO_INCOMPLETE" "INCOMPLETE")))
+
+(defun org-astro--keyword-raw-connection (tree base)
+  "Return raw value for connection keyword BASE (e.g., \"CONNECTION_TEMPORAL\")."
+  (org-astro--keyword-first-value tree (list (format "ASTRO_%s" base) base)))
+
 (defun org-astro--parse-tags (tree info)
   "Return list of tags from TREE/INFO, honoring ASTRO_TAGS and TAGS."
   (let* ((tags-raw (or (org-astro--keyword-raw-tags tree)
@@ -144,6 +156,73 @@ or double quotes retain internal spacing; quotes are stripped in the result."
                            (plist-get info :astro-emotions)
                            (plist-get info :emotions))))
     (org-astro--split-quoted-list emotions-raw)))
+
+(defun org-astro--parse-media (tree info)
+  "Return list of media attachments from TREE/INFO."
+  (let* ((media-raw (or (org-astro--keyword-raw-media tree)
+                        (plist-get info :astro-media)
+                        (plist-get info :media))))
+    (cond
+     ((listp media-raw)
+      (cl-remove-if (lambda (item) (and (stringp item) (string-empty-p item)))
+                    media-raw))
+     (t (org-astro--split-quoted-list media-raw)))))
+
+(defun org-astro--parse-incomplete (tree info)
+  "Return :true, :false, or nil depending on INCOMPLETE keyword presence."
+  (let ((raw (or (org-astro--keyword-raw-incomplete tree)
+                 (plist-get info :astro-incomplete)
+                 (plist-get info :incomplete))))
+    (cond
+     ((null raw) nil)
+     ((eq raw t) :true)
+     ((eq raw :true) :true)
+     ((eq raw :false) :false)
+     ((and (stringp raw)
+           (let ((trimmed (downcase (org-trim raw))))
+             (cond
+              ((or (string-empty-p trimmed)
+                   (member trimmed '("true" "t" "yes" "y" "1")))
+               :true)
+              ((member trimmed '("false" "f" "no" "n" "0"))
+               :false)
+              (t :true)))))
+     (t :true))))
+
+(defun org-astro--parse-connections (tree info)
+  "Return an alist of connection lists extracted from TREE/INFO."
+  (let* ((temporal-raw (or (org-astro--keyword-raw-connection tree "CONNECTION_TEMPORAL")
+                           (plist-get info :astro-connection-temporal)
+                           (plist-get info :connection-temporal)))
+         (emotional-raw (or (org-astro--keyword-raw-connection tree "CONNECTION_EMOTIONAL")
+                            (plist-get info :astro-connection-emotional)
+                            (plist-get info :connection-emotional)))
+         (thematic-raw (or (org-astro--keyword-raw-connection tree "CONNECTION_THEMATIC")
+                           (plist-get info :astro-connection-thematic)
+                           (plist-get info :connection-thematic)))
+         (temporal (cond
+                    ((listp temporal-raw)
+                     (cl-remove-if (lambda (item) (and (stringp item) (string-empty-p item)))
+                                   temporal-raw))
+                    (t (org-astro--split-quoted-list temporal-raw))))
+         (emotional (cond
+                     ((listp emotional-raw)
+                      (cl-remove-if (lambda (item) (and (stringp item) (string-empty-p item)))
+                                    emotional-raw))
+                     (t (org-astro--split-quoted-list emotional-raw))))
+         (thematic (cond
+                    ((listp thematic-raw)
+                     (cl-remove-if (lambda (item) (and (stringp item) (string-empty-p item)))
+                                   thematic-raw))
+                    (t (org-astro--split-quoted-list thematic-raw))))
+         (result nil))
+    (when temporal
+      (setq result (cons (cons 'temporal temporal) result)))
+    (when emotional
+      (setq result (cons (cons 'emotional emotional) result)))
+    (when thematic
+      (setq result (cons (cons 'thematic thematic) result)))
+    (nreverse result)))
 
 (defun org-astro--get-date-occurred (tree info)
   "Extract and format the `dateOccurred' value from TREE/INFO."

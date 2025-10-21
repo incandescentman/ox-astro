@@ -42,6 +42,9 @@ indicator/value pairs.  Returns the updated plist."
 (declare-function org-astro--parse-people "ox-astro-metadata")
 (declare-function org-astro--parse-emotions "ox-astro-metadata")
 (declare-function org-astro--parse-themes "ox-astro-metadata")
+(declare-function org-astro--parse-media "ox-astro-metadata")
+(declare-function org-astro--parse-incomplete "ox-astro-metadata")
+(declare-function org-astro--parse-connections "ox-astro-metadata")
 (declare-function org-astro--get-date-occurred "ox-astro-metadata")
 (declare-function org-astro--get-era "ox-astro-metadata")
 (declare-function org-astro--get-place "ox-astro-metadata")
@@ -771,31 +774,45 @@ If the generated name starts with a number, it is prefixed with 'img'."
   "Generate a YAML front-matter string from an alist DATA."
   (if (null data)
       ""
-      (let ((yaml-str "---\n"))
-        (dolist (pair data)
-          (let ((key (car pair))
-                (val (cdr pair)))
-            (when val
-              (setq yaml-str
-                    (concat yaml-str
-                            (format "%s: " (symbol-name key))
-                            (if (listp val)
-                                (concat "\n"
-                                        (mapconcat (lambda (item)
-                                                     (format "- %s" item))
-                                                   val "\n")
-                                        "\n")
-                                (format "%s\n"
-                                        (if (and (stringp val)
-                                                 (or (string-match-p ":" val)
-                                                     (string-match-p "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$" val))
-                                                 (not (eq key 'publishDate)))
-                                            ;; Quote strings that contain ':' or look like dates (avoid YAML parse issues)
-                                            (format "\"%s\""
-                                                    (replace-regexp-in-string
-                                                     "\"" "\\\\\"" val))
-                                            val))))))))
-        (concat yaml-str "---\n"))))
+    (let ((yaml-str "---\n"))
+      (dolist (pair data)
+        (let* ((key (car pair))
+               (val (cdr pair))
+               (key-name (symbol-name key)))
+          (cond
+           ((and (consp val) (eq (car val) :raw-yaml))
+            (let ((raw (string-trim-right (cdr val))))
+              (when (not (string-empty-p raw))
+                (setq yaml-str
+                      (concat yaml-str
+                              (format "%s:\n%s\n" key-name raw))))))
+           ((and (listp val) (null val))
+            ;; Skip empty lists
+            )
+           ((not val)
+            ;; Skip nil values
+            )
+           (t
+            (setq yaml-str
+                  (concat yaml-str
+                          (format "%s: " key-name)
+                          (if (listp val)
+                              (concat "\n"
+                                      (mapconcat (lambda (item)
+                                                   (format "- %s" item))
+                                                 val "\n")
+                                      "\n")
+                            (format "%s\n"
+                                    (if (and (stringp val)
+                                             (or (string-match-p ":" val)
+                                                 (string-match-p "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$" val))
+                                             (not (eq key 'publishDate)))
+                                        ;; Quote strings that contain ':' or look like dates (avoid YAML parse issues)
+                                        (format "\"%s\""
+                                                (replace-regexp-in-string
+                                                 "\"" "\\\\\"" val))
+                                      val)))))))))
+      (concat yaml-str "---\n"))))
 
 (defun org-astro--get-title (tree info)
   "Return a title string from TREE/INFO, never nil."
@@ -891,6 +908,20 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
                         (and final-image (org-astro--filename-to-alt-text final-image)))))
     (list final-image image-alt)))
 
+(defun org-astro--format-connections-yaml (connections)
+  "Return a YAML string (without trailing newline) for CONNECTIONS alist."
+  (let ((lines nil))
+    (dolist (pair connections)
+      (let* ((key (symbol-name (car pair)))
+             (values (cl-remove-if (lambda (item) (and (stringp item) (string-empty-p item)))
+                                   (cdr pair))))
+        (when values
+          (push (format "  %s:" key) lines)
+          (dolist (value values)
+            (push (format "    - %s" value) lines)))))
+    (when lines
+      (string-join (nreverse lines) "\n"))))
+
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
   (let* ((posts-folder (or (plist-get info :destination-folder)
@@ -915,7 +946,15 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
          (themes-list (org-astro--parse-themes tree info))
          (people (org-astro--parse-people tree info))
          (emotions (org-astro--parse-emotions tree info))
+         (media (org-astro--parse-media tree info))
          (story-type (org-astro--get-story-type tree info))
+         (incomplete-token (org-astro--parse-incomplete tree info))
+         (incomplete (cond
+                      ((eq incomplete-token :true) "true")
+                      ((eq incomplete-token :false) "false")
+                      (t nil)))
+         (connections-data (org-astro--parse-connections tree info))
+         (connections-yaml (org-astro--format-connections-yaml connections-data))
          (visibility (let ((v (plist-get info :visibility)))
                        (when (and v (not (string-empty-p (org-trim v))))
                          (org-trim v))))
@@ -937,11 +976,15 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
       ,@(when place `((place . ,place)))
       ,@(when people `((people . ,people)))
       ,@(when emotions `((emotions . ,emotions)))
+      ,@(when media `((media . ,media)))
       ,@(when places `((places . ,places)))
       ,@(when themes-list `((themes . ,themes-list)))
       ,@(when story-type `((storyType . ,story-type)))
       (categories . ,categories)
       ,@(when era `((era . ,era)))
+      ,@(when incomplete `((incomplete . ,incomplete)))
+      ,@(when connections-yaml
+          `((connections . (:raw-yaml . ,connections-yaml))))
       ,@(when visibility `((visibility . ,visibility)))
       ,@(when theme `((theme . ,theme)))
       ,@(when draft `((draft . ,draft))))))
