@@ -142,6 +142,28 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
          ;; --- Handle All Imports ---
          ;; 1. Body image imports (collected by our filter)
          (render-imports (plist-get info :astro-render-imports))
+         (used-image-vars (plist-get info :astro-render-used-vars))
+         (render-imports
+          (when render-imports
+            (let ((filtered render-imports))
+              (when (listp filtered)
+                (setq filtered
+                      (cl-remove-if
+                       (lambda (line)
+                         (and (string-match "^import \\([^ {]+\\) from '" line)
+                              (let ((var (match-string 1 line)))
+                                (and (not (member var used-image-vars))
+                                     (not (string-prefix-p "{" var))))))
+                       filtered))
+                (unless used-image-vars
+                  (setq filtered
+                        (cl-remove-if
+                         (lambda (line)
+                           (string-match "^import \\{\\s-*Image\\s-*\\} from 'astro:assets'" line))
+                         filtered))))
+              (setq filtered (cl-remove-if #'string-blank-p filtered))
+              (setf (plist-get info :astro-render-imports) filtered)
+              filtered)))
          (render-imports-string (when render-imports
                                   (mapconcat #'identity render-imports "\n")))
          ;; 2. Manual imports from #+ASTRO_IMPORTS
@@ -195,7 +217,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                    (if record
                        (let ((var-name (plist-get record :var-name)))
                          (if (and var-name (not (string-blank-p alt)))
-                             (org-astro--format-image-component var-name alt)
+                             (org-astro--image-component-for-record record info alt)
                            (plist-get record :jsx)))
                      match)))
                s t t)))

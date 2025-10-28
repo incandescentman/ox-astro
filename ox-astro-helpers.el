@@ -73,11 +73,61 @@ indicator/value pairs.  Returns the updated plist."
   "Escape double quotes in TEXT for safe use in JSX attributes."
   (replace-regexp-in-string "\"" "\\\\\"" (or text "")))
 
+(defun org-astro--normalize-image-path (path)
+  "Normalize PATH for reliable image comparisons."
+  (cond
+   ((null path) nil)
+   ((string-match-p "\\`https?://" path) path)
+   ((string-prefix-p "//" path) (concat "https:" path))
+   ((string-prefix-p "~/" path) (expand-file-name path))
+   ((file-name-absolute-p path) (expand-file-name path))
+   (t path)))
+
+(defun org-astro--same-image-path-p (path-a path-b)
+  "Return non-nil when PATH-A and PATH-B refer to the same image."
+  (let ((norm-a (org-astro--normalize-image-path path-a))
+        (norm-b (org-astro--normalize-image-path path-b)))
+    (and norm-a norm-b (string= norm-a norm-b))))
+
+(defun org-astro--hero-image-entry-p (entry hero-path)
+  "Return non-nil when ENTRY corresponds to HERO-PATH."
+  (when (and entry hero-path)
+    (let ((candidates (list (plist-get entry :astro-path)
+                            (plist-get entry :path)
+                            (plist-get entry :original-path))))
+      (cl-some (lambda (candidate)
+                 (org-astro--same-image-path-p candidate hero-path))
+               candidates))))
+
 (defun org-astro--format-image-component (var-name alt-text)
   "Return a standardized Image component string for VAR-NAME and ALT-TEXT."
   (format "<Image src={%s} alt=\"%s\" />"
           var-name
           (org-astro--escape-attribute (or alt-text "Image"))))
+
+(defun org-astro--image-component-for-record (record info &optional alt-override)
+  "Render RECORD as an Image component, skipping the hero's first inline usage.
+
+INFO carries export state. When the record corresponds to the hero image and the
+hero has not yet been suppressed in the body, return an empty string and mark it
+as suppressed so later explicit uses still render. All other records return the
+standard Image component string."
+  (when record
+    (let* ((entry (plist-get record :entry))
+           (var-name (plist-get record :var-name))
+           (alt (or alt-override (plist-get record :alt)))
+           (hero (plist-get info :astro-hero-image))
+           (already-suppressed (plist-get info :astro-hero-body-suppressed)))
+      (if (and hero entry (not already-suppressed)
+               (org-astro--hero-image-entry-p entry hero))
+          (progn
+            (setf (plist-get info :astro-hero-body-suppressed) t)
+            "")
+        (when var-name
+          (let ((current (plist-get info :astro-render-used-vars)))
+            (setf (plist-get info :astro-render-used-vars)
+                  (cl-adjoin var-name current :test #'equal))))
+        (org-astro--format-image-component var-name alt)))))
 
 (defun org-astro--lookup-render-record (path info)
   "Return render metadata for PATH from INFO's render map."
@@ -903,9 +953,12 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
          (fallback-image (when (and (not image) body-images)
                            (plist-get (car body-images) :astro-path)))
          (final-image (or image fallback-image))
-         (image-alt (or (plist-get info :astro-image-alt)
-                        (plist-get info :cover-image-alt)
-                        (and final-image (org-astro--filename-to-alt-text final-image)))))
+        (image-alt (or (plist-get info :astro-image-alt)
+                       (plist-get info :cover-image-alt)
+                       (and final-image (org-astro--filename-to-alt-text final-image)))))
+    (setf (plist-get info :astro-hero-image)
+          (org-astro--normalize-image-path final-image))
+    (setf (plist-get info :astro-hero-body-suppressed) nil)
     (list final-image image-alt)))
 
 (defun org-astro--format-connections-yaml (connections)
@@ -1040,7 +1093,7 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
                    (default-alt (plist-get record :alt))
                    (alt (or desc default-alt "Image")))
               (if var-name
-                  (org-astro--format-image-component var-name alt)
+                  (org-astro--image-component-for-record record info alt)
                 (plist-get record :jsx)))
           (let ((md (when (fboundp 'org-md-link)
                       (ignore-errors (org-md-link link desc info)))))
@@ -1179,9 +1232,7 @@ literally - convert org headings to markdown equivalents."
   (let* ((path (org-astro--extract-image-path-from-paragraph paragraph))
          (record (and path (org-astro--lookup-render-record path info))))
     (if record
-        (let ((var-name (plist-get record :var-name))
-              (alt (plist-get record :alt)))
-          (org-astro--format-image-component var-name alt))
+        (org-astro--image-component-for-record record info)
       "")))
 
 
@@ -1215,9 +1266,7 @@ literally - convert org headings to markdown equivalents."
             (message "[ox-astro][img] PARA path=%s record=%s"
                      path (and record (plist-get record :var-name))))
           (if record
-              (let ((var-name (plist-get record :var-name))
-                    (alt (plist-get record :alt)))
-                (org-astro--format-image-component var-name alt))
+              (org-astro--image-component-for-record record info)
             contents))
         ;; Check if this paragraph contains broken image path (subscripts)
         (let ((paragraph-context (org-element-interpret-data paragraph)))
@@ -1248,18 +1297,14 @@ literally - convert org headings to markdown equivalents."
                               (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" trimmed-line)))
                      (let ((record (org-astro--lookup-render-record trimmed-line info)))
                        (if record
-                           (let ((var-name (plist-get record :var-name))
-                                 (alt (plist-get record :alt)))
-                             (org-astro--format-image-component var-name alt))
+                     (org-astro--image-component-for-record record info)
                          line)))
                     ;; Remote image URL
                     ((and trimmed-line
                           (string-match-p "^https?://.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" trimmed-line))
                      (let ((record (org-astro--lookup-render-record trimmed-line info)))
                        (if record
-                           (let ((var-name (plist-get record :var-name))
-                                 (alt (plist-get record :alt)))
-                             (org-astro--format-image-component var-name alt))
+                     (org-astro--image-component-for-record record info)
                          line)))
                     ;; Regular remote URL (non-image) is now handled correctly by org-astro-link.
                     ;; Regular line
