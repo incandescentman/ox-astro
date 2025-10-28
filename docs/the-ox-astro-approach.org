@@ -225,7 +225,7 @@ Tables are transcoded to Markdown syntax (instead of the default HTML) for bette
 ** Decision 11: Debug System
 *Problem*: Complex image processing pipeline needed visibility for troubleshooting.
 *Implementation*: 
-- Debug file written to =~/Library/CloudStorage/Dropbox/github/ox-astro/debug.el=
+- Debug file written to =~/Library/CloudStorage/Dropbox/github/ox-astro/debug.log=
 - Source and output file paths automatically copied to clipboard via =pbcopy=
 - Detailed logging of image collection, processing, and import generation
 - Activated via =org-astro-debug-images= variable

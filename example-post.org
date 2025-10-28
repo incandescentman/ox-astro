@@ -270,7 +270,7 @@ Enable debugging to troubleshoot image processing:
 #+end_src
 
 When enabled:
-- Debug output written to =~/Library/CloudStorage/Dropbox/github/ox-astro/debug.el=
+- Debug output written to =~/Library/CloudStorage/Dropbox/github/ox-astro/debug.log=
 - Source and output paths copied to clipboard
 - Detailed logging of:
   - Image collection from all sources
