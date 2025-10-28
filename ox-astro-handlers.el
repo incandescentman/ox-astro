@@ -159,7 +159,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                   (setq filtered
                         (cl-remove-if
                          (lambda (line)
-                           (string-match "^import \\{\\s-*Image\\s-*\\} from 'astro:assets'" line))
+                           (string-match "^import[[:space:]]*{[[:space:]]*Image[[:space:]]*} from 'astro:assets'" line))
                          filtered))))
               (setq filtered (cl-remove-if #'string-blank-p filtered))
               (setf (plist-get info :astro-render-imports) filtered)
