@@ -25,6 +25,8 @@
 (declare-function org-astro--dbg-log "ox-astro-helpers")
 (declare-function org-astro--slugify "ox-astro-helpers")
 (declare-function org-astro--get-title "ox-astro-helpers")
+(declare-function org-astro--hero-image-entry-p "ox-astro-helpers")
+(declare-function org-astro--normalize-image-path "ox-astro-helpers")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Filter Functions
@@ -111,7 +113,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
       (plist-put info :astro-body-images-imports processed)
       (setq org-astro--current-body-images-imports processed))
     ;; Build render metadata for downstream consumers.
-    (let* ((render-data (and processed (org-astro--build-render-map processed)))
+    (let* ((render-data (and processed (org-astro--build-render-map processed (plist-get info :astro-hero-image))))
            (render-map (and render-data (plist-get render-data :map)))
            (render-imports (and render-data (plist-get render-data :imports))))
       (plist-put info :astro-render-map render-map)
@@ -125,6 +127,51 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
   (let* ((tree (plist-get info :parse-tree))  ; Use the already-parsed tree from export
          (front-matter-data (org-astro--get-front-matter-data tree info))
          (front-matter-string (org-astro--gen-yaml-front-matter front-matter-data))
+         (processed-images (plist-get info :astro-body-images-imports))
+         (hero-path (or (plist-get info :astro-hero-image)
+                        (let* ((image-entry (assoc 'image front-matter-data))
+                               (fallback (and image-entry (cdr image-entry)))
+                               (normalized (and fallback (org-astro--normalize-image-path fallback))))
+                          (when normalized
+                            (setf (plist-get info :astro-hero-image) normalized))
+                          normalized)))
+         (render-refresh (and processed-images hero-path
+                               (org-astro--build-render-map processed-images hero-path)))
+         (_ (when render-refresh
+              (plist-put info :astro-render-map (plist-get render-refresh :map))
+              (plist-put info :astro-render-imports (plist-get render-refresh :imports))))
+         (hero-record
+          (when render-refresh
+            (let ((map (plist-get render-refresh :map))
+                  (found nil))
+              (when (hash-table-p map)
+                (maphash
+                 (lambda (_ record)
+                   (when (and (listp record)
+                              (or (plist-get record :hero)
+                                  (and hero-path
+                                       (let ((entry (plist-get record :entry)))
+                                         (and entry
+                                              (org-astro--hero-image-entry-p entry hero-path)))))
+                              (not found))
+                     (setq found record)))
+                 map))
+              found)))
+         (_ (when hero-record
+              (let* ((hero-var (plist-get hero-record :var-name))
+                     (hero-regex (and hero-var
+                                      (format "<Image\\s-+src={%s}[^>]*?/?>" (regexp-quote hero-var)))))
+                (when hero-var
+                  (let ((removed nil))
+                    (when hero-regex
+                      (when (string-match hero-regex body)
+                        (setq body (replace-match "" t t body))
+                        (setq removed t)))
+                    (when (and removed
+                               (not (and hero-regex (string-match hero-regex body))))
+                      (let* ((used-vars (plist-get info :astro-render-used-vars))
+                             (updated (cl-remove hero-var used-vars :test #'equal)))
+                        (setf (plist-get info :astro-render-used-vars) updated))))))))
          ;; Copy frontmatter to clipboard
          (_ (let ((pbcopy (executable-find "pbcopy")))
               (when (and pbcopy front-matter-string)
@@ -147,20 +194,27 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
           (when render-imports
             (let ((filtered render-imports))
               (when (listp filtered)
-                (setq filtered
-                      (cl-remove-if
-                       (lambda (line)
-                         (and (string-match "^import \\([^ {]+\\) from '" line)
-                              (let ((var (match-string 1 line)))
-                                (and (not (member var used-image-vars))
-                                     (not (string-prefix-p "{" var))))))
-                       filtered))
-                (unless used-image-vars
-                  (setq filtered
-                        (cl-remove-if
-                         (lambda (line)
-                           (string-match "^import[[:space:]]*{[[:space:]]*Image[[:space:]]*} from 'astro:assets'" line))
-                         filtered))))
+                (let ((keep-vars used-image-vars))
+                  (when keep-vars
+                    (setq filtered
+                          (cl-remove-if
+                           (lambda (line)
+                             (and (string-match "^import \\([^ {]+\\) from '" line)
+                                  (let ((var (match-string 1 line)))
+                                    (and (not (string-prefix-p "{" var))
+                                         (not (member var keep-vars))))))
+                           filtered)))
+                  (unless keep-vars
+                    (setq filtered
+                          (cl-remove-if
+                           (lambda (line)
+                             (string-match "^import[[:space:]]*{[[:space:]]*Image[[:space:]]*} from 'astro:assets'" line))
+                           filtered)))))
+              (when (and (string-match-p "<Image[[:space:]]" body)
+                         (not (cl-some (lambda (line)
+                                         (string-match "^import[[:space:]]*{[[:space:]]*Image[[:space:]]*} from 'astro:assets'" line))
+                                       filtered)))
+                (setq filtered (cl-adjoin "import { Image } from 'astro:assets';" filtered :test #'equal)))
               (setq filtered (cl-remove-if #'string-blank-p filtered))
               (setf (plist-get info :astro-render-imports) filtered)
               filtered)))

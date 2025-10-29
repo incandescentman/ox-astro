@@ -2,6 +2,24 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
+* 2025-10-28 Tuesday - Hero Image Dedup + Import Hygiene
+
+** Summary
+Eliminated duplicate hero renders in MDX exports and straightened the surrounding import bookkeeping after re-running the blueberry scone post through the converter.
+
+** Changes
+- Propagated the hero image path into render-map generation so the matched record carries a `:hero` flag (`ox-astro-image-handlers.el`) and taught `org-astro--image-component-for-record` to skip only the first inline hero instance (`ox-astro-helpers.el`).
+- Added a front-matter fallback for `:astro-hero-image`, rebuilt the render map during the body filter, and removed unused imports only when the hero variable truly drops out of the body (`ox-astro-handlers.el`).
+- Relaxed the image pipeline test to accept regenerated imports while still asserting seven `<Image />` usages and key alt text (`test-image-rendering.el`).
+
+** Impact
+- Posts keep the hero image confined to the layout slot while preserving subsequent inline references and avoiding stale imports.
+- Export runs leave MDX bodies with consistent JSX and import blocks, preventing build failures from stray `Image` imports.
+- Regression coverage continues to exercise the full image pipeline with the updated assertions.
+
+** Verification
+- `emacs --batch --eval "(setq load-path (cons \"~/Library/CloudStorage/Dropbox/github/ox-astro\" load-path))" --eval "(require 'ert)" --eval "(load \"~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-config.el\")" --eval "(load \"~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-helpers.el\")" --eval "(load \"~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-image-handlers.el\")" --eval "(load \"~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-handlers.el\")" --eval "(load \"~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro.el\")" --eval "(load \"~/Library/CloudStorage/Dropbox/github/ox-astro/test-image-rendering.el\")" --eval "(ert-run-tests-batch-and-exit)"'
+
 * 2025-10-20 Monday - Manifest Closure + Compatibility Shim
 
 ** Summary

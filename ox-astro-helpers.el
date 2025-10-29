@@ -117,10 +117,14 @@ standard Image component string."
            (var-name (plist-get record :var-name))
            (alt (or alt-override (plist-get record :alt)))
            (hero (plist-get info :astro-hero-image))
-           (already-suppressed (plist-get info :astro-hero-body-suppressed)))
-      (if (and hero entry (not already-suppressed)
-               (org-astro--hero-image-entry-p entry hero))
+           (record-hero (plist-get record :hero))
+           (already-suppressed (plist-get info :astro-hero-body-suppressed))
+           (is-hero (or record-hero
+                        (and hero entry (org-astro--hero-image-entry-p entry hero)))))
+      (if (and is-hero (not already-suppressed))
           (progn
+            (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+              (org-astro--debug-log info "Skipping inline hero image for %s" var-name))
             (setf (plist-get info :astro-hero-body-suppressed) t)
             "")
         (when var-name
@@ -136,7 +140,7 @@ standard Image component string."
          (processed (or (plist-get info :astro-body-images-imports)
                         org-astro--current-body-images-imports)))
     (when (and (null render-map) processed)
-      (let* ((data (org-astro--build-render-map processed))
+      (let* ((data (org-astro--build-render-map processed (plist-get info :astro-hero-image)))
              (map (plist-get data :map))
              (imports (plist-get data :imports)))
         (when map
@@ -942,7 +946,11 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
 (defun org-astro--get-cover-image (info posts-folder)
   "Get the cover image path and alt text from INFO.
   If no explicit cover image is specified, use the first body image as hero."
-  (let* ((image-raw (or (plist-get info :astro-image)
+  (let* ((slug (or (plist-get info :slug)
+                   (let ((title (or (plist-get info :title)
+                                     (org-astro--get-title (plist-get info :parse-tree) info))))
+                     (and title (org-astro--slugify title)))))
+         (image-raw (or (plist-get info :astro-image)
                         (plist-get info :cover-image)))
          (image (and image-raw posts-folder
                      (let ((slug-path (if slug (concat "posts/" slug "/") "posts/")))
@@ -953,9 +961,11 @@ Treats DESCRIPTION as a synonym for EXCERPT when EXCERPT is not present."
          (fallback-image (when (and (not image) body-images)
                            (plist-get (car body-images) :astro-path)))
          (final-image (or image fallback-image))
-        (image-alt (or (plist-get info :astro-image-alt)
-                       (plist-get info :cover-image-alt)
-                       (and final-image (org-astro--filename-to-alt-text final-image)))))
+         (image-alt (or (plist-get info :astro-image-alt)
+                        (plist-get info :cover-image-alt)
+                        (and final-image (org-astro--filename-to-alt-text final-image)))))
+    (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+      (org-astro--debug-log-direct "Hero image selection: explicit=%s fallback=%s final=%s" image fallback-image final-image))
     (setf (plist-get info :astro-hero-image)
           (org-astro--normalize-image-path final-image))
     (setf (plist-get info :astro-hero-body-suppressed) nil)

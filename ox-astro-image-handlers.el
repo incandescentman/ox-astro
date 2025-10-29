@@ -20,6 +20,7 @@
 (declare-function org-astro--filename-to-alt-text "ox-astro-helpers")
 (declare-function org-astro--collect-raw-image-paths "ox-astro-helpers")
 (declare-function org-astro--extract-image-path-from-paragraph "ox-astro-helpers")
+(declare-function org-astro--hero-image-entry-p "ox-astro-helpers")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMAGE HANDLING
@@ -246,7 +247,7 @@ Returns a plist describing the outcome or nil on failure."
                         :rewrite-path target-path
                         :status 'copied))))))))))))
 
-(defun org-astro--build-render-map (processed)
+(defun org-astro--build-render-map (processed &optional hero-path)
   "Return render metadata for PROCESSED image entries.
 The result is a plist with keys:
 - :map — hash table mapping lookup keys to render records
@@ -268,7 +269,11 @@ The result is a plist with keys:
                                :var-name var-name
                                :astro-path astro-path
                                :alt alt
-                               :jsx jsx)))
+                               :jsx jsx))
+                 (is-hero (and hero-path (org-astro--hero-image-entry-p entry hero-path))))
+            (when is-hero
+              (setf (plist-get entry :hero) t)
+              (setf (plist-get record :hero) t))
             (cl-pushnew import-line imports :test #'equal)
             (setq include-image-component t)
             (dolist (key (list path
