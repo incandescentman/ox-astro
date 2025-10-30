@@ -158,7 +158,7 @@ Front matter is assembled from multiple sources with fallback logic:
 |-------|---------------|----------|
 | title | =#+TITLE= | First level-1 headline |
 | publishDate | =#+PUBLISH_DATE= or =#+DATE= | Current time |
-| excerpt | =#+EXCERPT= or =#+DESCRIPTION= | First paragraph |
+| excerpt | =#+EXCERPT=, =#+SUBHED=, or =#+DESCRIPTION= | First paragraph |
 | author | =#+AUTHOR= | "Jay Dixit" |
 | image | =#+COVER_IMAGE= | First image in document |
 | tags | =#+TAGS= | None |

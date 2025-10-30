@@ -1,6 +1,25 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-10-30
+** Session Summary
+- Added `#+SUBHED` as an accepted excerpt keyword so Org sources can map legacy decks into MDX front matter without duplication.
+- Refreshed metadata documentation (design architecture, concept map) and recorded the behavior change in the change log.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Excerpt priority now considers `ASTRO_EXCERPT`, `EXCERPT`, `SUBHED`, `DESCRIPTION`, then paragraph fallback (`ox-astro-helpers.el:887-905`).
+- [x] Documentation updates: `docs/design-architecture.org:152-168`, `docs/concept-map.org:99-106`, `CHANGE-LOG.org:5-15`.
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro-helpers.el`, `docs/design-architecture.org`, `docs/concept-map.org`, `CHANGE-LOG.org`
+- Known unknowns: Need an export smoke test confirming SUBHED usage emits `excerpt` as expected.
+- Recommendations: Export a representative Org note using `#+SUBHED` to verify front matter output.
+
 * 2025-10-26
 ** Session Summary
 - Exporter now preserves `#+MEDIA`, `#+INCOMPLETE`, and the connection keywords so regenerated MDX matches the enriched schema in life-web.
