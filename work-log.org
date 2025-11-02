@@ -2,15 +2,16 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
-* 2025-11-02 Saturday - Pull Quote Support & Gallery Columns
+* 2025-11-02 Saturday - Pull Quote Support, Gallery Columns & Code Backticks Fix
 
 ** Summary
-Added magazine-style pull quote support and fixed gallery :columns attribute parsing to enable single-row gallery layouts and typographically rich quotes with smart quotation marks.
+Added magazine-style pull quote support, fixed gallery :columns attribute parsing, and resolved CSS backtick pseudo-element issues. Enabled single-row gallery layouts, typographically rich quotes with smart quotation marks, and clean inline code rendering across all themes.
 
 ** Goal
-Enable two new content types for blog posts:
+Enable new content types and fix rendering issues:
 1. *Pull quotes* - Magazine-style large, centered quotes with decorative quotation marks for highlighting key insights
 2. *Flexible gallery layouts* - Support custom column counts (especially single-row layouts for screenshot galleries)
+3. *Clean inline code* - Remove unwanted backtick characters from rendered HTML
 
 ** Problems Discovered
 
@@ -30,6 +31,17 @@ Initial implementation wrapped content in =<div class="pullquote">= but MDX trea
 
 *** Pull Quotes Only in Claude Theme
 Pull quotes were styled only for =.claude-theme-wrapper=, making them unavailable for posts using the default Tailwind prose theme.
+
+*** CSS Backtick Pseudo-Elements on Inline Code
+Literal backtick characters appeared around inline code elements (e.g., =`#focus`=) even though the HTML source was clean (=<code>#focus</code>=).
+
+*Root Cause*: The Tailwind Typography plugin adds decorative backticks via =::before= and =::after= pseudo-elements on =code= tags by default, mimicking the appearance of Markdown source.
+
+*** Pull Quote Format Support Limited
+Only =#+BEGIN_PULLQUOTE= (special block) format was supported. Users couldn't use the more familiar =#+BEGIN_SRC pullquote= syntax.
+
+*** Pullquote Content Whitespace Issues
+When using =#+BEGIN_SRC pullquote= blocks, indented content from the org source was preserved in the MDX output, preventing MDX from processing it as markdown.
 
 ** Solutions Implemented
 
@@ -105,6 +117,66 @@ Added =<style is:global>= block with pull quote styling for =.prose= context:
 
 *Commit*: =a1586b2= - Add pullquote support to default theme
 
+*** 5. Remove CSS Backtick Pseudo-Elements (Astro CSS)
+*Files*:
+- =apps/socratic/src/styles/claude-theme.css= lines 176-179
+- =apps/socratic/src/layouts/MarkdownLayout.astro= lines 113-116
+- =apps/socratic/src/styles/chatgpt-theme.css= lines 41-44
+
+Override Tailwind Typography's default by setting =code::before= and =code::after= content to =none=:
+
+#+begin_src css
+.claude-theme-wrapper .prose code::before,
+.claude-theme-wrapper .prose code::after {
+  content: none !important;
+}
+#+end_src
+
+Also added spacing between adjacent code elements:
+#+begin_src css
+.prose code + code {
+  margin-left: 0.2em;
+}
+#+end_src
+
+Plus inline code styling with padding and border-radius for better visual treatment.
+
+*Commits*:
+- =ad6ca44= - Style inline code in lists with Claude crail color
+- =982db6e= - Add crail color to bold inline code in paragraphs
+- =88e1de2= - Add typography features to pullquote styling
+- =3a90c25= - Add complete styling to ChatGPT theme
+
+*** 6. Support SRC Block Format for Pullquotes (ox-astro)
+*File*: =ox-astro-helpers.el= lines 1190-1194
+
+Added pullquote handling in =org-astro-src-block= function:
+
+#+begin_src emacs-lisp
+;; Handle pullquote blocks specially - wrap in div with blank lines
+(if (string-equal lang "pullquote")
+    (concat "<div class=\"pullquote\">\n\n"
+            (org-trim code)
+            "\n\n</div>\n")
+#+end_src
+
+Uses =org-trim= to remove both leading and trailing whitespace from content, ensuring clean MDX processing.
+
+*Commits*:
+- =61301b8= - Add pullquote support for SRC blocks
+- =81ec410= - Fix pullquote SRC block whitespace handling
+
+*** 7. Pull Quote CSS - ChatGPT Theme
+*File*: =apps/socratic/src/styles/chatgpt-theme.css= lines 55-130
+
+Restored full theme styling with magazine-style pullquotes:
+- Tailwind blue color palette (=#2563eb=)
+- Inter sans-serif for body text, Georgia serif for pullquotes
+- Clean inline code with backtick removal
+- Consistent with Claude theme structure but matching default Tailwind aesthetic
+
+*Commit*: =3a90c25= - Add complete styling to ChatGPT theme
+
 ** Implementation Details
 
 *** Smart Quote Strategy
@@ -150,19 +222,27 @@ For 12 images with =:columns 12=, desktop shows all in one row; mobile still use
 ** User Impact
 
 *** Pull Quotes
-*Usage*:
+*Usage* (two equivalent formats):
 #+begin_src org
 #+BEGIN_PULLQUOTE
 Your important quote text here.
 #+END_PULLQUOTE
 #+end_src
 
+Or:
+#+begin_src org
+#+BEGIN_SRC pullquote
+Your important quote text here.
+#+END_SRC
+#+end_src
+
 *Benefits*:
 - Magazine-quality typography with smart quotes
 - Automatic markdown processing (bold, italic, etc.)
-- Works in both Claude theme and default theme
+- Works in Claude theme, ChatGPT theme, and default theme
 - No manual quote mark insertion needed
 - Responsive design for mobile
+- Both special block and source block syntax supported
 
 *** Gallery Columns
 *Usage*:
@@ -179,9 +259,18 @@ Your important quote text here.
 - Responsive: auto-adjusts to 2 columns on mobile
 - PhotoSwipe lightbox for full-size viewing
 
+*** Inline Code Rendering
+*Usage*: Standard markdown inline code (backticks in org converted to =<code>= tags)
+
+*Benefits*:
+- Clean rendering without decorative backticks
+- Consistent across all themes (Claude, ChatGPT, default)
+- Special color treatment for code in lists and bold contexts
+- Better spacing between adjacent code elements
+
 ** Documentation
 Updated =instructions.org= in astro-monorepo with:
-- Complete pull quote usage guide with examples
+- Complete pull quote usage guide with both syntax formats
 - Visual style documentation
 - When to use pull quotes (best practices)
 - Gallery columns reference with real-world examples
@@ -190,25 +279,32 @@ Updated =instructions.org= in astro-monorepo with:
 ** Testing
 Manual verification:
 - Exported goal tracking system post with 12-image gallery in single row
-- Created pull quote examples in Claude theme posts
+- Created pull quote examples in all three themes (Claude, ChatGPT, default)
 - Verified smart quotes render correctly
 - Confirmed markdown processing (bold, spacing) works
 - Tested responsive behavior on mobile viewport
+- Verified inline code renders without backticks in all themes
+- Tested both =#+BEGIN_PULLQUOTE= and =#+BEGIN_SRC pullquote= formats
 
 ** Files Modified
 
 *** ox-astro
 - =ox-astro-table-handlers.el= - Gallery columns parsing + PULLQUOTE handler
+- =ox-astro-helpers.el= - SRC block pullquote support with whitespace handling
 - =work-log.org= - This entry
 
 *** astro-monorepo
-- =apps/socratic/src/styles/claude-theme.css= - Pull quote styling
-- =apps/socratic/src/layouts/MarkdownLayout.astro= - Default theme pull quotes
+- =apps/socratic/src/styles/claude-theme.css= - Pull quote styling + code backtick removal
+- =apps/socratic/src/styles/chatgpt-theme.css= - Full theme restoration with pullquotes + code styling
+- =apps/socratic/src/layouts/MarkdownLayout.astro= - Default theme pull quotes + code styling
 - =apps/socratic/src/content/blog/claude-designs-a-goal-tracking-system.mdx= - Gallery example
 - =instructions.org= - Comprehensive documentation
 
+*** emacs-settings
+- =shared-functions.org= - Added =jay/reload-ox-astro= function for hot-reloading
+
 ** Status
-✅ *COMPLETE* - Both features implemented, tested, and documented.
+✅ *COMPLETE* - All features implemented, tested, and documented across all themes.
 
 ** Lessons Learned
 
@@ -217,6 +313,12 @@ Understanding when MDX processes content as markdown vs. raw HTML is crucial. Th
 
 *** Special Block Parameters
 Org special blocks store parameters as a single string in the =:parameters= property, not as a plist. Pattern matching with regex is the reliable extraction method.
+
+*** CSS Pseudo-Element Debugging
+When rendered output shows characters not present in HTML source, investigate CSS =::before= and =::after= pseudo-elements. The Tailwind Typography plugin adds decorative elements by default that may need overriding.
+
+*** Whitespace Handling in SRC Blocks
+Use =org-trim= instead of =string-trim-right= to remove both leading and trailing whitespace from source block content before wrapping in HTML tags.
 
 *** Typography Matters
 Smart quotes, proper spacing, and font features (ligatures, contextual alternates) elevate pull quotes from "styled text" to magazine-quality typography.
