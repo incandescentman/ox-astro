@@ -85,7 +85,12 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
       (org-astro--dbg-log info "Processing GALLERY block")
       (let* ((image-imports (plist-get info :astro-body-images-imports))
              (gallery-id (concat "gallery-" (number-to-string (random 10000))))
-             (gallery-items nil))
+             (gallery-items nil)
+             ;; Parse :columns attribute from #+BEGIN_GALLERY :columns N
+             ;; Special blocks store parameters as a string like ":columns 12"
+             (params-string (org-element-property :parameters special-block))
+             (columns (when (and params-string (string-match ":columns +\\([0-9]+\\)" params-string))
+                        (string-to-number (match-string 1 params-string)))))
         ;; Debug: log what's in image-imports
         (org-astro--dbg-log info "GALLERY: image-imports contains %d items" (length image-imports))
         (when image-imports
@@ -142,13 +147,16 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
                       (push (format "    { src: %s, alt: \"%s\" }" var-name alt-text) gallery-items))))))))
 
         ;; Generate ImageGallery component
-        (org-astro--dbg-log info "GALLERY generating component with %d images" (length gallery-items))
+        (org-astro--dbg-log info "GALLERY generating component with %d images, columns=%s"
+                            (length gallery-items) columns)
         (if gallery-items
             (concat "<ImageGallery\n"
                     "  images={[\n"
                     (mapconcat #'identity (reverse gallery-items) ",\n")
                     "\n  ]}\n"
                     "  galleryId=\"" gallery-id "\"\n"
+                    (when (and columns (> columns 0))
+                      (format "  columns={%d}\n" columns))
                     "/>")
             ;; Fallback if no images found
             contents)))
