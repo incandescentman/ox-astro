@@ -1181,25 +1181,31 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
 
 (defun org-astro-src-block (src-block contents info)
   "Transcode a SRC-BLOCK element into fenced Markdown format.
-For 'user', 'prompt', and 'quote' blocks, preserve org-mode syntax
+For 'user', 'prompt', 'quote', and 'pullquote' blocks, preserve org-mode syntax
 literally - convert org headings to markdown equivalents."
   (if (not (org-export-read-attribute :attr_md src-block :textarea))
       (let* ((lang (org-element-property :language src-block))
              ;; Use :value to get raw content, preserving internal newlines.
              (code (org-element-property :value src-block)))
-        ;; For user/prompt/quote blocks, convert org-mode syntax to markdown
-        (when (member lang '("user" "prompt" "quote"))
-          ;; Convert em dashes
-          (when (string-match-p "---" code)
-            (setq code (replace-regexp-in-string "---" "—" code)))
-          ;; Convert org headings to markdown headings
-          (setq code (replace-regexp-in-string "^\\*\\*\\*\\* \\(.*\\)$" "#### \\1" code))
-          (setq code (replace-regexp-in-string "^\\*\\*\\* \\(.*\\)$" "### \\1" code))
-          (setq code (replace-regexp-in-string "^\\*\\* \\(.*\\)$" "## \\1" code))
-          (setq code (replace-regexp-in-string "^\\* \\(.*\\)$" "# \\1" code)))
-        ;; Trim trailing newlines/whitespace to prevent extra space at the end.
-        (setq code (string-trim-right code))
-        (format "```%s\n%s\n```" (or lang "") code))
+        ;; Handle pullquote blocks specially - wrap in div with blank lines
+        (if (string-equal lang "pullquote")
+            (concat "<div class=\"pullquote\">\n\n"
+                    (string-trim-right code)
+                    "\n</div>\n")
+          (progn
+            ;; For user/prompt/quote blocks, convert org-mode syntax to markdown
+            (when (member lang '("user" "prompt" "quote"))
+              ;; Convert em dashes
+              (when (string-match-p "---" code)
+                (setq code (replace-regexp-in-string "---" "—" code)))
+              ;; Convert org headings to markdown headings
+              (setq code (replace-regexp-in-string "^\\*\\*\\*\\* \\(.*\\)$" "#### \\1" code))
+              (setq code (replace-regexp-in-string "^\\*\\*\\* \\(.*\\)$" "### \\1" code))
+              (setq code (replace-regexp-in-string "^\\*\\* \\(.*\\)$" "## \\1" code))
+              (setq code (replace-regexp-in-string "^\\* \\(.*\\)$" "# \\1" code)))
+            ;; Trim trailing newlines/whitespace to prevent extra space at the end.
+            (setq code (string-trim-right code))
+            (format "```%s\n%s\n```" (or lang "") code))))
       ;; Fallback to simple fenced code block
       (let* ((lang (org-element-property :language src-block))
              (code (org-element-property :value src-block)))

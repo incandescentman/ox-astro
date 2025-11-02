@@ -2,6 +2,228 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
+* 2025-11-02 Saturday - Pull Quote Support & Gallery Columns
+
+** Summary
+Added magazine-style pull quote support and fixed gallery :columns attribute parsing to enable single-row gallery layouts and typographically rich quotes with smart quotation marks.
+
+** Goal
+Enable two new content types for blog posts:
+1. *Pull quotes* - Magazine-style large, centered quotes with decorative quotation marks for highlighting key insights
+2. *Flexible gallery layouts* - Support custom column counts (especially single-row layouts for screenshot galleries)
+
+** Problems Discovered
+
+*** Gallery Columns Not Working
+The =:columns N= attribute in =#+BEGIN_GALLERY= blocks was being ignored during export. Users couldn't control the number of columns or create single-row layouts.
+
+*Root Cause*: The gallery handler in =ox-astro-table-handlers.el= wasn't parsing the =:parameters= property from special blocks.
+
+*** Pull Quote Content Not Processed as Markdown
+Initial implementation wrapped content in =<div class="pullquote">= but MDX treated it as raw HTML, so:
+- Straight quotes =" "= didn't convert to smart quotes =" "=
+- Apostrophes ='= didn't convert to smart apostrophes ='=
+- Markdown formatting =**bold**= wasn't rendered
+- Spacing after colons was lost
+
+*Root Cause*: MDX only processes markdown when there are blank lines separating HTML tags from content.
+
+*** Pull Quotes Only in Claude Theme
+Pull quotes were styled only for =.claude-theme-wrapper=, making them unavailable for posts using the default Tailwind prose theme.
+
+** Solutions Implemented
+
+*** 1. Gallery Columns Parsing (ox-astro)
+*File*: =ox-astro-table-handlers.el= lines 89-93
+
+Added parameter parsing to extract =:columns N= from the special block's =:parameters= property:
+
+#+begin_src emacs-lisp
+;; Parse :columns attribute from #+BEGIN_GALLERY :columns N
+;; Special blocks store parameters as a string like ":columns 12"
+(params-string (org-element-property :parameters special-block))
+(columns (when (and params-string (string-match ":columns +\\([0-9]+\\)" params-string))
+           (string-to-number (match-string 1 params-string))))
+#+end_src
+
+Then pass it to the ImageGallery component when present (lines 158-159):
+
+#+begin_src emacs-lisp
+(when (and columns (> columns 0))
+  (format "  columns={%d}\n" columns))
+#+end_src
+
+*Commit*: =e0af6b4= - Add support for :columns attribute in GALLERY blocks
+
+*** 2. Pull Quote Block Handler (ox-astro)
+*File*: =ox-astro-table-handlers.el= lines 164-168
+
+Added PULLQUOTE special block handler that wraps content with blank lines for MDX processing:
+
+#+begin_src emacs-lisp
+;; Handle PULLQUOTE blocks
+((string-equal block-type "PULLQUOTE")
+ (concat "<div class=\"pullquote\">\n\n"
+         contents
+         "\n</div>\n"))
+#+end_src
+
+The double newlines after the opening =<div>= tag signal MDX to process the content as markdown, enabling:
+- Smart quote conversion (=" "= → =" "=)
+- Smart apostrophe conversion (='= → ='=)
+- Bold/italic/formatting rendering
+- Proper spacing preservation
+
+*Commits*:
+- =5a43ceb= - Add support for PULLQUOTE blocks
+- =0933094= - Fix PULLQUOTE content to be processed as markdown in MDX
+
+*** 3. Pull Quote CSS - Claude Theme
+*File*: =apps/socratic/src/styles/claude-theme.css= lines 213-285
+
+Magazine-style design with:
+- Large italic serif text (1.75rem / 28px)
+- Centered layout with top/bottom borders in Claude link color
+- Smart curly quotation marks (Unicode =\201C= and =\201D=) at 6rem with 30% opacity
+- =white-space: pre-line= to preserve line breaks
+- Font feature settings for ligatures and contextual alternates
+- Responsive: smaller text and quotes on mobile
+
+*Commits*:
+- =2b6441d= - Add magazine-style pull quote CSS
+- =e52c1ce= - Use smart/curly quotation marks in pull quotes
+- =f434635= - Fix pullquote spacing with white-space: pre-line
+
+*** 4. Pull Quote CSS - Default Theme
+*File*: =apps/socratic/src/layouts/MarkdownLayout.astro= lines 33-126
+
+Added =<style is:global>= block with pull quote styling for =.prose= context:
+- Georgia serif font matching Tailwind prose
+- Blue borders (=#3b82f6=) matching the default link color
+- Dark mode support with lighter blue (=#60a5fa=)
+- Same smart quotes and responsive behavior as Claude theme
+
+*Commit*: =a1586b2= - Add pullquote support to default theme
+
+** Implementation Details
+
+*** Smart Quote Strategy
+Used CSS Unicode escapes for decorative quotation marks instead of literal characters:
+- =\201C= - Left double quotation mark ="=
+- =\201D= - Right double quotation mark ="=
+
+This ensures consistent rendering across all fonts and eliminates encoding issues.
+
+*** MDX Processing Trick
+The key insight: MDX treats content differently based on surrounding whitespace:
+
+#+begin_example
+BAD (treated as raw HTML):
+<div class="pullquote">
+Content here
+</div>
+
+GOOD (processed as markdown):
+<div class="pullquote">
+
+Content here
+
+</div>
+#+end_example
+
+The blank lines after opening tag and before closing tag signal "process this as markdown."
+
+*** Gallery Columns Pattern
+Users can now create single-row galleries by setting =:columns= equal to or greater than the image count:
+
+#+begin_src org
+#+BEGIN_GALLERY :columns 12
+[[image1.png]]
+[[image2.png]]
+...
+[[image12.png]]
+#+END_GALLERY
+#+end_src
+
+For 12 images with =:columns 12=, desktop shows all in one row; mobile still uses 2 columns for readability.
+
+** User Impact
+
+*** Pull Quotes
+*Usage*:
+#+begin_src org
+#+BEGIN_PULLQUOTE
+Your important quote text here.
+#+END_PULLQUOTE
+#+end_src
+
+*Benefits*:
+- Magazine-quality typography with smart quotes
+- Automatic markdown processing (bold, italic, etc.)
+- Works in both Claude theme and default theme
+- No manual quote mark insertion needed
+- Responsive design for mobile
+
+*** Gallery Columns
+*Usage*:
+#+begin_src org
+#+BEGIN_GALLERY :columns 12
+[[screenshot1.png]]
+[[screenshot2.png]]
+#+END_GALLERY
+#+end_src
+
+*Benefits*:
+- Create single-row screenshot galleries
+- Control layout precisely (2, 3, 4, or more columns)
+- Responsive: auto-adjusts to 2 columns on mobile
+- PhotoSwipe lightbox for full-size viewing
+
+** Documentation
+Updated =instructions.org= in astro-monorepo with:
+- Complete pull quote usage guide with examples
+- Visual style documentation
+- When to use pull quotes (best practices)
+- Gallery columns reference with real-world examples
+- Troubleshooting for both features
+
+** Testing
+Manual verification:
+- Exported goal tracking system post with 12-image gallery in single row
+- Created pull quote examples in Claude theme posts
+- Verified smart quotes render correctly
+- Confirmed markdown processing (bold, spacing) works
+- Tested responsive behavior on mobile viewport
+
+** Files Modified
+
+*** ox-astro
+- =ox-astro-table-handlers.el= - Gallery columns parsing + PULLQUOTE handler
+- =work-log.org= - This entry
+
+*** astro-monorepo
+- =apps/socratic/src/styles/claude-theme.css= - Pull quote styling
+- =apps/socratic/src/layouts/MarkdownLayout.astro= - Default theme pull quotes
+- =apps/socratic/src/content/blog/claude-designs-a-goal-tracking-system.mdx= - Gallery example
+- =instructions.org= - Comprehensive documentation
+
+** Status
+✅ *COMPLETE* - Both features implemented, tested, and documented.
+
+** Lessons Learned
+
+*** MDX Content Processing Rules
+Understanding when MDX processes content as markdown vs. raw HTML is crucial. The blank line pattern (=<tag>\n\nContent\n</tag>=) is the key signal.
+
+*** Special Block Parameters
+Org special blocks store parameters as a single string in the =:parameters= property, not as a plist. Pattern matching with regex is the reliable extraction method.
+
+*** Typography Matters
+Smart quotes, proper spacing, and font features (ligatures, contextual alternates) elevate pull quotes from "styled text" to magazine-quality typography.
+
+*** Theme Portability
+Implementing the same feature for both Claude theme and default theme ensures all blog posts can use the feature, not just themed ones.
+
 * 2025-10-28 Tuesday - Hero Image Dedup + Import Hygiene
 
 ** Summary
