@@ -160,6 +160,13 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
                     "/>")
             ;; Fallback if no images found
             contents)))
+
+     ;; Handle PULLQUOTE blocks
+     ((string-equal block-type "PULLQUOTE")
+      (concat "<div class=\"pullquote\">\n"
+              contents
+              "</div>\n"))
+
      ;; Default: use standard markdown export
      (t (org-md-special-block special-block contents info)))))
 
