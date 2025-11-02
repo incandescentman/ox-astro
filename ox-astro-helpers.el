@@ -1190,8 +1190,8 @@ literally - convert org headings to markdown equivalents."
         ;; Handle pullquote blocks specially - wrap in div with blank lines
         (if (string-equal lang "pullquote")
             (concat "<div class=\"pullquote\">\n\n"
-                    (string-trim-right code)
-                    "\n</div>\n")
+                    (org-trim code)
+                    "\n\n</div>\n")
           (progn
             ;; For user/prompt/quote blocks, convert org-mode syntax to markdown
             (when (member lang '("user" "prompt" "quote"))
