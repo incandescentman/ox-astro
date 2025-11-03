@@ -205,8 +205,22 @@ Initial generic images ("WATCHLIST", "MOVIES") lacked personal touch. Regenerate
 *Aesthetic*: Penguin Classics, vintage book covers, literary sophistication
 *Key difference*: Books use Penguin/classic book design language instead of Criterion Collection (film-specific)
 
+** Current Status
+
+All OG images implemented and tested:
+- ✅ Watchlist (https://dixit.ca/watchlist)
+- ✅ Movies (https://dixit.ca/movies)
+- ✅ Books (https://dixit.ca/books)
+- ✅ Reading List (https://dixit.ca/readlist)
+
+All images deployed to production, using 1536x1024 (3:2 ratio), personalized "JAY'S" branding.
+
 ** Next Steps
-- Consider OG images for TV pages
+- Consider OG images for TV pages (=/tv= and =/tv-watchlist=)
+- Potential new page: =/tools= - curated list of software/apps/services Jay uses
+  - Need to determine structure (category-based vs use-case-based vs simple list)
+  - Need to decide what info to track (name, description, category, rating, platform, etc.)
+  - Need OG image aesthetic direction (terminal/code style vs minimal/Swiss vs workspace vs blueprint)
 - May add itinerary/travel OG images
 - Established pattern: 1536x1024, personalized "JAY'S" branding, theme-appropriate aesthetic
 
