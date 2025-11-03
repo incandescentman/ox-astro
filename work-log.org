@@ -2,6 +2,121 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-10-17
 
+* 2025-11-02 Saturday - OG Images for Movie Pages
+
+** Summary
+Created AI-generated OG images for watchlist and movies pages featuring Criterion Collection-style and film noir aesthetics. Images capture cinephile sophistication with rain/storm motifs and neon signage.
+
+** Goal
+Design and implement distinctive OG images that:
+1. *Reflect cinephile aesthetic* - Sophisticated, curated film collection vibe
+2. *Use atmospheric imagery* - Rain, storms, noir lighting for dramatic impact
+3. *Clear branding* - "WATCHLIST" and "MOVIES" text clearly readable
+4. *Optimize for social sharing* - Work at small OG image sizes (1200x630px)
+
+** Implementation
+
+*** Watchlist Page OG Image
+*File*: =/apps/jaydocs/public/man-criterion-2.png=
+*Page*: =/watchlist=
+
+Design approach:
+- Criterion Collection/Saul Bass aesthetic
+- Silhouetted figure walking through geometric rain
+- Warm color palette (cream, rust/burgundy, black)
+- "WATCHLIST - A FILM COLLECTION" typography
+- Diagonal rain lines creating dynamic composition
+- Mid-century modern/Bauhaus influence
+
+Image generation prompt focused on:
+#+begin_quote
+Abstract geometric composition showing a silhouetted figure walking through torrential rain, depicted with stark vertical lines and angular shapes. Use only black, white, and one accent color (deep red). Bold sans-serif text: "WATCHLIST" in uppercase. Bauhaus/Swiss design influence. Museum-quality aesthetic. Reminiscent of Akira Kurosawa rain scenes abstracted to geometric forms.
+#+end_quote
+
+Alternative versions generated:
+- =man-criterion.png= - Blue rain variant with more contemporary feel
+- =motel-watchlist.png= - Neon cyan "WATCHLIST" motel sign in storm
+
+*** Movies Page OG Image
+*File*: =/apps/jaydocs/public/movies-motel.png=
+*Page*: =/movies=
+
+Design approach:
+- Film noir neon motel sign aesthetic
+- Flickering neon "MOVIES" sign in cyan/magenta
+- Torrential rain with dramatic vertical streaks
+- Dark, moody atmosphere with wet pavement reflections
+- Small film reel silhouette in motel window
+- Neo-noir/David Lynch atmospheric dread
+
+Image generation prompt focused on:
+#+begin_quote
+Moody film noir scene: a flickering neon motel sign glowing with the word "MOVIES" during a torrential rainstorm at night. Dominant vertical rain lines in stark white/cyan against deep black. The neon sign buzzes with electric blue and magenta, casting eerie reflections on wet pavement. Neo-noir meets 1950s thriller movie poster aesthetic.
+#+end_quote
+
+** Technical Implementation
+
+Updated Astro Layout component calls:
+#+begin_src astro
+// watchlist.astro
+<Layout
+  title="Watch List"
+  description="Movies I want to watch"
+  image="/man-criterion-2.png"
+>
+
+// movies.astro
+<Layout
+  title="Most Beloved Movies"
+  description="My favorite movies from Letterboxd"
+  image="/movies-motel.png"
+>
+#+end_src
+
+Images placed in =/apps/jaydocs/public/= for direct URL access.
+
+** Design Philosophy
+
+*Watchlist (Criterion style)*:
+- Warm, sophisticated, editorial
+- Timeless classic cinema aesthetic
+- Museum-quality curation vibe
+- Inviting rather than brooding
+
+*Movies (Noir motel)*:
+- Atmospheric, dramatic, moody
+- Midnight cinema energy
+- Psychological thriller undertones
+- Unique and memorable
+
+Both approaches convey "serious cinephile with refined taste" through different aesthetic lenses.
+
+** User Impact
+- Social media shares of =/watchlist= and =/movies= now display custom OG images
+- Distinctive visual identity differentiates the two film-related pages
+- Professional, curated aesthetic reinforces quality of film selections
+- Images work well at small social media thumbnail sizes
+
+** Files Modified
+- =apps/jaydocs/public/man-criterion-2.png= (new - 1.7M, Criterion style)
+- =apps/jaydocs/public/man-criterion.png= (new - 1.9M, blue variant)
+- =apps/jaydocs/public/motel-watchlist.png= (new - 2.0M, neon sign)
+- =apps/jaydocs/public/movies-motel.png= (new - 2.3M, movies neon)
+- =apps/jaydocs/src/pages/watchlist.astro= (added image prop)
+- =apps/jaydocs/src/pages/movies.astro= (added image prop)
+
+** Lessons Learned
+1. *AI image generation workflow* - Criterion-style geometric abstraction worked better than literal motel imagery for watchlist; motel neon worked perfectly for movies page
+2. *Text legibility critical* - Explicitly stating "clearly legible and central" in prompts ensures AI renders text properly
+3. *Color palette matters* - Warm palette (cream/rust) feels more sophisticated than cool blue for curated collections
+4. *Storm/rain motif versatile* - Works for both elegant Criterion aesthetic and noir motel vibe
+5. *Multiple variants useful* - Generated 3 watchlist options to choose best fit; kept alternatives for future use
+
+** Next Steps
+- Consider OG images for other major pages (TV shows, itineraries, etc.)
+- May experiment with consistent visual language across all OG images
+- Could create matching hero images for actual page headers
+
 * 2025-11-02 Saturday - Theme Separation & Claude Pullquote Modernization
 
 ** Summary
