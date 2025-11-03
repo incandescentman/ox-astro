@@ -5,20 +5,22 @@
 * 2025-11-02 Saturday - OG Images for Movie Pages
 
 ** Summary
-Created AI-generated OG images for watchlist and movies pages featuring Criterion Collection-style and film noir aesthetics. Images capture cinephile sophistication with rain/storm motifs and neon signage.
+Created AI-generated OG images for watchlist and movies pages featuring Criterion Collection-style and film noir aesthetics. Images capture cinephile sophistication with rain/storm motifs and neon signage. Optimized aspect ratio from 1:1 to 3:2 for better iOS/social media display.
 
 ** Goal
 Design and implement distinctive OG images that:
 1. *Reflect cinephile aesthetic* - Sophisticated, curated film collection vibe
 2. *Use atmospheric imagery* - Rain, storms, noir lighting for dramatic impact
 3. *Clear branding* - "WATCHLIST" and "MOVIES" text clearly readable
-4. *Optimize for social sharing* - Work at small OG image sizes (1200x630px)
+4. *Optimize for social sharing* - Work well on iOS/iMessage and social platforms
+5. *Correct aspect ratio* - 1536x1024 (3:2) for minimal cropping
 
 ** Implementation
 
 *** Watchlist Page OG Image
-*File*: =/apps/jaydocs/public/man-criterion-2.png=
+*File*: =/apps/jaydocs/public/watchlist-og.png= (1536x1024px)
 *Page*: =/watchlist=
+*Initial versions*: =man-criterion-2.png= (1024x1024), =man-criterion.png=, =motel-watchlist.png=
 
 Design approach:
 - Criterion Collection/Saul Bass aesthetic
@@ -38,8 +40,9 @@ Alternative versions generated:
 - =motel-watchlist.png= - Neon cyan "WATCHLIST" motel sign in storm
 
 *** Movies Page OG Image
-*File*: =/apps/jaydocs/public/movies-motel.png=
+*File*: =/apps/jaydocs/public/movies-og.png= (1536x1024px)
 *Page*: =/movies=
+*Initial version*: =movies-motel.png= (1024x1024)
 
 Design approach:
 - Film noir neon motel sign aesthetic
@@ -56,24 +59,47 @@ Moody film noir scene: a flickering neon motel sign glowing with the word "MOVIE
 
 ** Technical Implementation
 
-Updated Astro Layout component calls:
+*** Initial Implementation (Square Images)
+First iteration used 1024x1024px square images, which were suboptimal for OG display.
+
+*** Aspect Ratio Issue Discovery
+Testing with Facebook OG debugger revealed:
+- Square 1:1 images get cropped awkwardly on social platforms
+- iOS/iMessage prefers 2:1 ratio (1200x600px ideal)
+- Facebook uses 1.91:1 ratio (1200x630px)
+- Compromise: 3:2 ratio (1536x1024px) works well across platforms
+
+*** Prop Name Fix
+Layout component expected =ogImage= prop, not =image=:
+#+begin_src astro
+// Fixed prop name from 'image' to 'ogImage'
+<Layout ogImage="/watchlist-og.png">
+#+end_src
+
+*** Final Implementation
+Updated Astro Layout component calls with corrected prop and wider images:
 #+begin_src astro
 // watchlist.astro
 <Layout
   title="Watch List"
   description="Movies I want to watch"
-  image="/man-criterion-2.png"
+  ogImage="/watchlist-og.png"
 >
 
 // movies.astro
 <Layout
   title="Most Beloved Movies"
   description="My favorite movies from Letterboxd"
-  image="/movies-motel.png"
+  ogImage="/movies-og.png"
 >
 #+end_src
 
 Images placed in =/apps/jaydocs/public/= for direct URL access.
+
+Layout component OG meta tag generation (Layout.astro:33):
+#+begin_src astro
+{ogImage && <meta property="og:image" content={new URL(ogImage, Astro.url).href} />}
+#+end_src
 
 ** Design Philosophy
 
@@ -98,12 +124,20 @@ Both approaches convey "serious cinephile with refined taste" through different 
 - Images work well at small social media thumbnail sizes
 
 ** Files Modified
-- =apps/jaydocs/public/man-criterion-2.png= (new - 1.7M, Criterion style)
-- =apps/jaydocs/public/man-criterion.png= (new - 1.9M, blue variant)
-- =apps/jaydocs/public/motel-watchlist.png= (new - 2.0M, neon sign)
-- =apps/jaydocs/public/movies-motel.png= (new - 2.3M, movies neon)
-- =apps/jaydocs/src/pages/watchlist.astro= (added image prop)
-- =apps/jaydocs/src/pages/movies.astro= (added image prop)
+
+*** Initial Square Images (1024x1024, deprecated)
+- =apps/jaydocs/public/man-criterion-2.png= (1.7M, Criterion style)
+- =apps/jaydocs/public/man-criterion.png= (1.9M, blue variant)
+- =apps/jaydocs/public/motel-watchlist.png= (2.0M, neon sign)
+- =apps/jaydocs/public/movies-motel.png= (2.3M, movies neon)
+
+*** Final Optimized Images (1536x1024, 3:2 ratio)
+- =apps/jaydocs/public/watchlist-og.png= (new - optimized aspect ratio)
+- =apps/jaydocs/public/movies-og.png= (new - optimized aspect ratio)
+
+*** Page Updates
+- =apps/jaydocs/src/pages/watchlist.astro= (added ogImage prop, updated to watchlist-og.png)
+- =apps/jaydocs/src/pages/movies.astro= (added ogImage prop, updated to movies-og.png)
 
 ** Lessons Learned
 1. *AI image generation workflow* - Criterion-style geometric abstraction worked better than literal motel imagery for watchlist; motel neon worked perfectly for movies page
@@ -111,6 +145,10 @@ Both approaches convey "serious cinephile with refined taste" through different 
 3. *Color palette matters* - Warm palette (cream/rust) feels more sophisticated than cool blue for curated collections
 4. *Storm/rain motif versatile* - Works for both elegant Criterion aesthetic and noir motel vibe
 5. *Multiple variants useful* - Generated 3 watchlist options to choose best fit; kept alternatives for future use
+6. *Aspect ratio critical for OG images* - Square 1:1 images get cropped badly on social platforms; 3:2 ratio (1536x1024) provides good compromise between iOS (prefers 2:1) and Facebook (1.91:1)
+7. *Test with Facebook OG debugger* - Revealed aspect ratio issues and prop name mismatch; use https://developers.facebook.com/tools/debug/ to validate
+8. *Prop naming matters* - Layout component expected =ogImage= not =image=; checking component interfaces prevents silent failures
+9. *Iterative optimization* - Started with square images, discovered issues through testing, regenerated with better specs
 
 ** Next Steps
 - Consider OG images for other major pages (TV shows, itineraries, etc.)
