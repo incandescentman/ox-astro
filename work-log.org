@@ -132,12 +132,16 @@ Both approaches convey "serious cinephile with refined taste" through different 
 - =apps/jaydocs/public/movies-motel.png= (2.3M, movies neon)
 
 *** Final Optimized Images (1536x1024, 3:2 ratio)
-- =apps/jaydocs/public/watchlist-og.png= (new - optimized aspect ratio)
-- =apps/jaydocs/public/movies-og.png= (new - optimized aspect ratio)
+- =apps/jaydocs/public/watchlist-og.png= (personalized "JAY'S WATCHLIST")
+- =apps/jaydocs/public/movies-og.png= (personalized "JAY'S FAVORITE MOVIES")
+- =apps/jaydocs/public/books-og.png= (new - "JAY'S FAVORITE BOOKS", Penguin aesthetic)
+- =apps/jaydocs/public/reading-list-og.png= (new - "JAY'S READING LIST", treasure map)
 
 *** Page Updates
-- =apps/jaydocs/src/pages/watchlist.astro= (added ogImage prop, updated to watchlist-og.png)
-- =apps/jaydocs/src/pages/movies.astro= (added ogImage prop, updated to movies-og.png)
+- =apps/jaydocs/src/pages/watchlist.astro= (added ogImage prop)
+- =apps/jaydocs/src/pages/movies.astro= (added ogImage prop)
+- =apps/jaydocs/src/pages/books.astro= (added ogImage prop)
+- =apps/jaydocs/src/pages/readlist.astro= (added ogImage prop)
 
 ** Lessons Learned
 1. *AI image generation workflow* - Criterion-style geometric abstraction worked better than literal motel imagery for watchlist; motel neon worked perfectly for movies page
@@ -149,11 +153,62 @@ Both approaches convey "serious cinephile with refined taste" through different 
 7. *Test with Facebook OG debugger* - Revealed aspect ratio issues and prop name mismatch; use https://developers.facebook.com/tools/debug/ to validate
 8. *Prop naming matters* - Layout component expected =ogImage= not =image=; checking component interfaces prevents silent failures
 9. *Iterative optimization* - Started with square images, discovered issues through testing, regenerated with better specs
+10. *Personalization matters* - "JAY'S WATCHLIST" much more distinctive than generic "WATCHLIST"; personal branding makes images more memorable
+11. *Theme-appropriate design language* - Films use Criterion/noir aesthetic, books use Penguin Classics/vintage covers; matching design to content type creates coherence
+12. *Consistent dimensions* - Established 1536x1024 as standard across all pages; simplifies generation and ensures consistent social media display
+
+** Iteration 2: Personalized Images
+
+*** Discovery
+Initial generic images ("WATCHLIST", "MOVIES") lacked personal touch. Regenerated with personalized text for more distinctive branding.
+
+*** Updated Images
+
+**** Watchlist (Final)
+*File*: =watchlist-og.png= (1536x1024)
+- Changed from generic "WATCHLIST" to "JAY'S WATCHLIST"
+- Dramatic black and blue geometric rain design
+- More striking and personal
+
+**** Movies (Final)
+*File*: =movies-og.png= (1536x1024)
+- Changed from generic "MOVIES" to "JAY'S FAVORITE MOVIES"
+- Noir motel sign with "MOTEL" header
+- Cyan and pink neon aesthetic
+- More atmospheric and personal
+
+**** Books (New)
+*File*: =books-og.png= (1536x1024)
+*Page*: =/books=
+- "JAY'S FAVORITE BOOKS" with open book design
+- Penguin Classics aesthetic (cream, black, orange)
+- Classic literary sophistication
+- "A Reading Collection" subtitle with page number
+
+**** Reading List (New)
+*File*: =reading-list-og.png= (1536x1024)
+*Page*: =/readlist=
+- "JAY'S READING LIST" with vintage adventure book cover
+- Treasure map design with compass and nautical elements
+- Dark blue and gold color scheme
+- Evokes exploration and discovery
+
+** Design Evolution Summary
+
+*** Watchlist & Movies
+*First iteration*: Square 1024x1024, generic text
+*Second iteration*: Rectangular 1536x1024, personalized "JAY'S" branding
+*Aesthetic*: Film noir, Criterion Collection, atmospheric storm imagery
+
+*** Books Pages
+*Single iteration*: Started with correct 1536x1024 ratio and personalized text
+*Aesthetic*: Penguin Classics, vintage book covers, literary sophistication
+*Key difference*: Books use Penguin/classic book design language instead of Criterion Collection (film-specific)
 
 ** Next Steps
-- Consider OG images for other major pages (TV shows, itineraries, etc.)
-- May experiment with consistent visual language across all OG images
-- Could create matching hero images for actual page headers
+- Consider OG images for TV pages
+- May add itinerary/travel OG images
+- Established pattern: 1536x1024, personalized "JAY'S" branding, theme-appropriate aesthetic
 
 * 2025-11-02 Saturday - Theme Separation & Claude Pullquote Modernization
 
