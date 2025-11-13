@@ -396,7 +396,7 @@ This helper respects the first matching keyword encountered in TREE."
           (when (re-search-forward "^#\\+ASTRO_POSTS_FOLDER:\\s-*\\(.+\\)$" nil t)
             (setq astro-folder (string-trim (match-string 1))))
           (goto-char (point-min))
-          (when (re-search-forward "^#\\+DESTINATION[_-]FOLDER:\\s-*\\(.+\\)$" nil t)
+          (when (re-search-forward "^#\\+DESTINATION\\(?:[_-]FOLDER\\)?:\\s-*\\(.+\\)$" nil t)
             (setq dest-folder (string-trim (match-string 1))))
           (unless title
             (goto-char (point-min))

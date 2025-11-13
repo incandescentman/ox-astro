@@ -13,7 +13,7 @@
   :type 'string)
 
 (defcustom org-astro-default-posts-folder "astro-posts"
-  "Default subdirectory for exported posts if #+DESTINATION_FOLDER (or #+DESTINATION-FOLDER) is not set."
+  "Default subdirectory for exported posts if #+DESTINATION_FOLDER, #+DESTINATION-FOLDER, or #+DESTINATION is not set."
   :group 'org-export-astro
   :type 'string)
 
@@ -50,15 +50,15 @@ Each element is (NICKNAME . PLIST) where PLIST can contain:
 To customize this:
 1. Run M-x customize-group RET org-export-astro RET
 2. Edit the 'Org Astro Known Posts Folders' setting
-3. Add your project paths using nicknames you can reference in #+DESTINATION_FOLDER (or #+DESTINATION-FOLDER)
+3. Add your project paths using nicknames you can reference in #+DESTINATION_FOLDER, #+DESTINATION-FOLDER, or #+DESTINATION
 
 Example configuration:
   ((\"blog\" . (:path \"/path/to/my-blog/src/content/blog\"))
    (\"docs\" . (:path \"/path/to/my-docs/src/content/docs\"))
-   (\"roam\" . (:path \"/path/to/roam/src/content\" 
+   (\"roam\" . (:path \"/path/to/roam/src/content\"
                :preserve-folder-structure t)))
 
-Then in your Org files, use: #+DESTINATION_FOLDER: blog (hyphenated form also supported)"
+Then in your Org files, use: #+DESTINATION_FOLDER: blog (or #+DESTINATION-FOLDER: blog, or #+DESTINATION: blog)"
   :group 'org-export-astro
   :type '(alist :key-type (string :tag "Nickname")
                 :value-type (plist :options ((:path directory)

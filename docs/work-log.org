@@ -1,6 +1,29 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-11-13
+** Session Summary
+- Added `#+DESTINATION` as a shorter alias for `#+DESTINATION_FOLDER` and `#+DESTINATION-FOLDER`, providing users with a more concise option for specifying export destinations.
+- Updated all regex patterns across the codebase to recognize all three forms: `#+DESTINATION_FOLDER:`, `#+DESTINATION-FOLDER:`, and `#+DESTINATION:`.
+- Enhanced keyword preservation logic to maintain user's preferred format when updating existing destination keywords.
+- Updated documentation across README, concept map, and config files to reflect the new shorter alias.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Regex patterns updated in three locations to support `#+DESTINATION:` (`ox-astro-helpers.el:399`, `update-image-paths.el:76`, `ox-astro.el:345`)
+- [x] Keyword preservation logic enhanced to handle all three format variants (`ox-astro.el:348-351`)
+- [x] Documentation updated: `README.org:82,129`, `docs/concept-map.org:80`, `ox-astro-config.el:16,53,61`
+- [x] Regex tests created and passing for all three keyword variants
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro-helpers.el`, `update-image-paths.el`, `ox-astro.el`, `README.org`, `docs/concept-map.org`, `ox-astro-config.el`
+- Known unknowns: None - feature is complete and tested
+- Recommendations: Consider adding to CHANGE-LOG.org if this warrants a version bump or release note
+
 * 2025-10-30
 ** Session Summary
 - Added `#+SUBHED` as an accepted excerpt keyword so Org sources can map legacy decks into MDX front matter without duplication.

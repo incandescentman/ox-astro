@@ -342,11 +342,13 @@ generated and added to the Org source file."
                         ;; Add the DESTINATION_FOLDER keyword to the org file
                         (save-excursion
                           (goto-char (point-min))
-                          (if (re-search-forward "^#\\+DESTINATION[_-]FOLDER:" nil t)
-                              ;; Update existing DESTINATION keyword, preserving user's delimiter
+                          (if (re-search-forward "^#\\+DESTINATION\\(?:[_-]FOLDER\\)?:" nil t)
+                              ;; Update existing DESTINATION keyword, preserving user's format preference
                               (let* ((matched (match-string 0))
-                                     (use-hyphen (and matched (string-match-p "DESTINATION-FOLDER" matched)))
-                                     (keyword (if use-hyphen "DESTINATION-FOLDER" "DESTINATION_FOLDER")))
+                                     (keyword (cond
+                                               ((string-match-p "DESTINATION-FOLDER" matched) "DESTINATION-FOLDER")
+                                               ((string-match-p "DESTINATION_FOLDER" matched) "DESTINATION_FOLDER")
+                                               (t "DESTINATION"))))
                                 (beginning-of-line)
                                 (kill-line)
                                 (insert (format "#+%s: %s" keyword selection)))
