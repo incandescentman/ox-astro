@@ -2,6 +2,26 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Fix Link Conversion in User/Prompt/Quote Blocks (2025-11-13)
+
+** Summary
+Fixed bug where org-mode links inside `user`, `prompt`, and `quote` src blocks were being exported in raw org-mode format (`[[link][text]]`) instead of being converted to Markdown format (`[text](link)`).
+
+** Rationale
+These special blocks are used for dialogue and quoted content in exported MDX. Links within them need to be clickable Markdown links, not raw org-mode syntax that would display literally in the rendered output.
+
+** Key Behavior
+- `org-astro-src-block` now converts org-mode link syntax to Markdown for `user`, `prompt`, and `quote` blocks
+- Handles both link forms: `[[path][description]]` → `[description](path)` and `[[path]]` → `[path](path)`
+- This conversion happens alongside existing transformations (em dashes, org headings) for these special blocks
+
+** Implementation
+- Added regex-based link conversion to `org-astro-src-block` in `ox-astro-helpers.el:1206-1216`
+
+** Testing
+- Verified with real-world export file containing links in user blocks
+- Git diff confirmed links now export as proper Markdown
+
 * Allow SUBHED Keyword for Excerpts (2025-10-30)
 
 ** Summary

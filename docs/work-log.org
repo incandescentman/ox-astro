@@ -2,7 +2,28 @@
 #+DATE: 2025-10-07
 
 * 2025-11-13
-** Session Summary
+** Session Summary: Link Conversion in User Blocks
+- Fixed bug where org-mode links inside `user`, `prompt`, and `quote` blocks were being exported in raw org-mode format (`[[link][text]]`) instead of being converted to Markdown format (`[text](link)`).
+- Enhanced `org-astro-src-block` function to convert org-mode links to Markdown during special block processing.
+- Link conversion now handles both forms: `[[path][description]]` → `[description](path)` and `[[path]]` → `[path](path)`.
+- This conversion happens alongside existing transformations (em dashes, org headings) for these special blocks.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Link conversion regex added to `org-astro-src-block` for `user`, `prompt`, and `quote` blocks (`ox-astro-helpers.el:1206-1216`)
+- [x] Tested with real export file - links now correctly convert to Markdown format in user blocks
+- [x] Verified git diff shows correct Markdown link output
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro-helpers.el`
+- Known unknowns: None - feature is complete and tested
+- Recommendations: None
+
+** Previous Session: Destination Keyword Alias
 - Added `#+DESTINATION` as a shorter alias for `#+DESTINATION_FOLDER` and `#+DESTINATION-FOLDER`, providing users with a more concise option for specifying export destinations.
 - Updated all regex patterns across the codebase to recognize all three forms: `#+DESTINATION_FOLDER:`, `#+DESTINATION-FOLDER:`, and `#+DESTINATION:`.
 - Enhanced keyword preservation logic to maintain user's preferred format when updating existing destination keywords.

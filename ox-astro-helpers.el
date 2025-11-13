@@ -1202,7 +1202,18 @@ literally - convert org headings to markdown equivalents."
               (setq code (replace-regexp-in-string "^\\*\\*\\*\\* \\(.*\\)$" "#### \\1" code))
               (setq code (replace-regexp-in-string "^\\*\\*\\* \\(.*\\)$" "### \\1" code))
               (setq code (replace-regexp-in-string "^\\*\\* \\(.*\\)$" "## \\1" code))
-              (setq code (replace-regexp-in-string "^\\* \\(.*\\)$" "# \\1" code)))
+              (setq code (replace-regexp-in-string "^\\* \\(.*\\)$" "# \\1" code))
+              ;; Convert org-mode links to Markdown links
+              ;; [[path][description]] → [description](path)
+              (setq code (replace-regexp-in-string
+                          "\\[\\[\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]"
+                          "[\\2](\\1)"
+                          code))
+              ;; [[path]] → [path](path)
+              (setq code (replace-regexp-in-string
+                          "\\[\\[\\([^]]+\\)\\]\\]"
+                          "[\\1](\\1)"
+                          code)))
             ;; Trim trailing newlines/whitespace to prevent extra space at the end.
             (setq code (string-trim-right code))
             (format "```%s\n%s\n```" (or lang "") code))))
