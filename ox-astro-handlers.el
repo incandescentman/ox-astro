@@ -6,6 +6,7 @@
 ;;; Code:
 
 (require 'org)
+(require 'org-element)
 (require 'ox)
 (require 'ox-astro-config)
 (require 'cl-lib)
@@ -37,6 +38,59 @@
 ;; Global variable to persist data across export phases
 (defvar org-astro--current-body-images-imports nil
   "Global storage for body image imports to persist across export phases.")
+
+(defun org-astro--ordered-item-number (item struct)
+  "Return 1-based index for ITEM counting only numeric siblings in STRUCT."
+  (let ((pos (org-element-property :begin item))
+        (count 0))
+    (cl-loop for entry in struct
+             for entry-pos = (nth 0 entry)
+             for entry-bullet = (nth 2 entry)
+             do (cond
+                 ((< entry-pos pos)
+                  (when (and entry-bullet
+                             (string-match-p "^[0-9]+\\." entry-bullet))
+                    (cl-incf count)))
+                 ((= entry-pos pos)
+                  (cl-return (1+ count))))
+             finally (cl-return (1+ count)))))
+
+(defun org-astro-item (item contents info)
+  "Transcode ITEM into Markdown, honoring mixed list bullets.
+When an ordered list contains literal dash bullets (Org treats them as
+ordered siblings), downgrade those entries to nested unordered bullets so
+the MDX output preserves the intended hierarchy."
+  (let* ((parent (org-element-property :parent item))
+         (parent-type (org-element-property :type parent))
+         (raw-bullet (org-element-property :bullet item))
+         (struct (org-element-property :structure item))
+         (unordered-marker (and raw-bullet
+                                (string-match-p "^[+*-]" (string-trim raw-bullet))))
+         ;; Treat literal dash/plus/star bullets inside ordered lists as unordered.
+         (effective-type (if unordered-marker 'unordered parent-type))
+         (numeric-marker (org-astro--ordered-item-number item struct))
+         (bullet (if (eq effective-type 'ordered)
+                     (concat (number-to-string (or numeric-marker 1)) ".")
+                   "-"))
+         ;; Indent pseudo-nested dash bullets so Markdown treats them as children.
+         (indent-prefix (if (and unordered-marker (not (eq parent-type 'unordered)))
+                           "    "
+                         "")))
+    (concat indent-prefix
+            bullet
+            (make-string (max 1 (- 4 (length bullet))) ? )
+            (pcase (org-element-property :checkbox item)
+              (`on "[X] ")
+              (`trans "[-] ")
+              (`off "[ ] "))
+            (let ((tag (org-element-property :tag item)))
+              (and tag (format "**%s:** " (org-export-data tag info))))
+            (and contents
+                 (let* ((indented (replace-regexp-in-string
+                                   "^"
+                                   (concat indent-prefix "    ")
+                                   contents)))
+                   (org-trim indented))))))
 
 (defun org-astro-auto-wrap-image-paths-filter (tree _backend info)
   "Pre-processing filter that automatically wraps raw image paths in [[ ]] brackets.

@@ -530,6 +530,7 @@ resolved to plain text in the temporary export buffer."
     (paragraph . org-astro-paragraph)
     (plain-text . org-astro-plain-text)
     (subscript . org-astro-subscript)
+    (item . org-astro-item)
     (table . org-astro-table)
     (table-row . org-astro-table-row)
     (table-cell . org-astro-table-cell)

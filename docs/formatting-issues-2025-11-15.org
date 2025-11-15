@@ -12,7 +12,7 @@ Verified with test export: [[file:/Users/jay/Dropbox/github/astro-monorepo/apps/
 - ✅ No double-encoded HTML timestamps (clean output)
 - ✅ Nested code blocks working correctly
 
-*⚠️ ISSUE #5 (List Numbering)* - Not yet verified in new test file (file doesn't contain nested lists to test)
+*✅ ISSUE #5 (List Numbering)* - Verified with new regression test (`org-astro-inline-dash-items-become-sub-lists`)
 
 * Overview
 
@@ -195,6 +195,10 @@ The exporter doesn't properly handle code blocks that contain examples of other 
 
 * Issue #5: Malformed Nested List Numbering
 
+** ✅ STATUS: FIXED (2025-11-15)
+
+Added a custom list transcoder so literal dash bullets that follow ordered items remain nested instead of being converted into top-level numbers. Verified via automated test (`org-astro-inline-dash-items-become-sub-lists`) and by re-exporting [[file:/Users/jay/Dropbox/roam/chatgpt-outputs/20251030123203-claude_designs_a_goal_tracking_system.org][claude_designs_a_goal_tracking_system.org]].
+
 ** Problem Description
 
 Nested org-mode lists are being flattened into sequential numbering instead of preserving the hierarchical structure.
@@ -251,9 +255,9 @@ The exporter is converting all list items to the same level, ignoring the indent
 
 4. *Issue #3*: Double-encoded timestamps ✅ RESOLVED
 
-** ⚠️ Medium Priority Issue - NOT YET VERIFIED
+** ✅ Medium Priority Issue - FIXED
 
-5. *Issue #5*: Malformed list numbering — Status unknown (test file lacks nested lists to verify)
+5. *Issue #5*: Malformed list numbering — Dash bullets beneath numbered headings now remain nested after export
 
 * Testing Recommendations
 

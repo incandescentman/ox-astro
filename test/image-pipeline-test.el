@@ -122,4 +122,16 @@ to a temporary destination folder so the real workspace stays untouched."
     (should (string-match-p "\n    continuation line" result))
     (should-not (string-match-p "\n> continuation line" result))))
 
+(ert-deftest org-astro-inline-dash-items-become-sub-lists ()
+  "Dash bullets that immediately follow numbered items remain nested."
+  (let* ((org-export-with-toc nil)
+         (org-astro-known-posts-folders '(("test" . (:path "/tmp"))))
+         (org-astro-source-root-folder "/tmp")
+         (payload "1. **Three-layer structure:**\n- Goals (North Star)\n- Projects (dashboard)\n- Daily execution (menu)\n\n2. **Two working project files:**\n- Narratively webinar\n- Substack launch\n")
+         (output (org-export-string-as payload 'astro t)))
+    (should (string-match "1\\.  .*Three-layer structure" output))
+    (should-not (string-match "2\\.  Goals" output))
+    (should-not (string-match "3\\.  Projects" output))
+    (should (string-match "2\\.  .*Two working project files" output))))
+
 (provide 'image-pipeline-test)
