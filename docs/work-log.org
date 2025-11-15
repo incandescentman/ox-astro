@@ -1,6 +1,40 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-11-15
+** Session Summary: Formatting Issues Documentation
+- Analyzed exported MDX output from goal tracking blog post to identify systematic formatting problems in the ox-astro exporter.
+- Documented 5 major formatting issues: escaped org-mode markers, orphaned code block closers, double-encoded timestamps, nested code block confusion, and malformed list numbering.
+- Created comprehensive issue report with line numbers, examples, root causes, and suggested fixes at [[file:formatting-issues-2025-11-15.org][formatting-issues-2025-11-15.org]].
+- Issues prioritized into High Priority (breaking code block structure) and Medium Priority (visual/semantic problems).
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Full formatting analysis completed on real-world export output
+- [x] Documentation created with links to source org file and MDX output for reference
+- [x] 5 issues identified with detailed before/after examples and line numbers
+- [x] Priority recommendations and testing suggestions provided
+- [x] Test case specifications written for future regression testing
+
+*IN-PROGRESS (Requires completion)*
+- [ ] Fix Issue #1: Escaped org-mode markers with trailing underscores (=\#+begin_src_= → =#+begin_src=)
+- [ ] Fix Issue #2: Orphaned =#+end_src_= closing markers appearing without opening markers
+- [ ] Fix Issue #4: Nested code block confusion (code examples containing code blocks)
+- [ ] Fix Issue #5: Malformed nested list numbering (flattened hierarchy)
+- [ ] Fix Issue #3: Double-encoded HTML timestamps (lower priority)
+
+*CONTEXT FOR NEXT SESSION*
+- Files to review: [[file:formatting-issues-2025-11-15.org][formatting-issues-2025-11-15.org]]
+- Test files referenced:
+  - Source: [[file:/Users/jay/Dropbox/roam/chatgpt-outputs/20251030123203-claude_designs_a_goal_tracking_system.org][20251030123203-claude_designs_a_goal_tracking_system.org]]
+  - Output: [[file:/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/anthropic/src/content/blog/claude-designs-a-goal-tracking-system.mdx][claude-designs-a-goal-tracking-system.mdx]]
+- Known unknowns: Root cause likely in =ox-astro-src-block= and =org-astro-src-block= functions; need to investigate code block nesting tracking
+- Recommendations:
+  - Start with Issues #1, #2, #4 (all related to code block handling) as they share common root cause
+  - Create test file with nested code blocks and org-mode examples before fixing
+  - Issue #5 (list numbering) is separate concern in list export logic
+
 * 2025-11-13
 ** Session Summary: Link Conversion in User Blocks
 - Fixed bug where org-mode links inside `user`, `prompt`, and `quote` blocks were being exported in raw org-mode format (`[[link][text]]`) instead of being converted to Markdown format (`[text](link)`).

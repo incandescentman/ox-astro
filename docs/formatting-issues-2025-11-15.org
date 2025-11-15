@@ -1,0 +1,258 @@
+#+TITLE: Org-to-MDX Export Formatting Issues
+#+DATE: 2025-11-15
+#+AUTHOR: Analysis by Claude Code
+
+* Overview
+
+This document identifies formatting problems in the ox-astro exporter that were discovered when analyzing the export of a blog post about goal tracking systems.
+
+* Test Files
+
+- *Source org file*: [[file:/Users/jay/Dropbox/roam/chatgpt-outputs/20251030123203-claude_designs_a_goal_tracking_system.org][20251030123203-claude_designs_a_goal_tracking_system.org]]
+- *Output MDX file*: [[file:/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/anthropic/src/content/blog/claude-designs-a-goal-tracking-system.mdx][claude-designs-a-goal-tracking-system.mdx]]
+
+* Issue #1: Escaped Org-Mode Markers with Trailing Underscores
+
+** Problem Description
+
+The exporter is adding backslash escapes and trailing underscores to org-mode code block markers when they appear as example text in the document.
+
+** Affected Lines in MDX Output
+
+Lines: 178, 239, 247, 274, 288, 341, 550, 588, 666, 695, 773, 777, 915, 919, 1025, 1029, 1177, 1181, 1311, 1345
+
+** Example
+
+*Current (incorrect) output:*
+#+begin_example
+\#+begin_src_ org
+
+-   3 Months (Feb 2025)
+
+## Career
+
+\#+end_src_
+#+end_example
+
+*Expected output:*
+#+begin_example
+#+begin_src org
+
+-   3 Months (Feb 2025)
+
+## Career
+
+#+end_src
+#+end_example
+
+** Root Cause
+
+The exporter appears to be treating org-mode syntax markers as special characters that need escaping, even when they're inside code blocks meant to show org-mode examples.
+
+** Suggested Fix
+
+- Don't escape =#+begin_src= and =#+end_src= when they appear as literal text within code blocks
+- Remove the trailing underscore pattern (=_src_= → =src=)
+- These should be treated as plain text when they're example content, not active org syntax
+
+* Issue #2: Orphaned Code Block Closing Markers
+
+** Problem Description
+
+Code block closing markers (=#+end_src_=) appear without corresponding opening markers, creating broken code block structure.
+
+** Affected Lines in MDX Output
+
+Lines: 368, 384, 666, 681, 1262, 1513
+
+** Example at Line 368
+
+*Current (incorrect) output:*
+#+begin_example
+\#+end_src_
+
+🔥 FOCUS WORK (Deep attention)
+TODO Write post #2: Three Paradoxes        [substack-launch]
+TODO Draft webinar outline                 [narratively]
+#+end_example
+
+*Issue:* This closing marker has no matching opening marker in the MDX output.
+
+** Root Cause
+
+The exporter seems to lose track of code block nesting depth, particularly when org-mode code examples appear within other code blocks.
+
+** Suggested Fix
+
+- Implement proper code block nesting tracking
+- Ensure every =#+end_src= in the output has a corresponding =#+begin_src=
+- Consider simplifying nested code block handling
+
+* Issue #3: Double-Encoded HTML Entities in Timestamps
+
+** Problem Description
+
+Org-mode timestamps are being converted to HTML with double-encoded angle brackets.
+
+** Affected Lines in MDX Output
+
+Lines: 302, 307, 564, 699, 715, 721, 725, 781, 801, 828, 832, 843, 856, 864, 874, 880, 961, 974, 978, 1438, 1446, 1484, 1498, and many more
+
+** Example
+
+*Current (incorrect) output:*
+#+begin_example
+**SCHEDULED:** <span class="timestamp-wrapper"><span class="timestamp">&lt;October 31, 2025&gt;</span></span>
+#+end_example
+
+*Option 1 (properly encoded HTML):*
+#+begin_example
+**SCHEDULED:** <span class="timestamp-wrapper"><span class="timestamp"><October 31, 2025></span></span>
+#+end_example
+
+*Option 2 (simpler, recommended):*
+#+begin_example
+**SCHEDULED:** October 31, 2025
+#+end_example
+
+** Root Cause
+
+The exporter is converting org timestamps like =<2025-10-31 Thu>= to HTML spans but then encoding the angle brackets as =&lt;= and =&gt;=, which get further escaped in the MDX output.
+
+** Suggested Fix
+
+Choose one approach:
+1. *Simple approach (recommended):* Convert timestamps to plain text dates without HTML wrappers
+2. *HTML approach:* If using HTML spans, don't double-encode the angle brackets
+3. *Org approach:* Keep original org-mode timestamp syntax if it's just being displayed
+
+* Issue #4: Nested Code Block Confusion
+
+** Problem Description
+
+When code blocks contain examples of other code blocks (e.g., showing folder structures or org syntax), the exporter gets confused about nesting.
+
+** Affected Lines in MDX Output
+
+Lines: 1507-1513
+
+** Example
+
+*Current (incorrect) output:*
+#+begin_example
+  \#+end_src_
+
+  parents-archive/
+  └── recordings/
+  ├── 2025-11-03-dad-interview-01.m4a
+  └── 2025-11-03-mom-interview-01.m4a
+  #+end_src_
+#+end_example
+
+*Issue:* An escaped =#+end_src_= appears in the middle of what should be a continuous code block showing a folder structure.
+
+** Root Cause
+
+The exporter doesn't properly handle code blocks that contain examples of other code blocks.
+
+** Suggested Fix
+
+- Implement proper nesting level tracking
+- When inside a code block that shows org-mode examples, don't interpret inner =#+begin_src= and =#+end_src= as actual code block boundaries
+- Consider using verbatim/example blocks for org-mode syntax examples
+
+* Issue #5: Malformed Nested List Numbering
+
+** Problem Description
+
+Nested org-mode lists are being flattened into sequential numbering instead of preserving the hierarchical structure.
+
+** Affected Lines in MDX Output
+
+Lines: 636-650
+
+** Example
+
+*Current (incorrect) output:*
+#+begin_example
+1.  **Three-layer structure:**
+2.  Goals (`goals-horizons.org`) --- Your North Star
+3.  Projects (`active-projects.org`) --- Your weekly dashboard
+4.  Daily execution (agenda view) --- Energy-based task menu
+
+5.  **Two working project files:**
+6.  Narratively webinar (with your Thursday deadline)
+7.  Substack launch (ready to publish today)
+#+end_example
+
+*Expected output:*
+#+begin_example
+1.  **Three-layer structure:**
+    - Goals (`goals-horizons.org`) --- Your North Star
+    - Projects (`active-projects.org`) --- Your weekly dashboard
+    - Daily execution (agenda view) --- Energy-based task menu
+
+2.  **Two working project files:**
+    - Narratively webinar (with your Thursday deadline)
+    - Substack launch (ready to publish today)
+#+end_example
+
+** Root Cause
+
+The exporter is converting all list items to the same level, ignoring the indentation/hierarchy from the source org file.
+
+** Suggested Fix
+
+- Preserve list nesting structure from org-mode
+- Use proper markdown list syntax with indentation for nested items
+- Top-level items should be numbered, sub-items should use dashes/bullets
+
+* Priority Recommendations
+
+** High Priority (Breaking Issues)
+
+1. *Issue #1*: Escaped org-mode markers — Makes code examples unreadable and confusing
+2. *Issue #2*: Orphaned closing markers — Creates broken/invalid code block structure
+3. *Issue #4*: Nested code block confusion — Same root cause as #1 and #2
+
+** Medium Priority (Visual/Semantic Issues)
+
+4. *Issue #5*: Malformed list numbering — Loses document structure and makes reading harder
+5. *Issue #3*: Double-encoded timestamps — Not broken, but unnecessarily complex
+
+* Testing Recommendations
+
+** Test Cases to Add
+
+1. *Nested code blocks*: Org file with code examples showing other code blocks
+2. *List nesting*: Org file with 3+ levels of nested lists
+3. *Timestamps*: Various org timestamp formats (scheduled, deadline, plain)
+4. *Mixed content*: Code blocks containing org syntax examples
+
+** Suggested Test File Structure
+
+#+begin_example
+* Test Nested Code Blocks
+Here's an org-mode example:
+
+#+begin_src org
+,* My Heading
+,** Subheading
+#+end_src
+
+* Test Lists
+1. Top level item
+   - Nested item
+   - Another nested item
+     - Double nested
+2. Second top level
+
+* Test Timestamps
+- SCHEDULED: <2025-11-15 Fri>
+- DEADLINE: <2025-12-01 Sun>
+#+end_example
+
+* Related Documentation
+
+- [[file:../README.org][ox-astro README]]
+- [[file:./exporter-design.org][Exporter Design Notes]] (if exists)
