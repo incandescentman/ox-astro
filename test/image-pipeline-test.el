@@ -1,4 +1,9 @@
 (require 'ert)
+(defconst ox-astro-test--repo-root
+  (file-name-directory
+   (directory-file-name
+    (file-name-directory (or load-file-name buffer-file-name)))))
+(add-to-list 'load-path ox-astro-test--repo-root)
 (require 'ox-astro)
 (require 'org)
 (require 'subr-x)
@@ -95,5 +100,26 @@ to a temporary destination folder so the real workspace stays untouched."
 
     ;; 3. Assert the number of standalone Image components
     (should (= (ox-astro-test--count-occurrences "<Image src=" actual-output) 2))))
+
+(ert-deftest org-astro-final-output-filter-preserves-code-fences ()
+  "Indented lines inside fenced code blocks should not become blockquotes."
+  (let* ((input (mapconcat #'identity
+                           '("```js"
+                             "    const foo = 42;"
+                             "```"
+                             ""
+                             "    Quoted paragraph")
+                           "\n"))
+         (result (org-astro-final-output-filter input nil (list))))
+    (should (string-match-p "```js\n    const foo = 42;\n```" result))
+    (should (string-match-p "\n> Quoted paragraph" result))))
+
+(ert-deftest org-astro-final-output-filter-preserves-list-indents ()
+  "Nested list continuation lines must remain indented text."
+  (let* ((input "- Item\n    continuation line\n")
+         (result (org-astro-final-output-filter input nil (list))))
+    (should (string-match-p "- Item" result))
+    (should (string-match-p "\n    continuation line" result))
+    (should-not (string-match-p "\n> continuation line" result))))
 
 (provide 'image-pipeline-test)

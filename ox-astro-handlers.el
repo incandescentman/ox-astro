@@ -9,6 +9,7 @@
 (require 'ox)
 (require 'ox-astro-config)
 (require 'cl-lib)
+(require 'subr-x)
 
 ;; Declare functions from other ox-astro modules
 (declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
@@ -27,6 +28,7 @@
 (declare-function org-astro--get-title "ox-astro-helpers")
 (declare-function org-astro--hero-image-entry-p "ox-astro-helpers")
 (declare-function org-astro--normalize-image-path "ox-astro-helpers")
+(declare-function org-astro--resolve-destination-config "ox-astro-helpers")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Filter Functions
@@ -70,20 +72,10 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     (unless processed
       (let* ((posts-folder-raw (or (plist-get info :destination-folder)
                                    (plist-get info :astro-posts-folder)))
-             (folder-config (and posts-folder-raw
-                                 (cdr (assoc posts-folder-raw org-astro-known-posts-folders))))
-             (resolved-posts-folder-raw (if (stringp folder-config)
-                                            folder-config
-                                          (plist-get folder-config :path)))
-             (resolved-posts-folder (and resolved-posts-folder-raw
-                                         (string-trim resolved-posts-folder-raw)))
-             (posts-folder (cond
-                            (resolved-posts-folder resolved-posts-folder)
-                            ((and posts-folder-raw
-                                  (file-name-absolute-p posts-folder-raw)
-                                  (file-directory-p (expand-file-name posts-folder-raw)))
-                             posts-folder-raw)
-                            (t nil)))
+             (destination-info (org-astro--resolve-destination-config posts-folder-raw))
+             (posts-folder (plist-get destination-info :path))
+             (posts-folder-key (or (plist-get destination-info :raw)
+                                   posts-folder-raw))
              (manifest (or (plist-get info :astro-image-manifest)
                            (org-astro--build-image-manifest tree info)))
              (title (org-astro--get-title tree info))
@@ -103,6 +95,8 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                                       :processed processed-result
                                       :posts-folder posts-folder
                                       :sub-dir sub-dir)))
+        (when posts-folder-key
+          (plist-put info :destination-folder posts-folder-key))
         (when manifest
           (setq info (cl-putf info :astro-image-manifest manifest)))
         (setq info (cl-putf info :astro-export-context refreshed-context))
@@ -159,19 +153,15 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
               found)))
          (_ (when hero-record
               (let* ((hero-var (plist-get hero-record :var-name))
-                     (hero-regex (and hero-var
-                                      (format "<Image\\s-+src={%s}[^>]*?/?>" (regexp-quote hero-var)))))
-                (when hero-var
-                  (let ((removed nil))
-                    (when hero-regex
-                      (when (string-match hero-regex body)
-                        (setq body (replace-match "" t t body))
-                        (setq removed t)))
-                    (when (and removed
-                               (not (and hero-regex (string-match hero-regex body))))
-                      (let* ((used-vars (plist-get info :astro-render-used-vars))
-                             (updated (cl-remove hero-var used-vars :test #'equal)))
-                        (setf (plist-get info :astro-render-used-vars) updated))))))))
+                     (hero-pattern (and hero-var
+                                        (format "<Image\\(?:.\\|\\n\\)*?src={%s}\\(?:.\\|\\n\\)*?\\(?:/>\\|>\\(?:.\\|\\n\\)*?</Image>\\)"
+                                                (regexp-quote hero-var)))))
+                (when (and hero-pattern (string-match hero-pattern body))
+                  (let ((case-fold-search nil))
+                    (setq body (replace-match "" t t body)))
+                  (let* ((used-vars (plist-get info :astro-render-used-vars))
+                         (updated (cl-remove hero-var used-vars :test #'equal)))
+                    (setf (plist-get info :astro-render-used-vars) updated))))))
          ;; Copy frontmatter to clipboard
          (_ (let ((pbcopy (executable-find "pbcopy")))
               (when (and pbcopy front-matter-string)
@@ -275,41 +265,64 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                            (plist-get record :jsx)))
                      match)))
                s t t)))
-    ;; Indented blocks to blockquotes (but skip JSX components)
-    (let* ((lines (split-string s "\n"))
-           (in-jsx-component nil)
-           (in-front-matter nil)
-           (processed-lines
-            (mapcar (lambda (line)
-                      ;; Track if we're inside a JSX component
-                      (cond
-                       ;; Front matter delimiter toggles
-                       ((string= line "---")
-                        (let ((result line))
-                          (setq in-front-matter (not in-front-matter))
-                          result))
-                       ;; Opening JSX component tag (like <ImageGallery)
-                       ((string-match-p "^\\s-*<[A-Z]" line)
-                        (setq in-jsx-component t)
-                        line)
-                       ;; Self-closing tag end (like />)
-                       ((and in-jsx-component (string-match-p "/>\\s-*$" line))
-                        (setq in-jsx-component nil)
-                        line)
-                       ;; JSX component closing tag (like >)
-                       ((and in-jsx-component (string-match-p "^\\s-*>\\s-*$" line))
-                        (setq in-jsx-component nil)
-                        line)
-                       ;; Don't convert indented lines inside JSX components
-                       ((and (or in-jsx-component in-front-matter)
-                             (string-prefix-p "    " line))
-                        line)
-                       ;; Convert regular indented lines to blockquotes
-                       ((string-prefix-p "    " line)
-                        (concat "> " (substring line 4)))
-                       (t line)))
-                    lines)))
-      (setq s (mapconcat 'identity processed-lines "\n")))
+    ;; Indented blocks to blockquotes (but skip JSX components, lists, and code fences)
+    (let ((lines (split-string s "\n"))
+          (in-jsx-component nil)
+          (in-front-matter nil)
+          (in-code-fence nil)
+          (current-fence nil)
+          (in-list-block nil))
+      (setq lines
+            (mapcar
+             (lambda (line)
+               (let* ((trimmed (string-trim-left line))
+                      (starts-list (or (string-prefix-p "- " trimmed)
+                                       (string-prefix-p "* " trimmed)
+                                       (string-prefix-p "+ " trimmed)
+                                       (string-match-p "^[0-9]+\\.\\s-" trimmed))))
+                 (when starts-list
+                   (setq in-list-block t))
+                 (when (string-match-p "^\\s-*$" line)
+                   (setq in-list-block nil))
+                 ;; Track fenced code blocks (``` or ~~~) so we don't reflow them
+                 (when (string-match "^\\s-*\\(```+\\|~~~+\\)" line)
+                   (let ((matched (match-string 1 line)))
+                     (if (and in-code-fence (string= matched current-fence))
+                         (setq in-code-fence nil
+                               current-fence nil)
+                       (setq in-code-fence t
+                             current-fence matched))))
+                 (cond
+                  ;; Front matter delimiter toggles
+                  ((string= line "---")
+                   (setq in-front-matter (not in-front-matter))
+                   line)
+                  ;; Opening JSX component tag (like <ImageGallery)
+                  ((string-match-p "^\\s-*<[A-Z]" line)
+                   (setq in-jsx-component t)
+                   line)
+                  ;; Self-closing tag end (like />)
+                  ((and in-jsx-component (string-match-p "/>\\s-*$" line))
+                   (setq in-jsx-component nil)
+                   line)
+                  ;; JSX component closing tag (like >)
+                  ((and in-jsx-component (string-match-p "^\\s-*>\\s-*$" line))
+                   (setq in-jsx-component nil)
+                   line)
+                  ;; Don't convert indented lines inside JSX components or front matter
+                  ((and (or in-jsx-component in-front-matter)
+                        (string-prefix-p "    " line))
+                   line)
+                  ;; Skip indentation conversion for fenced code or list continuations
+                  ((and (string-prefix-p "    " line)
+                        (or in-code-fence in-list-block))
+                   line)
+                  ;; Convert regular indented lines to blockquotes
+                  ((string-prefix-p "    " line)
+                   (concat "> " (substring line 4)))
+                  (t line))))
+             lines))
+      (setq s (mapconcat #'identity lines "\n")))
     ;; Final pass to ensure any <br> variants are self-closing.
     (let ((case-fold-search t))
       (setq s (replace-regexp-in-string "<br\\s*/?>" "<br />" s)))

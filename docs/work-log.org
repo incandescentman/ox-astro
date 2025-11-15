@@ -147,6 +147,27 @@
 - Known unknowns: Automated regression suite beyond `test-id-links.el` not re-run; alias relies on shared keyword helper
 - Recommendations: Export a sample Org file using `#+DESTINATION-FOLDER:` and run `emacs --batch -Q -l test-id-links.el -f ert-run-tests-batch-and-exit`
 
+* 2025-11-15
+** Session Summary
+- Hardened the destination-folder resolution in `org-astro-prepare-images-filter` so whitespace-laden nicknames reuse the same helper as the main exporter.
+- Replaced the regex-based hero suppression with a multi-line safe removal helper and tightened the MDX final-output filter to respect code fences and list continuations.
+- Added regression ERTs covering fenced-code + list indentation handling and ensured the test harness loads the repo modules reliably.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Shared destination resolution + info plists updated: `ox-astro-handlers.el:60-110`
+- [x] Hero component removal recognizes multi-line Image tags: `ox-astro-handlers.el:140-170`
+- [x] Final output filter skips code fences/lists + new tests added: `ox-astro-handlers.el:240-320`, `test/image-pipeline-test.el:1-124`
+
+*IN-PROGRESS (Requires completion)*
+- [ ] Gallery regression fixture (`test/gallery_test_rigorous.expected.mdx`) no longer matches exporter output; needs refresh or relaxed assertions.
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro-handlers.el`, `test/image-pipeline-test.el`
+- Known unknowns: Gallery snapshot diverges (extra Image import, column props, missing legacy images). Decide whether to update expected MDX or adjust exporter to retain prior behavior.
+- Recommendations: Re-run `emacs --batch -Q -l ert -l test/image-pipeline-test.el -f ert-run-tests-batch-and-exit` after reconciling the gallery fixture; confirm hero-image removal still suppresses duplicates in real posts.
+
 * 2025-10-20
 ** Session Summary
 - ID links disappearing traced to user hook `org-export-id-link-removal` running during export copy.
