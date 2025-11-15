@@ -152,6 +152,7 @@
 - Hardened the destination-folder resolution in `org-astro-prepare-images-filter` so whitespace-laden nicknames reuse the same helper as the main exporter.
 - Replaced the regex-based hero suppression with a multi-line safe removal helper and tightened the MDX final-output filter to respect code fences and list continuations.
 - Added regression ERTs covering fenced-code + list indentation handling and ensured the test harness loads the repo modules reliably.
+- Taught the list transcoder to keep dash bullets nested under numbered items and documented the verification in `formatting-issues-2025-11-15.org`.
 
 ** Handoff
 
@@ -159,6 +160,7 @@
 - [x] Shared destination resolution + info plists updated: `ox-astro-handlers.el:60-110`
 - [x] Hero component removal recognizes multi-line Image tags: `ox-astro-handlers.el:140-170`
 - [x] Final output filter skips code fences/lists + new tests added: `ox-astro-handlers.el:240-320`, `test/image-pipeline-test.el:1-124`
+- [x] Inline dash bullets stay nested with updated translator + regression test: `ox-astro-handlers.el:40-120, 140-210`, `test/image-pipeline-test.el:101-140`
 
 *IN-PROGRESS (Requires completion)*
 - [ ] Gallery regression fixture (`test/gallery_test_rigorous.expected.mdx`) no longer matches exporter output; needs refresh or relaxed assertions.
