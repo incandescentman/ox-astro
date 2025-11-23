@@ -1371,7 +1371,7 @@ The problem was discovered in a real blog post with complex conversational conte
 * 2025-11-23
 ** Session Summary
 - Reinstated date-only title handling: date-like `#+TITLE`/filename now swap to the first heading for title/slug/outfile while respecting later non-date titles.
-- Restored narrowed-buffer exports: if the buffer is narrowed, export treats it as a subtree in both passes.
+- Restored narrowed-buffer exports: if the buffer is narrowed, export treats it as a subtree in both passes and stays narrowed afterward.
 - Added regression tests for date-title replacement, date-filename fallback, and narrowed subtree export.
 
 ** Handoff

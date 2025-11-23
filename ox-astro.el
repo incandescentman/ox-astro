@@ -127,9 +127,12 @@ generated and added to the Org source file."
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
       (org-astro--with-export-sanitization
-        (let* ((was-narrowed (buffer-narrowed-p))
-               (info (org-export-get-environment 'astro (or subtreep was-narrowed)))
-               (buffer-modified-p nil))
+        (save-restriction
+          (let* ((was-narrowed (buffer-narrowed-p))
+                 (narrow-start (when was-narrowed (point-min)))
+                 (narrow-end (when was-narrowed (point-max)))
+                 (info (org-export-get-environment 'astro (or subtreep was-narrowed)))
+                 (buffer-modified-p nil))
           ;; DEBUG: Check buffer at very start
           (save-excursion
             (goto-char (point-min))
@@ -457,51 +460,54 @@ generated and added to the Org source file."
                    (org-astro--current-output-root pub-dir-base)
                    (org-astro--broken-link-accumulator (make-hash-table :test #'equal))
                    (org-astro--broken-link-warnings-issued (make-hash-table :test #'equal)))
-              (if pub-dir
-                  (progn
-                    (make-directory pub-dir t)
-                    ;; First export pass
-                    (message "Running first export pass...")
-                    (message "[DEBUG-EXPORT] Calling org-export-to-file with backend: astro")
-                    (message "[DEBUG-EXPORT] Backend details: %S" (org-export-get-backend 'astro))
-                    ;; DEBUG: Check if ID links exist in buffer before export
-                    (save-excursion
-                      (goto-char (point-min))
-                      (let ((id-link-count 0))
-                        (while (re-search-forward "\\[\\[id:" nil t)
-                          (setq id-link-count (1+ id-link-count)))
-                        (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count)))
-                    (org-export-to-file 'astro outfile async (or subtreep was-narrowed) visible-only body-only)
-                    ;; Clear import state for second pass
-                    (setq org-astro--current-body-images-imports nil)
-                    ;; Second export pass to ensure complete image processing
-                    (message "Running second export pass to ensure complete image processing...")
-                    (org-export-to-file 'astro outfile async (or subtreep was-narrowed) visible-only body-only)
-                    ;; Persist any broken ID links detected during export
-                    (when org-astro--broken-link-accumulator
-                      (org-astro--write-broken-link-report org-astro--broken-link-accumulator
-                                                           org-astro--current-output-root))
-                    ;; Log completion and ensure clipboard copy
-                    (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-                      (org-astro--debug-log-direct "Export complete: %s" outfile)
-                      ;; Copy file paths to clipboard
-                      (let* ((source-file (buffer-file-name))
-                             (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
-                             (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
-                                                     source-file outfile debug-file))
-                             (pbcopy (executable-find "pbcopy")))
-                        (when pbcopy
-                          (condition-case _
-                              (with-temp-buffer
-                                (insert clipboard-text)
-                                (call-process-region (point-min) (point-max) pbcopy nil nil nil)
-                                (message "File paths copied to clipboard!"))
-                            (error nil)))))
-                    (message "Export complete! All images should now be visible.")
-                    outfile)  ; Return the output file path
-                  (progn
-                    (message "Astro export cancelled: No posts folder selected.")
-                    nil))))))))
+              (prog1
+                  (if pub-dir
+                      (progn
+                        (make-directory pub-dir t)
+                        ;; First export pass
+                        (message "Running first export pass...")
+                        (message "[DEBUG-EXPORT] Calling org-export-to-file with backend: astro")
+                        (message "[DEBUG-EXPORT] Backend details: %S" (org-export-get-backend 'astro))
+                        ;; DEBUG: Check if ID links exist in buffer before export
+                        (save-excursion
+                          (goto-char (point-min))
+                          (let ((id-link-count 0))
+                            (while (re-search-forward "\\[\\[id:" nil t)
+                              (setq id-link-count (1+ id-link-count)))
+                            (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count)))
+                        (org-export-to-file 'astro outfile async (or subtreep was-narrowed) visible-only body-only)
+                        ;; Clear import state for second pass
+                        (setq org-astro--current-body-images-imports nil)
+                        ;; Second export pass to ensure complete image processing
+                        (message "Running second export pass to ensure complete image processing...")
+                        (org-export-to-file 'astro outfile async (or subtreep was-narrowed) visible-only body-only)
+                        ;; Persist any broken ID links detected during export
+                        (when org-astro--broken-link-accumulator
+                          (org-astro--write-broken-link-report org-astro--broken-link-accumulator
+                                                               org-astro--current-output-root))
+                        ;; Log completion and ensure clipboard copy
+                        (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
+                          (org-astro--debug-log-direct "Export complete: %s" outfile)
+                          ;; Copy file paths to clipboard
+                          (let* ((source-file (buffer-file-name))
+                                 (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
+                                 (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
+                                                         source-file outfile debug-file))
+                                 (pbcopy (executable-find "pbcopy")))
+                            (when pbcopy
+                              (condition-case _
+                                  (with-temp-buffer
+                                    (insert clipboard-text)
+                                    (call-process-region (point-min) (point-max) pbcopy nil nil nil)
+                                    (message "File paths copied to clipboard!"))
+                                (error nil)))))
+                        (message "Export complete! All images should now be visible.")
+                        outfile)  ; Return the output file path
+                    (progn
+                      (message "Astro export cancelled: No posts folder selected.")
+                      nil))
+                (when (and was-narrowed narrow-start narrow-end)
+                  (narrow-to-region narrow-start narrow-end))))))))))
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
