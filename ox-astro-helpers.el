@@ -738,6 +738,15 @@ these special blocks, which would break the block structure."
        (setq s (replace-regexp-in-string "[*_~/=]" "" s))
        (string-trim (replace-regexp-in-string "\n+" " " s))))))
 
+(defun org-astro--date-string-p (s)
+  "Return non-nil if string S looks like a numeric date (digits plus separators)."
+  (when (and s (stringp s))
+    (let* ((trimmed (string-trim s))
+           (non-date-chars (replace-regexp-in-string "[0-9./_[:space:]-]" "" trimmed))
+           (digits-only (replace-regexp-in-string "[^0-9]" "" trimmed)))
+      (and (string-empty-p non-date-chars)
+           (>= (length digits-only) 6)))))
+
 (defun org-astro--slugify (s)
   "Convert string S to a slug."
   (when (stringp s)
@@ -870,19 +879,33 @@ If the generated name starts with a number, it is prefixed with 'img'."
 
 (defun org-astro--get-title (tree info)
   "Return a title string from TREE/INFO, never nil."
-  (or
-   ;; Explicit #+TITLE first
-   (let ((kw (org-element-map tree 'keyword
-               (lambda (k)
-                 (when (string-equal "TITLE" (org-element-property :key k)) k))
-               nil 'first-match)))
-     (when kw (org-element-property :value kw)))
-   ;; Else first headline, safely exported
-   (let ((hl (org-element-map tree 'headline 'identity nil 'first-match)))
-     (when hl
-       (org-astro--safe-export (org-element-property :title hl) info)))
-   ;; Fallback
-   "Untitled Post"))
+  (let* ((input-file (or (plist-get info :input-file) (buffer-file-name)))
+         (filename-base (and input-file (file-name-base input-file)))
+         (headline (org-element-map tree 'headline 'identity nil 'first-match))
+         (headline-title (when headline
+                           (org-astro--safe-export (org-element-property :title headline) info)))
+         (title-values (org-element-map tree 'keyword
+                          (lambda (k)
+                            (when (string-equal "TITLE" (org-element-property :key k))
+                              (org-element-property :value k)))))
+         (title-values (delq nil title-values))
+         (non-date-title (cl-find-if (lambda (v) (not (org-astro--date-string-p v)))
+                                     (reverse title-values)))
+         (first-title (car title-values))
+         (date-only (and (null non-date-title)
+                         (or (and first-title (org-astro--date-string-p first-title))
+                             (and filename-base (org-astro--date-string-p filename-base))))))
+    (cond
+     ;; Prefer any non-date #+TITLE (last one wins)
+     (non-date-title non-date-title)
+     ;; If title is just a date (or filename is), prefer the first headline.
+     (date-only (or headline-title "Untitled Post"))
+     ;; Explicit #+TITLE (all date-like)
+     (first-title first-title)
+     ;; Else first headline, safely exported
+     (headline-title)
+     ;; Fallback
+     ("Untitled Post"))))
 
 (defun org-astro--get-excerpt (tree info)
   "Return an excerpt string from TREE/INFO, possibly empty but never nil.

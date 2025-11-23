@@ -32,6 +32,7 @@ Then, add the following to your Emacs configuration (~init.el~):
 - **org-roam Integration**: Respects org-roam file structure and properties blocks.
 - **ID Link Resolution**: Converts `[[id:...]]` org-roam links into relative Markdown links that work out of the box in Astro.
 - **Subtree Export**: Export individual subtrees as standalone blog posts.
+- **Date-Only Title Guard**: If the file name or =#+TITLE= is just a date, the first heading becomes the title/slug/output filename; later non-date titles override date placeholders.
 - **Mixed Link Support**: Preserves existing Markdown links while processing Org links and converting raw URLs into custom components.
 - **Slug Filenames for Subtrees**: When exporting a subtree (or when the buffer is narrowed to a subtree), the output filename uses the subtree's ~#+SLUG~ as ~slug.mdx~.
 

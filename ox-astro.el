@@ -127,10 +127,9 @@ generated and added to the Org source file."
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
       (org-astro--with-export-sanitization
-        (let ((info (org-export-get-environment 'astro subtreep))
-              ;; Detect if the user is currently narrowed to a subtree.
-              (was-narrowed (buffer-narrowed-p))
-              (buffer-modified-p nil))
+        (let* ((was-narrowed (buffer-narrowed-p))
+               (info (org-export-get-environment 'astro (or subtreep was-narrowed)))
+               (buffer-modified-p nil))
           ;; DEBUG: Check buffer at very start
           (save-excursion
             (goto-char (point-min))
@@ -184,13 +183,8 @@ generated and added to the Org source file."
             (when posts-folder
               (let* ((title (org-astro--get-title tree info))
                      (slug (or (plist-get info :slug)
-                               (let* ((title-kw (org-element-map tree 'keyword
-                                                  (lambda (k)
-                                                    (when (string-equal "TITLE" (org-element-property :key k)) k))
-                                                  nil 'first-match))
-                                      (title-from-headline (not title-kw)))
-                                 (when title-from-headline
-                                   (org-astro--slugify title)))))
+                               (when title
+                                 (org-astro--slugify title))))
                      (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
                      (image-manifest (org-astro--build-image-manifest tree info))
                      (process-result (org-astro--process-image-manifest image-manifest posts-folder sub-dir))
@@ -236,7 +230,15 @@ generated and added to the Org source file."
 
                   ;; 1. Handle Title and Slug
                   ;; First handle title generation from headline if no #+TITLE keyword
-                  (let* ((title-kw (org-element-map tree 'keyword
+                  (let* ((title-values (org-element-map tree 'keyword
+                                        (lambda (k)
+                                          (when (string-equal "TITLE" (org-element-property :key k))
+                                            (org-element-property :value k)))))
+                         (title-values (delq nil title-values))
+                         (non-date-title (cl-find-if (lambda (v) (not (org-astro--date-string-p v)))
+                                                     (reverse title-values)))
+                         (first-title (car title-values))
+                         (title-kw (org-element-map tree 'keyword
                                      (lambda (k)
                                        (when (string-equal "TITLE" (org-element-property :key k)) k))
                                      nil 'first-match))
@@ -244,7 +246,28 @@ generated and added to the Org source file."
                                     (lambda (k)
                                       (when (string-equal "SLUG" (org-element-property :key k)) k))
                                     nil 'first-match))
-                         (title-from-headline (not title-kw)))
+                         (title-from-headline (not title-kw))
+                         (title-val (or non-date-title first-title))
+                         (input-file (or (plist-get info :input-file) (buffer-file-name)))
+                         (filename-base (and input-file (file-name-base input-file)))
+                         (headline (org-element-map tree 'headline 'identity nil 'first-match))
+                         (headline-title (when headline
+                                           (org-astro--safe-export (org-element-property :title headline) info)))
+                         (date-only-title (and (null non-date-title)
+                                               (or (and first-title (org-astro--date-string-p first-title))
+                                                   (and filename-base (org-astro--date-string-p filename-base)))))
+                         (effective-title (cond
+                                           (non-date-title non-date-title)
+                                           (date-only-title headline-title)
+                                           (first-title first-title)
+                                           (headline-title headline-title)
+                                           (t nil))))
+                    ;; Replace date-only titles (or date-named files) with first headline title.
+                    (when (and date-only-title headline-title
+                               (not (string-blank-p headline-title)))
+                      (org-astro--upsert-keyword-after-roam "TITLE" headline-title)
+                      (setq buffer-modified-p t)
+                      (setq title-from-headline nil))
                     ;; Add title from headline if missing
                     (when title-from-headline
                       (let* ((headline (org-element-map tree 'headline 'identity nil 'first-match))
@@ -256,7 +279,8 @@ generated and added to the Org source file."
 
                     ;; ALWAYS add slug if missing (whether title comes from keyword or headline)
                     (unless slug-kw
-                      (let* ((title (or (plist-get info :title)
+                      (let* ((title (or effective-title
+                                        (plist-get info :title)
                                         (org-astro--get-title tree info)))
                              (slug (when title (org-astro--slugify title))))
                         (when (and slug (not (string-blank-p slug)))
@@ -280,7 +304,7 @@ generated and added to the Org source file."
           ;; If we modified the buffer, save it and refresh the export environment
           (when buffer-modified-p
             (save-buffer)
-            (setq info (org-export-get-environment 'astro)))
+            (setq info (org-export-get-environment 'astro (or subtreep was-narrowed))))
 
           ;; --- Original export logic continues below ---
           (let* ((posts-folder-from-file-raw (or (plist-get info :astro-posts-folder)
@@ -447,12 +471,12 @@ generated and added to the Org source file."
                         (while (re-search-forward "\\[\\[id:" nil t)
                           (setq id-link-count (1+ id-link-count)))
                         (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count)))
-                    (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                    (org-export-to-file 'astro outfile async (or subtreep was-narrowed) visible-only body-only)
                     ;; Clear import state for second pass
                     (setq org-astro--current-body-images-imports nil)
                     ;; Second export pass to ensure complete image processing
                     (message "Running second export pass to ensure complete image processing...")
-                    (org-export-to-file 'astro outfile async subtreep visible-only body-only)
+                    (org-export-to-file 'astro outfile async (or subtreep was-narrowed) visible-only body-only)
                     ;; Persist any broken ID links detected during export
                     (when org-astro--broken-link-accumulator
                       (org-astro--write-broken-link-report org-astro--broken-link-accumulator

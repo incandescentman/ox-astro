@@ -15,6 +15,8 @@
 2. Ensure either =#+DESTINATION_FOLDER:=, =#+DESTINATION-FOLDER:=, or =#+ASTRO_POSTS_FOLDER:= points to a configured nickname
 3. Run =M-x org-astro-export-to-mdx=
 4. Inspect any warnings emitted in the minibuffer or =*Messages*=
+5. If the buffer is narrowed, the export treats it as a subtree (both passes).
+6. If the title keyword or filename is purely numeric date-like, the first heading becomes the title/slug/outfile (later non-date =#+TITLE= wins when present).
 
 * ID-Based Link Resolution
 - The exporter builds an ID→path map by scanning all =.org= files under =org-astro-source-root-folder=

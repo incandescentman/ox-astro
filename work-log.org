@@ -1367,3 +1367,24 @@ The problem was discovered in a real blog post with complex conversational conte
 - Completed: Stage 3 render-map refactor; manifest helper fixed via `cl-labels` closure
 - Next: Check downstream hero layout behavior; run `emacs --batch -Q -L . -l test-image-rendering.el` after image changes
 - Context: Core files touched — `ox-astro-image-handlers.el`, `ox-astro-helpers.el`, `ox-astro-handlers.el`; test fixtures in `test-files/image-rendering/`
+
+* 2025-11-23
+** Session Summary
+- Reinstated date-only title handling: date-like `#+TITLE`/filename now swap to the first heading for title/slug/outfile while respecting later non-date titles.
+- Restored narrowed-buffer exports: if the buffer is narrowed, export treats it as a subtree in both passes.
+- Added regression tests for date-title replacement, date-filename fallback, and narrowed subtree export.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Date-only title guard implemented across title/slug/outfile: `ox-astro-helpers.el`, `ox-astro.el`
+- [x] Narrowed-buffer subtree export honored on both passes: `ox-astro.el`
+- [x] Regression tests added: `test/date-title-and-subtree-test.el`
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro-helpers.el`, `ox-astro.el`, `test/date-title-and-subtree-test.el`
+- Known unknowns: None
+- Recommendations: Re-export date-named journal files; spot-check front matter in Astro output for expected titles/slugs.
