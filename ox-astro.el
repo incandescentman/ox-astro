@@ -291,10 +291,11 @@ generated and added to the Org source file."
                           (setq buffer-modified-p t)))))
 
                   ;; 2. Handle Excerpt (only if missing), placed after org-roam preamble
+                  ;; Insert as SUBHED (alias for excerpt) to match legacy convention
                   (unless excerpt-present
                     (let ((excerpt-text (org-astro--get-excerpt tree info)))
                       (when (and excerpt-text (not (string-blank-p excerpt-text)))
-                        (org-astro--upsert-keyword-after-roam "EXCERPT" excerpt-text)
+                        (org-astro--upsert-keyword-after-roam "SUBHED" excerpt-text)
                         (setq buffer-modified-p t))))
 
                   ;; 3. Handle Date (only if missing), placed after org-roam preamble

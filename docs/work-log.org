@@ -1,6 +1,22 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-11-24
+** Session Summary: Use SUBHED for Auto-Generated Excerpts
+- Changed auto-inserted excerpt keyword from =#+EXCERPT:= to =#+SUBHED:= to match legacy convention.
+- Both keywords map to the same =excerpt= front matter field in MDX output.
+- Priority order unchanged: =ASTRO_EXCERPT= → =EXCERPT= → =SUBHED= → =DESCRIPTION= → fallback paragraph.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Modified =ox-astro.el:298= to insert =SUBHED= instead of =EXCERPT= when auto-generating
+- [x] Added explanatory comment noting SUBHED is alias for excerpt
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: =ox-astro.el=
+- No breaking changes—MDX output identical since both keywords map to =excerpt=
+
 * 2025-11-15
 ** Session Summary: Formatting Issues Documentation
 - Analyzed exported MDX output from goal tracking blog post to identify systematic formatting problems in the ox-astro exporter.
