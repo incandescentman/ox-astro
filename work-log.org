@@ -1388,3 +1388,22 @@ The problem was discovered in a real blog post with complex conversational conte
 - Files touched: `ox-astro-helpers.el`, `ox-astro.el`, `test/date-title-and-subtree-test.el`
 - Known unknowns: None
 - Recommendations: Re-export date-named journal files; spot-check front matter in Astro output for expected titles/slugs.
+
+* 2025-11-23 (later)
+** Session Summary
+- Preserved user narrowing after Astro export by reapplying the narrowed region bounds post-export while still running both passes as subtree exports.
+- Verified all regression tests continue to pass after the narrowing fix.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Narrowing restored after export without affecting subtree export behavior: `ox-astro.el`
+- [x] Tests re-run: `test/date-title-and-subtree-test.el`
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro.el`, `work-log.org`
+- Known unknowns: None
+- Recommendations: None
