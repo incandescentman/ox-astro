@@ -602,6 +602,7 @@ resolved to plain text in the temporary export buffer."
     (:publish-date       "PUBLISH_DATE"        nil nil nil)
     (:date-occurred      "DATE_OCCURRED"       nil nil nil)
     (:excerpt            "EXCERPT"             nil nil nil)
+    (:excerpt            "SUBHED"              nil nil nil)
     (:tags               "TAGS"                nil nil 'newline)
     (:categories         "CATEGORIES"          nil nil 'newline)
     (:cover-image        "COVER_IMAGE"         nil nil nil)
