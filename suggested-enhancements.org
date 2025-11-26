@@ -9,9 +9,6 @@ Export all Org files in a directory with one command: =M-x org-astro-export-dire
 
 Most immediate value for life-web workflow—after changing settings like =org-astro-id-link-base-path=, you need to regenerate everything.
 
-** TODO Responsive Images [Low complexity]
-Add =org-astro-image-layout= config to include =layout="responsive"= on =<Image />= components. Quick win for performance—Astro 5.0+ handles srcset/sizes automatically.
-
 ** TODO SVG Components [Medium complexity]
 Detect =.svg= files and generate component imports (=import Icon from './icon.svg'=) instead of =<Image />= tags. Enables CSS styling and standard Astro patterns. Requires Astro 5.7+.
 
@@ -41,6 +38,9 @@ Generate =<Picture />= for multi-format images (AVIF, WebP). Low priority—=<Im
 Copy ZIPs, videos to =public/=. PDFs already supported; this is niche.
 
 * Implemented
+
+** DONE Responsive Images [2025-11-26]
+Config =org-astro-image-default-layout= adds =layout= prop to =<Image />= components. Default is ="responsive"= for automatic srcset/sizes. Set to =nil= to disable.
 
 ** DONE Absolute Route Mode for ID Links [2025-11-26]
 Config =org-astro-id-link-base-path= outputs =/notes/path/slug= instead of =../path/slug.mdx=.

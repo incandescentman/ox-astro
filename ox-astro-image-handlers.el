@@ -263,7 +263,11 @@ The result is a plist with keys:
         (when (and astro-path var-name)
           (let* ((alt (org-astro--image-entry-alt entry))
                  (escaped-alt (replace-regexp-in-string "\"" "\\\\\"" alt))
-                 (jsx (format "<Image src={%s} alt=\"%s\" />" var-name escaped-alt))
+                 (layout-prop (when (and (boundp 'org-astro-image-default-layout)
+                                         org-astro-image-default-layout
+                                         (not (string= org-astro-image-default-layout "none")))
+                                (format " layout=\"%s\"" org-astro-image-default-layout)))
+                 (jsx (format "<Image src={%s} alt=\"%s\"%s />" var-name escaped-alt (or layout-prop "")))
                  (import-line (format "import %s from '%s';" var-name astro-path))
                  (record (list :entry entry
                                :var-name var-name

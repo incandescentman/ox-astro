@@ -34,6 +34,29 @@
 - Add a destination nickname with =:preserve-folder-structure t= if you want exports to mirror the roam hierarchy
 - Verify your notes include =:ID:= drawers when you expect cross-note linking
 
+* Image Configuration
+
+** Responsive Images (Default)
+By default, ox-astro generates =<Image />= components with =layout="responsive"=, which enables Astro 5.10+'s automatic srcset and sizes generation for optimal performance.
+
+#+begin_src emacs-lisp
+;; Default (responsive images enabled)
+(setq org-astro-image-default-layout "responsive")
+#+end_src
+
+** Layout Options
+- ="responsive"= (default): Image scales with container, auto srcset
+- ="fixed"=: Image maintains exact dimensions
+- ="full-width"=: Image spans full container width
+- =nil= or ="none"=: No layout prop (basic behavior, pre-5.10 compatibility)
+
+** Disabling Responsive Images
+To revert to basic image behavior without the layout prop:
+
+#+begin_src emacs-lisp
+(setq org-astro-image-default-layout nil)
+#+end_src
+
 * Verifying Broken Links
 - Open the generated MDX file and click through the links to confirm navigation
 - Review =broken-links.json= and resolve outstanding IDs before publishing

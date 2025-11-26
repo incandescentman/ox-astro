@@ -94,11 +94,11 @@
                   (should (search-forward "import { Image } from 'astro:assets';" nil t))
                   (goto-char (point-min))
                   (should (= 7 (how-many "<Image src={" (point-min) (point-max)))))
-                ;; Alt text preservation.
-                (should (string-match "<Image src={[^}]+} alt=\"Local Photo Described\" />" output))
-                (should (string-match "<Image src={[^}]+} alt=\"Space Name\" />" output))
-                (should (string-match "<Image src={[^}]+} alt=\"Underscore image\" />" output))
-                (should (string-match "<Image src={[^}]+} alt=\"Remote fixture\" />" output))
+                ;; Alt text preservation (with default responsive layout).
+                (should (string-match "<Image src={[^}]+} alt=\"Local Photo Described\" layout=\"responsive\" />" output))
+                (should (string-match "<Image src={[^}]+} alt=\"Space Name\" layout=\"responsive\" />" output))
+                (should (string-match "<Image src={[^}]+} alt=\"Underscore image\" layout=\"responsive\" />" output))
+                (should (string-match "<Image src={[^}]+} alt=\"Remote fixture\" layout=\"responsive\" />" output))
                 ;; Ensure each image import is unique.
                 (let* ((import-lines (split-string output "\n"))
                        (image-import-lines
@@ -111,6 +111,99 @@
                              (length (cl-remove-duplicates image-import-lines :test #'string=)))))))
           (delete-directory source-root t)
           (delete-directory posts-root t))))))
+
+(ert-deftest org-astro-image-layout-disabled-produces-no-layout-prop ()
+  "Test that setting org-astro-image-default-layout to nil produces no layout prop."
+  (pcase-let* ((`(:source-root ,source-root
+                 :posts-root ,posts-root
+                 :org-file ,org-file
+                 :remote-source ,remote-source)
+                (test-image-rendering--setup)))
+    (let ((org-astro-source-root-folder source-root)
+          (org-astro-known-posts-folders `(("test-export" . (:path ,posts-root))))
+          ;; Disable responsive layout
+          (org-astro-image-default-layout nil))
+      (cl-letf* (((symbol-function 'org-astro--download-remote-image)
+                  (lambda (_url posts-folder sub-dir)
+                    (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+                           (target (expand-file-name "remote-fixture.png" assets-folder)))
+                      (make-directory assets-folder t)
+                      (copy-file remote-source target t)
+                      target))))
+        (unwind-protect
+            (progn
+              (with-current-buffer (find-file-noselect org-file)
+                (unwind-protect
+                    (org-astro-export-to-mdx)
+                  (kill-buffer)))
+              (let* ((mdx-files (directory-files-recursively posts-root "\\.mdx$"))
+                     (output (and mdx-files
+                                  (with-temp-buffer
+                                    (insert-file-contents (car mdx-files))
+                                    (buffer-string)))))
+                (should output)
+                ;; Should NOT have layout prop when disabled
+                (should-not (string-match "layout=" output))
+                ;; Should still have basic Image tags
+                (should (string-match "<Image src={[^}]+} alt=\"Local Photo Described\" />" output))))
+          (delete-directory source-root t)
+          (delete-directory posts-root t))))))
+
+(ert-deftest org-astro-image-layout-none-produces-no-layout-prop ()
+  "Test that setting org-astro-image-default-layout to \"none\" produces no layout prop."
+  (pcase-let* ((`(:source-root ,source-root
+                 :posts-root ,posts-root
+                 :org-file ,org-file
+                 :remote-source ,remote-source)
+                (test-image-rendering--setup)))
+    (let ((org-astro-source-root-folder source-root)
+          (org-astro-known-posts-folders `(("test-export" . (:path ,posts-root))))
+          ;; Set to "none" string
+          (org-astro-image-default-layout "none"))
+      (cl-letf* (((symbol-function 'org-astro--download-remote-image)
+                  (lambda (_url posts-folder sub-dir)
+                    (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+                           (target (expand-file-name "remote-fixture.png" assets-folder)))
+                      (make-directory assets-folder t)
+                      (copy-file remote-source target t)
+                      target))))
+        (unwind-protect
+            (progn
+              (with-current-buffer (find-file-noselect org-file)
+                (unwind-protect
+                    (org-astro-export-to-mdx)
+                  (kill-buffer)))
+              (let* ((mdx-files (directory-files-recursively posts-root "\\.mdx$"))
+                     (output (and mdx-files
+                                  (with-temp-buffer
+                                    (insert-file-contents (car mdx-files))
+                                    (buffer-string)))))
+                (should output)
+                ;; Should NOT have layout prop when set to "none"
+                (should-not (string-match "layout=" output))
+                ;; Should still have basic Image tags
+                (should (string-match "<Image src={[^}]+} alt=\"Local Photo Described\" />" output))))
+          (delete-directory source-root t)
+          (delete-directory posts-root t))))))
+
+(ert-deftest org-astro-format-image-component-includes-layout ()
+  "Unit test for org-astro--format-image-component with layout prop."
+  ;; Test with responsive layout (default)
+  (let ((org-astro-image-default-layout "responsive"))
+    (should (string= (org-astro--format-image-component "myImage" "Alt text")
+                     "<Image src={myImage} alt=\"Alt text\" layout=\"responsive\" />")))
+  ;; Test with fixed layout
+  (let ((org-astro-image-default-layout "fixed"))
+    (should (string= (org-astro--format-image-component "myImage" "Alt text")
+                     "<Image src={myImage} alt=\"Alt text\" layout=\"fixed\" />")))
+  ;; Test with nil (no layout)
+  (let ((org-astro-image-default-layout nil))
+    (should (string= (org-astro--format-image-component "myImage" "Alt text")
+                     "<Image src={myImage} alt=\"Alt text\" />")))
+  ;; Test with "none" (no layout)
+  (let ((org-astro-image-default-layout "none"))
+    (should (string= (org-astro--format-image-component "myImage" "Alt text")
+                     "<Image src={myImage} alt=\"Alt text\" />"))))
 
 (provide 'test-image-rendering)
 

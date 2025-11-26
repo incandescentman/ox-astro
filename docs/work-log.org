@@ -2,6 +2,48 @@
 #+DATE: 2025-10-07
 
 * 2025-11-26
+** Session Summary: Add Responsive Images Support
+
+Added =org-astro-image-default-layout= config to generate =<Image />= components with Astro 5.10+ responsive layout support.
+
+*** Changes Made
+- Added =org-astro-image-default-layout= defcustom in =ox-astro-config.el= (default: ="responsive"=)
+- Updated =org-astro--format-image-component= in =ox-astro-helpers.el= to include layout prop
+- Updated render map JSX generation in =ox-astro-image-handlers.el= for consistency
+- Added 3 new tests: layout enabled, layout disabled (nil), layout disabled ("none")
+- Updated =docs/instructions.org= with Image Configuration section
+- Marked as DONE in =suggested-enhancements.org=
+
+*** Usage
+#+begin_src emacs-lisp
+;; Default (responsive)
+(setq org-astro-image-default-layout "responsive")
+
+;; Disable responsive images
+(setq org-astro-image-default-layout nil)
+#+end_src
+
+*** Output
+#+begin_src jsx
+// With layout="responsive" (default)
+<Image src={myImage} alt="description" layout="responsive" />
+
+// With layout disabled
+<Image src={myImage} alt="description" />
+#+end_src
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Config =org-astro-image-default-layout= in =ox-astro-config.el=
+- [x] JSX generation updated in =ox-astro-helpers.el= and =ox-astro-image-handlers.el=
+- [x] Tests: 4 image rendering tests passing, 6 ID link tests passing
+- [x] Documentation in =docs/instructions.org=
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: =ox-astro-config.el=, =ox-astro-helpers.el=, =ox-astro-image-handlers.el=, =test-image-rendering.el=, =docs/instructions.org=
+
+* 2025-11-26
 ** Session Summary: Add Absolute Route Mode for ID Links
 
 Added new configuration option =org-astro-id-link-base-path= to support absolute routes for org-roam ID links, specifically for life-web project which uses =/notes/[...id].astro= routing.

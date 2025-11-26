@@ -29,6 +29,23 @@ Uses Astro's alias, which maps to the project's src/ directory."
   :group 'org-export-astro
   :type 'boolean)
 
+(defcustom org-astro-image-default-layout "responsive"
+  "Default layout prop for generated <Image /> components.
+Astro 5.10+ uses this to automatically generate srcset and sizes.
+
+Valid values:
+- \"responsive\" (recommended): Image scales with container, auto srcset
+- \"fixed\": Image maintains exact dimensions
+- \"full-width\": Image spans full container width
+- nil or \"none\": No layout prop added (basic behavior)
+
+Set to nil to disable responsive images globally."
+  :group 'org-export-astro
+  :type '(choice (const :tag "Responsive (recommended)" "responsive")
+                 (const :tag "Fixed" "fixed")
+                 (const :tag "Full width" "full-width")
+                 (const :tag "None (basic)" nil)))
+
 (defcustom org-astro-source-root-folder
   "~/org-files"
   "Root directory that contains your source Org files.

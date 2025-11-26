@@ -100,10 +100,16 @@ indicator/value pairs.  Returns the updated plist."
                candidates))))
 
 (defun org-astro--format-image-component (var-name alt-text)
-  "Return a standardized Image component string for VAR-NAME and ALT-TEXT."
-  (format "<Image src={%s} alt=\"%s\" />"
-          var-name
-          (org-astro--escape-attribute (or alt-text "Image"))))
+  "Return a standardized Image component string for VAR-NAME and ALT-TEXT.
+Includes layout prop based on `org-astro-image-default-layout' config."
+  (let ((layout-prop (when (and (boundp 'org-astro-image-default-layout)
+                                org-astro-image-default-layout
+                                (not (string= org-astro-image-default-layout "none")))
+                       (format " layout=\"%s\"" org-astro-image-default-layout))))
+    (format "<Image src={%s} alt=\"%s\"%s />"
+            var-name
+            (org-astro--escape-attribute (or alt-text "Image"))
+            (or layout-prop ""))))
 
 (defun org-astro--image-component-for-record (record info &optional alt-override)
   "Render RECORD as an Image component, skipping the hero's first inline usage.

@@ -80,11 +80,13 @@ Support multi-format images (AVIF, WebP) via ~<Picture />~ component. Separate c
 
 * Task Checklist
 
-1. [ ] Add ~org-astro-image-default-layout~ to ~ox-astro-config.el~
-2. [ ] Update ~org-astro--format-image-component~ to include layout prop
-3. [ ] Add tests: one with layout applied, one with config set to nil/none to confirm no prop (regression), and one covering render-map/remote images
-4. [ ] Update docs/instructions.org with the new defcustom and how to disable
-5. [ ] Update suggested-enhancements.org to mark as DONE
+1. [X] Add ~org-astro-image-default-layout~ to ~ox-astro-config.el~
+2. [X] Update ~org-astro--format-image-component~ to include layout prop
+3. [X] Add tests: one with layout applied, one with config set to nil/none to confirm no prop (regression), and one covering render-map/remote images
+4. [X] Update docs/instructions.org with the new defcustom and how to disable
+5. [X] Update suggested-enhancements.org to mark as DONE
+
+*Phase 1 Complete: 2025-11-26*
 
 * Out of Scope (Intentionally Deferred)
 - ~widths~ / ~sizes~ manual configuration (Astro auto-generates these)
