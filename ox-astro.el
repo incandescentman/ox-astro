@@ -456,6 +456,11 @@ generated and added to the Org source file."
                        (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
                  (outfile (expand-file-name final-filename out-dir)))
 
+(defcustom org-astro-debug-log-file (expand-file-name "ox-astro-debug.log" temporary-file-directory)
+  "File path for writing debug logs when `org-astro-debug-images` is non-nil."
+  :group 'org-export-astro
+  :type 'file)
+
             ;; Update debug system with actual output file path now that we know it
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
               (org-astro--debug-log-direct "Export starting - Output file: %s" outfile)
@@ -504,7 +509,7 @@ generated and added to the Org source file."
                           (org-astro--debug-log-direct "Export complete: %s" outfile)
                           ;; Copy file paths to clipboard
                           (let* ((source-file (buffer-file-name))
-                                 (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
+                                 (debug-file (expand-file-name org-astro-debug-log-file))
                                  (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
                                                          source-file outfile debug-file))
                                  (pbcopy (executable-find "pbcopy")))

@@ -4,12 +4,17 @@
 This file contains a list of potential new features for the ox-astro exporter, grouped by category.
 
 * Content and Syntax Enhancements
-2.  *Footnote Handling*: Automatically convert Org-style footnotes (`[fn:1]`) into the standard Markdown footnote syntax (`[^1]`), which Astro can then process.
-4.  *Internal Link Resolution*: Create a system to resolve links between different Org files within the project (e.g., `[[file:another-post.org]]`). The exporter would convert these to valid relative URLs for the final Astro site, which is great for creating a personal wiki or a series of connected posts.
+** Footnote Handling
+Automatically convert Org-style footnotes (`[fn:1]`) into the standard Markdown footnote syntax (`[^1]`), which Astro can then process.
 
 * Deeper Astro Integration
-1.  *Custom Component Shortcodes*: Allow users to embed their own Astro components directly from Org mode. For example, a special block syntax could be used to invoke a component and pass it properties (e.g., `#+BEGIN_ASTRO card, title="My Card" ...`).
-2.  *Content Collections Schema Awareness*: If the Astro project uses Content Collections, the exporter could be configured to read the collection's schema and validate the Org file's front matter during export, ensuring type safety and preventing errors.
+** Implemented: Absolute Route Mode for ID Links
+   This enhancement was implemented. Users can now configure `org-astro-id-link-base-path` to output absolute routes (e.g., `/notes/stories/my-story`) for `[[id:...]]` links, addressing the Astro routing incompatibility with relative MDX paths. This was preferred over adding support for `[[file:...]]` links directly between Org posts due to the robustness and best practices of `org-roam`'s ID system.
+
+** Custom Component Shortcodes
+   Allow users to embed their own Astro components directly from Org mode. For example, a special block syntax could be used to invoke a component and pass it properties (e.g., `#+BEGIN_ASTRO card, title="My Card" ...`).
+** Content Collections Schema Awareness
+   If the Astro project uses Content Collections, the exporter could be configured to read the collection's schema and validate the Org file's front matter during export, ensuring type safety and preventing errors.
 
 * Workflow and User Experience
 1.  *Batch Export Command*: Add a command to export all Org files in a specified directory (e.g., `org-astro-export-directory`), which would be useful for regenerating an entire site at once.
