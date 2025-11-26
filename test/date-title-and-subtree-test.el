@@ -9,10 +9,11 @@
 
 (require 'ox-astro)
 
-(defun ox-astro-test--with-temp-export (org-content org-filename expected-slug &optional narrow-heading)
+(defun ox-astro-test--with-temp-export (org-content org-filename expected-slug &optional narrow-heading point-adjust-fn)
   "Export ORG-CONTENT from ORG-FILENAME and return resulting MDX as string.
 EXPECTED-SLUG must be the slug-based filename (without extension).
-If NARROW-HEADING is non-nil, narrow to the subtree whose heading matches it."
+If NARROW-HEADING is non-nil, narrow to the subtree whose heading matches it.
+When POINT-ADJUST-FN is provided, call it after narrowing to reposition point."
   (let* ((temp-project (make-temp-file "ox-astro-date-title" t))
          (posts-dir (expand-file-name "src/content/blog" temp-project))
          (org-file (expand-file-name org-filename temp-project))
@@ -33,6 +34,8 @@ If NARROW-HEADING is non-nil, narrow to the subtree whose heading matches it."
               (re-search-forward (format "^\\*+ %s" (regexp-quote narrow-heading)))
               (org-back-to-heading t)
               (org-narrow-to-subtree))
+            (when point-adjust-fn
+              (funcall point-adjust-fn))
             (let ((org-astro-debug-images nil)
                   (org-astro-debug-console nil)
                   (org-astro-debug-log nil))
@@ -69,5 +72,16 @@ If NARROW-HEADING is non-nil, narrow to the subtree whose heading matches it."
     (should (string-match-p "Body A" mdx))
     (should (not (string-match-p "Ignore This" mdx)))
     (should (not (string-match-p "Body B" mdx)))))
+
+(ert-deftest org-astro-narrowed-export-uses-region-root ()
+  "Export the entire narrowed subtree even when point is deep inside it."
+  (let* ((content "#+DESTINATION_FOLDER: test\n\n* Keep This\nBody A.\n** Nested\nDetails.\n** Deep\nMore details.\n")
+         (mdx (ox-astro-test--with-temp-export
+               content "subtree-point.org" "keep-this" "Keep This"
+               (lambda () (goto-char (point-max))))))
+    (should (string-match-p "title: Keep This" mdx))
+    (should (string-match-p "Body A" mdx))
+    (should (string-match-p "Details." mdx))
+    (should (not (string-match-p "title: Deep" mdx)))))
 
 (provide 'date-title-and-subtree-test)

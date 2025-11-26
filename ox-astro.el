@@ -131,7 +131,12 @@ generated and added to the Org source file."
           (let* ((was-narrowed (buffer-narrowed-p))
                  (narrow-start (when was-narrowed (point-min)))
                  (narrow-end (when was-narrowed (point-max)))
-                 (info (org-export-get-environment 'astro (or subtreep was-narrowed)))
+                 (effective-subtreep (or subtreep was-narrowed))
+                 ;; Always derive export metadata from the start of the narrowed
+                 ;; region so we export the intended subtree regardless of point.
+                 (info (save-excursion
+                         (when narrow-start (goto-char narrow-start))
+                         (org-export-get-environment 'astro effective-subtreep)))
                  (buffer-modified-p nil))
           ;; DEBUG: Check buffer at very start
           (save-excursion
@@ -209,7 +214,9 @@ generated and added to the Org source file."
                       (error (message "ERROR processing PDF %s: %s" pdf err)))))
                 (when (plist-get process-result :buffer-modified)
                   (setq buffer-modified-p t)
-                  (setq info (org-export-get-environment 'astro subtreep))
+                  (setq info (save-excursion
+                              (when narrow-start (goto-char narrow-start))
+                              (org-export-get-environment 'astro effective-subtreep)))
                   (setq tree (org-element-parse-buffer))
                   (let* ((refreshed-manifest (org-astro--build-image-manifest tree info))
                          (refreshed-result (org-astro--process-image-manifest refreshed-manifest posts-folder sub-dir '(:update-buffer nil)))
@@ -308,7 +315,9 @@ generated and added to the Org source file."
           ;; If we modified the buffer, save it and refresh the export environment
           (when buffer-modified-p
             (save-buffer)
-            (setq info (org-export-get-environment 'astro (or subtreep was-narrowed))))
+            (setq info (save-excursion
+                        (when narrow-start (goto-char narrow-start))
+                        (org-export-get-environment 'astro effective-subtreep))))
 
           ;; --- Original export logic continues below ---
           (let* ((posts-folder-from-file-raw (or (plist-get info :astro-posts-folder)
@@ -414,7 +423,7 @@ generated and added to the Org source file."
                               (file-name-as-directory
                                (expand-file-name preserved-subdir pub-dir-base))
                               pub-dir-base))
-                 (default-outfile (org-export-output-file-name ".mdx" subtreep pub-dir))
+                 (default-outfile (org-export-output-file-name ".mdx" effective-subtreep pub-dir))
                  (out-dir (file-name-directory default-outfile))
                  (out-filename (file-name-nondirectory default-outfile))
                  ;; Prefer a SLUG found in the narrowed region (subtree) first,
@@ -476,12 +485,16 @@ generated and added to the Org source file."
                             (while (re-search-forward "\\[\\[id:" nil t)
                               (setq id-link-count (1+ id-link-count)))
                             (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count)))
-                        (org-export-to-file 'astro outfile async (or subtreep was-narrowed) visible-only body-only)
+                        (save-excursion
+                          (when narrow-start (goto-char narrow-start))
+                          (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only))
                         ;; Clear import state for second pass
                         (setq org-astro--current-body-images-imports nil)
                         ;; Second export pass to ensure complete image processing
                         (message "Running second export pass to ensure complete image processing...")
-                        (org-export-to-file 'astro outfile async (or subtreep was-narrowed) visible-only body-only)
+                        (save-excursion
+                          (when narrow-start (goto-char narrow-start))
+                          (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only))
                         ;; Persist any broken ID links detected during export
                         (when org-astro--broken-link-accumulator
                           (org-astro--write-broken-link-report org-astro--broken-link-accumulator
