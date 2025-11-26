@@ -182,7 +182,9 @@ standard Image component string."
     (let* ((msg (apply #'format fmt args))
            (timestamp (format-time-string "%H:%M:%S"))
            (line (format "[%s] %s\n" timestamp msg))
-           (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log")))
+           (debug-file (if (boundp 'org-astro-debug-log-file)
+                           (expand-file-name org-astro-debug-log-file)
+                         (expand-file-name "ox-astro-debug.log" temporary-file-directory))))
       (condition-case _
           (with-temp-buffer
             (insert line)
@@ -198,7 +200,9 @@ standard Image component string."
            (existing (plist-get info :astro-debug-log))
            (timestamp (format-time-string "%H:%M:%S"))
            (line (format "[%s] %s\n" timestamp msg))
-           (debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
+           (debug-file (if (boundp 'org-astro-debug-log-file)
+                           (expand-file-name org-astro-debug-log-file)
+                         (expand-file-name "ox-astro-debug.log" temporary-file-directory)))
            ;; Check if this is the first log entry
            (first-entry (null existing)))
       ;; Store in info for potential MDX comments or later inspection
@@ -257,7 +261,9 @@ standard Image component string."
 (defun org-astro--dbg-update-output-file (info actual-output-file)
   "Update the debug file header with the actual output file path."
   (when (and (boundp 'org-astro-debug-images) org-astro-debug-images actual-output-file)
-    (let* ((debug-file (expand-file-name "~/Library/CloudStorage/Dropbox/github/ox-astro/ox-astro-debug.log"))
+    (let* ((debug-file (if (boundp 'org-astro-debug-log-file)
+                           (expand-file-name org-astro-debug-log-file)
+                         (expand-file-name "ox-astro-debug.log" temporary-file-directory)))
            (header-info (plist-get info :astro-debug-header-info)))
       (when header-info
         (let* ((source-file (plist-get header-info :source))
@@ -527,6 +533,27 @@ is not under SOURCE-DIR, fall back to a detected root by searching for
           relative))
        (t
         (concat "./" relative))))))
+
+(defun org-astro--compute-collection-id (entry)
+  "Compute the Astro content collection ID from ENTRY metadata.
+The collection ID is the path used in Astro routes, e.g., \"stories/my-story\".
+This is derived from the relative-subdir and slug, or from the filename."
+  (when entry
+    (let* ((relative-subdir (plist-get entry :relative-subdir))
+           (slug (plist-get entry :slug))
+           (filename (plist-get entry :filename))
+           ;; Get the base name without .mdx extension
+           (base-name (cond
+                       (slug slug)
+                       (filename (file-name-sans-extension filename))
+                       (t nil))))
+      (when base-name
+        ;; Combine relative-subdir with base-name
+        ;; relative-subdir is like "stories/" or nil
+        (if (and relative-subdir (not (string-blank-p relative-subdir)))
+            ;; Remove trailing slash from subdir, combine with base-name
+            (concat (string-trim-right relative-subdir "/") "/" base-name)
+          base-name)))))
 
 (defun org-astro--record-missing-id-link (info target-id desc)
   "Log and record a missing TARGET-ID using INFO and DESC.
@@ -1084,7 +1111,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
   (let* ((type (org-element-property :type link))
          (path (org-element-property :path link)))
     (cond
-     ;; org-roam ID links → resolve to relative Markdown links
+     ;; org-roam ID links → resolve to absolute routes or relative Markdown links
      ((string= type "id")
       (let* ((target-id path)
              (entry (and org-astro--id-path-map
@@ -1093,21 +1120,33 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                             desc
                           (or (and entry (plist-get entry :title))
                               target-id))))
-        (if (and entry org-astro--current-outfile)
-            (let* ((target-outfile (or (plist-get entry :outfile)
-                                       (let* ((posts-folder (plist-get entry :posts-folder))
-                                              (filename (plist-get entry :filename))
-                                              (relative-dir (plist-get entry :relative-subdir)))
-                                         (when (and posts-folder filename)
-                                           (let ((base (if (and relative-dir (not (string-blank-p relative-dir)))
-                                                           (expand-file-name relative-dir posts-folder)
-                                                         posts-folder)))
-                                             (expand-file-name filename base)))))))
-              (if (and target-outfile)
-                  (let ((relative (org-astro--calculate-relative-mdx-path
-                                   org-astro--current-outfile target-outfile)))
-                    (if relative
-                        (format "[%s](%s)" link-text relative)
+        (if entry
+            ;; Check if we should use absolute routes or relative MDX paths
+            (if (and (boundp 'org-astro-id-link-base-path) org-astro-id-link-base-path)
+                ;; Absolute route mode: /base-path/collection-id
+                (let ((collection-id (org-astro--compute-collection-id entry)))
+                  (if collection-id
+                      (let* ((base (string-trim-right org-astro-id-link-base-path "/"))
+                             (route (concat base "/" collection-id)))
+                        (format "[%s](%s)" link-text route))
+                    (org-astro--record-missing-id-link info target-id link-text)))
+              ;; Relative MDX path mode (original behavior)
+              (if org-astro--current-outfile
+                  (let* ((target-outfile (or (plist-get entry :outfile)
+                                             (let* ((posts-folder (plist-get entry :posts-folder))
+                                                    (filename (plist-get entry :filename))
+                                                    (relative-dir (plist-get entry :relative-subdir)))
+                                               (when (and posts-folder filename)
+                                                 (let ((base (if (and relative-dir (not (string-blank-p relative-dir)))
+                                                                 (expand-file-name relative-dir posts-folder)
+                                                               posts-folder)))
+                                                   (expand-file-name filename base)))))))
+                    (if target-outfile
+                        (let ((relative (org-astro--calculate-relative-mdx-path
+                                         org-astro--current-outfile target-outfile)))
+                          (if relative
+                              (format "[%s](%s)" link-text relative)
+                            (org-astro--record-missing-id-link info target-id link-text)))
                       (org-astro--record-missing-id-link info target-id link-text)))
                 (org-astro--record-missing-id-link info target-id link-text)))
           (org-astro--record-missing-id-link info target-id link-text))))

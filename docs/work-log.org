@@ -2,6 +2,41 @@
 #+DATE: 2025-10-07
 
 * 2025-11-26
+** Session Summary: Add Absolute Route Mode for ID Links
+
+Added new configuration option =org-astro-id-link-base-path= to support absolute routes for org-roam ID links, specifically for life-web project which uses =/notes/[...id].astro= routing.
+
+*** Changes Made
+- Added =org-astro-id-link-base-path= defcustom in =ox-astro-config.el=
+- Added =org-astro--compute-collection-id= helper function in =ox-astro-helpers.el=
+- Modified =org-astro-link= to check for absolute route mode and output =/base-path/collection-id= instead of relative =.mdx= paths
+- Added =life-web= and =roam-life= to known posts folders config
+- Added test =org-astro-id-link-absolute-route-mode= in =test-id-links.el=
+
+*** Usage
+#+begin_src emacs-lisp
+(setq org-astro-id-link-base-path "/notes")
+#+end_src
+
+Now =[[id:char-001-mom][Mom]]= exports as =[Mom](/notes/characters/mom)= instead of =[Mom](../characters/mom.mdx)=.
+
+*** Backward Compatibility
+When =org-astro-id-link-base-path= is nil (default), behavior unchanged—relative MDX paths are produced.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] New config option =org-astro-id-link-base-path= in =ox-astro-config.el=
+- [x] Helper =org-astro--compute-collection-id= in =ox-astro-helpers.el=
+- [x] Modified =org-astro-link= for absolute route support
+- [x] Test added and all 6 ID link tests passing
+- [x] Documentation added to life-web and roam-life READMEs
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: =ox-astro-config.el=, =ox-astro-helpers.el=, =test-id-links.el=
+- Related projects: life-web, roam-life
+
+* 2025-11-26
 ** Session Summary: Fix narrowed export when point is deep
 - Ensured narrowed exports anchor to region start for env/generation so full subtree exports even if cursor is far down.
 - Added regression test exercising narrowed export with point at end of subtree; all tests passing.

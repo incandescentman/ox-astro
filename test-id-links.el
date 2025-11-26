@@ -91,6 +91,37 @@
       (org-astro--write-broken-link-report hash posts-root)
       (should (not (file-exists-p report-path))))))
 
+(ert-deftest org-astro-id-link-absolute-route-mode ()
+  "Test that org-astro-id-link-base-path produces absolute routes."
+  (pcase-let* ((`(:source-root ,source-root :posts-root ,posts-root) (test-id-links--paths))
+               (story-file (expand-file-name "stories/impermanence-story.org" source-root))
+               (story-outfile (expand-file-name "stories/the-time-mom-told-me-about-impermanence.mdx" posts-root))
+               (db-file (expand-file-name ".org-roam.db" source-root)))
+    (unwind-protect
+        (progn
+          (write-region "" nil db-file nil 'silent)
+          (let ((org-astro-source-root-folder (expand-file-name "../not-the-root" source-root))
+                (org-astro-known-posts-folders `(("roam" . (:path ,posts-root :preserve-folder-structure t))))
+                ;; Enable absolute route mode
+                (org-astro-id-link-base-path "/notes"))
+            (let* ((id-map (org-astro--ensure-id-map org-astro-source-root-folder story-file))
+                   (org-astro--id-path-map id-map)
+                   (org-astro--current-outfile story-outfile)
+                   (org-astro--current-output-root posts-root)
+                   (org-astro--broken-link-accumulator (make-hash-table :test #'equal))
+                   (org-astro--broken-link-warnings-issued (make-hash-table :test #'equal)))
+              (with-temp-buffer
+                (insert "[[id:char-001-mom][Mom]]")
+                (org-mode)
+                (let* ((parse (org-element-parse-buffer))
+                       (link (org-element-map parse 'link #'identity nil t))
+                       (info (list :input-file story-file)))
+                  ;; Should produce absolute route instead of relative MDX path
+                  (should (equal "[Mom](/notes/characters/mom)"
+                                 (org-astro-link link "Mom" info))))))))
+      (when (file-exists-p db-file)
+        (delete-file db-file)))))
+
 (ert-deftest org-astro-absolute-destination-produces-outfile ()
   (let* ((source-root (make-temp-file "org-astro-src" t))
          (dest-root (make-temp-file "org-astro-dest" t))

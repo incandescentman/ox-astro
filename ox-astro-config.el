@@ -36,11 +36,30 @@ Used for calculating relative paths when preserving folder structure."
   :group 'org-export-astro
   :type 'directory)
 
+(defcustom org-astro-id-link-base-path nil
+  "Base path for org-roam ID links in exported MDX.
+When non-nil, ID links are rendered as absolute routes: BASE-PATH/collection-id
+Example: \"/notes\" produces links like \"/notes/stories/my-story\"
+
+When nil (default), ID links are rendered as relative MDX paths:
+\"../stories/my-story.mdx\"
+
+Set this to match your Astro routing structure. For example:
+- life-web uses \"/notes\" (pages at /notes/[...id].astro)
+- socratic uses nil (relative links within content collection)"
+  :group 'org-export-astro
+  :type '(choice (const :tag "Relative MDX paths" nil)
+                 (string :tag "Absolute route base path")))
+
 (defcustom org-astro-known-posts-folders
   '(("blog"       . (:path "~/projects/my-astro-site/src/content/blog"))
     ("docs"       . (:path "~/projects/my-docs-site/src/content/docs"))
     ("socratic"   . (:path "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog"))
     ("jaydocs"    . (:path "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog"))
+    ("life-web"   . (:path "/Users/jay/Dropbox/github/life-web/src/content/notes"
+                     :preserve-folder-structure t))
+    ("roam-life"  . (:path "/Users/jay/Dropbox/github/life-web/src/content/notes"
+                     :preserve-folder-structure t))
     )
   "An alist of known directories for exporting Astro posts.
 Each element is (NICKNAME . PLIST) where PLIST can contain:
