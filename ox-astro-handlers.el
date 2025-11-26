@@ -92,6 +92,28 @@ the MDX output preserves the intended hierarchy."
                                    contents)))
                    (org-trim indented))))))
 
+(defun org-astro-keyword (keyword _contents _info)
+  "Transcode THEME keywords into inline theme markers.
+Every #+THEME: keyword emits a JSX comment marker for remarkThemeSections.
+Other keywords defer to the markdown backend."
+  (let* ((key (org-element-property :key keyword))
+         (value (string-trim (org-element-property :value keyword)))
+         ;; Determine if this keyword is in the body (after the first heading)
+         (tree (plist-get _info :parse-tree))
+         (first-headline-pos (when tree
+                               (org-element-map tree 'headline
+                                 (lambda (h) (org-element-property :begin h))
+                                 nil 'first-match)))
+         (pos (org-element-property :begin keyword))
+         (body-level (or (null first-headline-pos)
+                         (and pos first-headline-pos (>= pos first-headline-pos)))))
+    (cond
+     ((string-equal key "THEME")
+      (if body-level
+          (format "{/* theme: %s */}\n\n" (downcase value))
+        ""))
+     (t (org-md-keyword keyword _contents _info)))))
+
 (defun org-astro-auto-wrap-image-paths-filter (tree _backend info)
   "Pre-processing filter that automatically wraps raw image paths in [[ ]] brackets.
 This runs FIRST, before all other processing, to simulate manual bracket addition."

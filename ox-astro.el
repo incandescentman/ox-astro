@@ -585,7 +585,8 @@ resolved to plain text in the temporary export buffer."
     (table-row . org-astro-table-row)
     (table-cell . org-astro-table-cell)
     (special-block . org-astro-special-block)
-    (export-block . org-astro-export-block))
+    (export-block . org-astro-export-block)
+    (keyword . org-astro-keyword))
 
   :filters-alist
   '((:filter-parse-tree . (org-astro-auto-wrap-image-paths-filter
