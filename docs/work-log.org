@@ -1,6 +1,22 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-11-26
+** Session Summary: Fix narrowed export when point is deep
+- Ensured narrowed exports anchor to region start for env/generation so full subtree exports even if cursor is far down.
+- Added regression test exercising narrowed export with point at end of subtree; all tests passing.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Narrowed export now repositions before env collection and both export passes (`ox-astro.el`)
+- [x] Regression test for deep-point narrowed export added (`test/date-title-and-subtree-test.el`)
+- [x] Tests passing: `emacs -Q --batch -L . -l test/date-title-and-subtree-test.el -f ert-run-tests-batch-and-exit`
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: =ox-astro.el=, =test/date-title-and-subtree-test.el=
+- No known follow-ups
+
 * 2025-11-24
 ** Session Summary: Use SUBHED for Auto-Generated Excerpts
 - Changed auto-inserted excerpt keyword from =#+EXCERPT:= to =#+SUBHED:= to match legacy convention.
