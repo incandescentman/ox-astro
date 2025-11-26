@@ -24,3 +24,13 @@ Addressed two major issues:
 - **Reliable Subtree Exports**: Users can now export subtrees confidently regardless of cursor position.
 - **Working Navigation**: Links between posts now work correctly in deployed Astro sites when `org-astro-id-link-base-path` is configured (e.g. to `/notes`).
 - **Portability**: The package no longer depends on a specific user's filesystem for debug logging.
+
+* 2025-11-26 Wednesday - Enhancements Documentation Updated
+
+** Summary
+Updated `suggested-enhancements.org` to reflect the current implementation status and prioritization of various features, including new opportunities from Astro 5.x image handling.
+
+** Changes
+- Reorganized `suggested-enhancements.org` into priority-based sections (High, Medium, Low Priority / Future Opportunities, Implemented / Completed).
+- Marked "Remote Image Caching", "Absolute Route Mode for ID Links", and "PDF Asset Handling" as "Implemented / Completed".
+- Added "Responsive Images" and "SVG Components" as "High Priority" opportunities, and "Picture Component Support" as "Low Priority / Future Opportunity", reflecting their status based on Astro 5.x features.
