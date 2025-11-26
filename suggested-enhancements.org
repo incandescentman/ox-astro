@@ -1,26 +1,56 @@
 #+TITLE: Suggested Enhancements for ox-astro
-#+AUTHOR: Gemini
+#+AUTHOR: Gemini, Claude
+#+DATE: 2025-11-26
 
-This file contains a list of potential new features for the ox-astro exporter, grouped by category.
+* High Priority
 
-* Content and Syntax Enhancements
-** Footnote Handling
-Automatically convert Org-style footnotes (`[fn:1]`) into the standard Markdown footnote syntax (`[^1]`), which Astro can then process.
+** TODO Batch Export Command [Low complexity]
+Export all Org files in a directory with one command: =M-x org-astro-export-directory=
 
-* Deeper Astro Integration
-** Implemented: Absolute Route Mode for ID Links
-   This enhancement was implemented. Users can now configure `org-astro-id-link-base-path` to output absolute routes (e.g., `/notes/stories/my-story`) for `[[id:...]]` links, addressing the Astro routing incompatibility with relative MDX paths. This was preferred over adding support for `[[file:...]]` links directly between Org posts due to the robustness and best practices of `org-roam`'s ID system.
+Most immediate value for life-web workflow—after changing settings like =org-astro-id-link-base-path=, you need to regenerate everything.
 
-** Custom Component Shortcodes
-   Allow users to embed their own Astro components directly from Org mode. For example, a special block syntax could be used to invoke a component and pass it properties (e.g., `#+BEGIN_ASTRO card, title="My Card" ...`).
-** Content Collections Schema Awareness
-   If the Astro project uses Content Collections, the exporter could be configured to read the collection's schema and validate the Org file's front matter during export, ensuring type safety and preventing errors.
+** TODO Responsive Images [Low complexity]
+Add =org-astro-image-layout= config to include =layout="responsive"= on =<Image />= components. Quick win for performance—Astro 5.0+ handles srcset/sizes automatically.
 
-* Workflow and User Experience
-1.  *Batch Export Command*: Add a command to export all Org files in a specified directory (e.g., `org-astro-export-directory`), which would be useful for regenerating an entire site at once.
-2.  *Auto-Export on Save*: Implement a minor mode that automatically triggers the export process whenever an Org file is saved, providing a live-preview-like experience.
-3.  *Enhanced Error Reporting*: If an export fails (e.g., a linked image is missing), provide more descriptive errors in the `*Messages*` buffer that point directly to the problematic line in the Org file.
+** TODO SVG Components [Medium complexity]
+Detect =.svg= files and generate component imports (=import Icon from './icon.svg'=) instead of =<Image />= tags. Enables CSS styling and standard Astro patterns. Requires Astro 5.7+.
 
-* Asset Management
-1.  *Generic Asset Handling*: Extend the asset-copying logic to handle non-image files like PDFs, ZIP archives, or videos. These could be copied to the `public/` directory and linked with a standard `<a>` tag.
-2.  *Remote Image Caching*: Add an option to download remote images, save them locally to the assets folder, and process them with Astro's `<Image>` component. This would improve performance and prevent broken images if the remote source goes down.
+* Medium Priority
+
+** TODO Footnote Handling [Low complexity]
+Convert Org footnotes =[fn:1]= to Markdown syntax =[^1]=. Useful for academic writing.
+
+** TODO Enhanced Error Reporting [Medium complexity]
+Expand =broken-links.json= approach to cover missing images, invalid front matter, malformed syntax. Point to problematic line numbers.
+
+* Low Priority
+
+** MAYBE Content Collections Schema Awareness [High complexity]
+Validate front matter against Astro's TypeScript schema. Skip this—Astro already validates at build time, and parsing TS from Elisp is complex with little benefit.
+
+** MAYBE Custom Component Shortcodes [Medium complexity]
+Embed Astro components via =#+BEGIN_ASTRO card, title="..."=. Low priority since =BEGIN_EXPORT mdx= works.
+
+** MAYBE Auto-Export on Save [Low complexity]
+Minor mode to export on save. Could be distracting; would need debouncing and opt-in per file.
+
+** MAYBE Picture Component [Medium complexity]
+Generate =<Picture />= for multi-format images (AVIF, WebP). Low priority—=<Image />= covers most cases.
+
+** MAYBE Generic Asset Handling [Low complexity]
+Copy ZIPs, videos to =public/=. PDFs already supported; this is niche.
+
+* Implemented
+
+** DONE Absolute Route Mode for ID Links [2025-11-26]
+Config =org-astro-id-link-base-path= outputs =/notes/path/slug= instead of =../path/slug.mdx=.
+
+#+begin_src emacs-lisp
+(setq org-astro-id-link-base-path "/notes")
+#+end_src
+
+** DONE Remote Image Caching
+=org-astro--download-remote-image= fetches remote URLs to local assets, ensuring Astro optimization.
+
+** DONE PDF Asset Handling
+=ox-astro-pdf-handlers.el= copies PDFs to =public/pdfs/= and rewrites links.
