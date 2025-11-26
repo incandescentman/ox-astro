@@ -1,0 +1,93 @@
+#+TITLE: Implementation Plan: Responsive Images
+#+AUTHOR: Gemini, Claude
+#+DATE: 2025-11-26
+
+* Goal
+Enable ~ox-astro~ to generate optimized, responsive ~<Image />~ components by adding ~layout~ prop support. This leverages Astro 5.10+'s native responsive image capabilities.
+
+* Strategy
+Add a single global config for default layout. Astro handles srcset/sizes automatically when ~layout="responsive"~ is set—no manual width/size configuration needed.
+
+* Phase 1: Simple Global Default (Implement First)
+
+** What We're Building
+Add ~layout~ prop to all generated ~<Image />~ components:
+
+#+begin_src jsx
+// Before
+<Image src={myImage} alt="description" />
+
+// After (with layout="responsive")
+<Image src={myImage} alt="description" layout="responsive" />
+#+end_src
+
+** Implementation Steps
+
+*** Step 1: Add Config Variable (~ox-astro-config.el~)
+
+#+begin_src emacs-lisp
+(defcustom org-astro-image-default-layout "responsive"
+  "Default layout prop for generated <Image /> components.
+Valid values: \"responsive\", \"fixed\", \"full-width\", \"none\", or nil.
+When nil or \"none\", no layout prop is added (basic behavior)."
+  :group 'org-export-astro
+  :type '(choice (const :tag "Responsive (recommended)" "responsive")
+                 (const :tag "Fixed" "fixed")
+                 (const :tag "Full width" "full-width")
+                 (const :tag "None (basic)" nil)))
+#+end_src
+
+*** Step 2: Update JSX Generation (~ox-astro-helpers.el~)
+Update ~org-astro--format-image-component~ (or equivalent) to include layout prop:
+
+#+begin_src emacs-lisp
+;; Pseudocode
+(when (and org-astro-image-default-layout
+           (not (string= org-astro-image-default-layout "none")))
+  (format " layout=\"%s\"" org-astro-image-default-layout))
+#+end_src
+
+*** Step 3: Test
+Verify output includes ~layout="responsive"~ when config is set.
+
+** Scope
+This applies to all image sources:
+- Inline ~[[file:image.jpg]]~ links
+- Images processed through render map
+- Does NOT affect frontmatter ~image:~ field (handled by Astro components, not exporter)
+
+** Default Behavior Decision
+*Make ~layout="responsive"~ the default.* Rationale:
+- It's what users want 90% of the time
+- Astro handles it gracefully with automatic srcset/sizes
+- No downside—missing layout prop (current behavior) is equivalent to basic
+- Users wanting basic behavior can set config to ~nil~
+
+* Phase 2: Per-Image Overrides (Future)
+
+If needed, add ~#+ATTR_ASTRO~ support for per-image control:
+
+#+begin_src org
+#+ATTR_ASTRO: :layout full-width
+[[file:hero-image.jpg]]
+#+end_src
+
+Only implement if users request granular control.
+
+* Phase 3: ~<Picture />~ Component (Future)
+
+Support multi-format images (AVIF, WebP) via ~<Picture />~ component. Separate concern from responsive sizing—implement only if needed.
+
+* Task Checklist
+
+1. [ ] Add ~org-astro-image-default-layout~ to ~ox-astro-config.el~
+2. [ ] Update ~org-astro--format-image-component~ to include layout prop
+3. [ ] Add tests: one with layout applied, one with config set to nil/none to confirm no prop (regression), and one covering render-map/remote images
+4. [ ] Update docs/instructions.org with the new defcustom and how to disable
+5. [ ] Update suggested-enhancements.org to mark as DONE
+
+* Out of Scope (Intentionally Deferred)
+- ~widths~ / ~sizes~ manual configuration (Astro auto-generates these)
+- Per-image ~#+ATTR_ASTRO~ overrides
+- ~<Picture />~ component support
+- Frontmatter image handling (separate from content images)
