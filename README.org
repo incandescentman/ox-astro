@@ -127,6 +127,7 @@ The exporter automatically generates YAML front matter based on keywords in your
 | ~#+VISIBILITY~         | ~visibility~  | Visibility channel for the post. Common values: ~blog~ (default), ~hidden~, ~example~; any arbitrary string is allowed. |
 | ~#+STATUS~             | ~draft~       | Set to "draft" - post files are created but marked for exclusion from production builds. |
 | ~#+SLUG~               | ~slug~        | URL-friendly slug for the post.                 |
+| ~#+THEME~              | ~theme~       | Visual theme for the post (e.g., ~claude~, ~chatgpt~, ~gemini~). See Theme Sections below. |
 | ~#+DESTINATION_FOLDER~ (aliases: ~#+DESTINATION-FOLDER~, ~#+DESTINATION~) | (none)      | Specifies the export destination folder.        |
 
 ** Tags & Categories
@@ -288,6 +289,97 @@ By default, posts appear in the main blog list. This happens when ~#+VISIBILITY~
 #+end_src
 
 *Effect:* The MDX file is created with ~visibility: example~ in the front matter. Configure your site to treat non-~blog~ visibilities as excluded from the main feed while remaining visible on tag/category pages. You can choose any string for specialized channels (e.g., ~reference~, ~til~, ~notes~).
+
+* Theme Sections and Model Banners
+
+~ox-astro~ supports multi-AI blog posts where different sections can have distinct visual themes (e.g., ChatGPT, Gemini, Claude). This is useful for posts that showcase conversations with multiple AI models.
+
+** Keywords
+
+| Keyword      | Purpose                                                        |
+|--------------+----------------------------------------------------------------|
+| ~#+THEME:~   | Sets the visual theme for a section (~chatgpt~, ~gemini~, ~claude~, ~default~) |
+| ~#+MODEL:~   | Displays a model banner with the AI name (e.g., "Claude Sonnet 4.5") |
+
+** Placement Rules
+
+The behavior of ~#+THEME:~ and ~#+MODEL:~ depends on where they appear in your Org file:
+
+*** Document Level (before any heading)
+- ~#+THEME:~ → Goes into YAML frontmatter only (~theme: claude~)
+- ~#+MODEL:~ → Ignored (no output)
+- Use this for single-AI posts where the entire page uses one theme
+
+*** Body Level (after a heading)
+- ~#+THEME:~ → Emits inline JSX marker: ~{/* theme: claude */}~
+- ~#+MODEL:~ → Emits visible banner: ~<div class="model-banner">Claude Sonnet 4.5</div>~
+- Use this for multi-AI posts or to show model attribution
+
+** Examples
+
+*** Single-AI Post (page-wide theme)
+#+begin_src org
+#+TITLE: My Claude Conversation
+#+THEME: claude
+
+* The Conversation
+
+#+begin_src user
+Hello Claude!
+#+end_src
+#+end_src
+
+Result: Frontmatter includes ~theme: claude~, entire page styled with Claude theme.
+
+*** Multi-AI Post (themed sections)
+#+begin_src org
+#+TITLE: AI Comparison
+#+THEME: chatgpt
+
+* ChatGPT's Response
+
+#+THEME: chatgpt
+#+MODEL: ChatGPT 4o
+
+#+begin_src user
+What is the meaning of life?
+#+end_src
+
+ChatGPT's answer...
+
+* Claude's Response
+
+#+THEME: claude
+#+MODEL: Claude Sonnet 4.5
+
+#+begin_src user
+What is the meaning of life?
+#+end_src
+
+Claude's answer...
+#+end_src
+
+Result: Each section wrapped in themed div with model banner showing the AI name and logo.
+
+*** Resetting to Default Styling
+Use ~#+THEME: default~ to return to unthemed (author commentary) sections:
+
+#+begin_src org
+* My Analysis
+
+#+THEME: default
+
+This section uses the site's default styling, not any AI theme.
+#+end_src
+
+** CSS Requirements
+
+Your Astro site needs corresponding CSS for each theme:
+- ~.chatgpt-theme-section~ and ~.chatgpt-theme-wrapper~
+- ~.gemini-theme-section~ and ~.gemini-theme-wrapper~
+- ~.claude-theme-section~ and ~.claude-theme-wrapper~
+
+Each theme CSS should include ~.model-banner~ styling with the appropriate logo icon.
 
 * Special Formatting Rules
 

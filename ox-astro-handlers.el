@@ -93,8 +93,9 @@ the MDX output preserves the intended hierarchy."
                    (org-trim indented))))))
 
 (defun org-astro-keyword (keyword _contents _info)
-  "Transcode THEME keywords into inline theme markers.
-Every #+THEME: keyword emits a JSX comment marker for remarkThemeSections.
+  "Transcode THEME and MODEL keywords into inline markers.
+#+THEME: emits a JSX comment marker for remarkThemeSections.
+#+MODEL: emits a visible model banner div.
 Other keywords defer to the markdown backend."
   (let* ((key (org-element-property :key keyword))
          (value (string-trim (org-element-property :value keyword)))
@@ -108,9 +109,15 @@ Other keywords defer to the markdown backend."
          (body-level (or (null first-headline-pos)
                          (and pos first-headline-pos (>= pos first-headline-pos)))))
     (cond
+     ;; #+THEME: → JSX comment marker
      ((string-equal key "THEME")
       (if body-level
           (format "{/* theme: %s */}\n\n" (downcase value))
+        ""))
+     ;; #+MODEL: → visible banner div
+     ((string-equal key "MODEL")
+      (if body-level
+          (format "<div class=\"model-banner\">%s</div>\n\n" value)
         ""))
      (t (org-md-keyword keyword _contents _info)))))
 

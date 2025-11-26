@@ -76,6 +76,39 @@ To revert to basic image behavior without the layout prop:
 - Arrays accept quoted multi-word tokens (e.g., =#+people: "Mom's apartment"=).
 - After enriching an Org note, re-export to confirm the MDX front matter includes the expected fields.
 
+* Theme Sections and Model Banners
+
+For multi-AI blog posts, use ~#+THEME:~ and ~#+MODEL:~ keywords to create visually distinct sections.
+
+** Placement Rules
+- *Document level* (before any heading): ~#+THEME:~ goes to frontmatter only
+- *Body level* (after a heading): ~#+THEME:~ and ~#+MODEL:~ emit inline markers
+
+** Quick Reference
+#+begin_src org
+* Section Title
+
+#+THEME: claude
+#+MODEL: Claude Sonnet 4.5
+
+#+begin_src user
+User prompt here
+#+end_src
+
+AI response here...
+#+end_src
+
+** Supported Themes
+- ~chatgpt~ — ChatGPT styling with green logo
+- ~gemini~ — Gemini styling with sparkle logo
+- ~claude~ — Claude styling with Anthropic logo
+- ~default~ — Reset to site default (no wrapper)
+
+** Common Patterns
+- Single-AI post: Put ~#+THEME:~ at document level for page-wide styling
+- Multi-AI post: Put ~#+THEME:~ + ~#+MODEL:~ after each section heading
+- Author commentary: Use ~#+THEME: default~ to reset styling
+
 * Reference
 - Architecture: [[file:design-architecture.org]]
 - Terminology: [[file:concept-map.org]]
