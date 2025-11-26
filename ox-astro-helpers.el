@@ -1084,6 +1084,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          (draft (when (and status (string= (downcase (org-trim status)) "draft")) "true")))
     ;; Return the alist of final data - include visibility as a string when provided
     `((title . ,title)
+      (slug . ,slug)
       (author . ,author)
       (authorImage . ,author-image)
       (publishDate . ,publish-date)
@@ -1111,6 +1112,24 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transcode Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun org-astro-underline (underline contents _info)
+  "Transcode UNDERLINE without producing MDX spans.
+- If the underline is just placeholder underscores (3+), emit the underscores.
+- Otherwise, emit plain contents/value with no additional markup."
+  (let* ((begin (org-element-property :begin underline))
+         (end (org-element-property :end underline))
+         (raw (and begin end
+                   (buffer-substring-no-properties begin end)))
+         (trimmed (and raw (string-trim-right raw)))
+         (placeholder (and trimmed
+                           (string-match "^_\\{3,\\}$" trimmed)
+                           trimmed))
+         (text (or contents (org-element-property :value underline))))
+    (cond
+     (placeholder placeholder)
+     (text text)
+     (t ""))))
 
 (defun org-astro-link (link desc info)
   "Transcode a LINK object for Astro MDX, robust to partial INFO during preflight."

@@ -345,3 +345,24 @@ When =org-astro-id-link-base-path= is nil (default), behavior unchanged—relati
 - Files touched: `ox-astro-table-handlers.el`, `ox-astro-handlers.el`
 - Known unknowns: Consider whether other HTML fragments (e.g., `<hr>`, `<img>`) need similar normalization.
 - Recommendations: Review latest generated MDX in Astro dev server to confirm no additional JSX parse errors.
+
+* 2025-11-26
+** Session Summary
+- Added custom `org-astro-underline` transcoder so placeholder underscores (3+) round-trip without emitting underline spans; other underlined text now exports as plain text.
+- Wired underline transcoder into backend and removed final-output hack; front matter now also includes slug for consistency.
+- Re-exported `tip_of_the_tongue.org` → `apps/socratic/src/content/blog/tip-of-the-tongue.mdx` to verify underscores stay literal.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Underline handling fixed via `org-astro-underline`; spans no longer emitted for placeholders.
+- [x] Front matter includes slug in generated data.
+- [x] Post re-exported with correct placeholders: `apps/socratic/src/content/blog/tip-of-the-tongue.mdx`.
+
+*IN-PROGRESS (Requires completion)*
+- [ ] None
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro-helpers.el`, `ox-astro.el`, `apps/socratic/src/content/blog/tip-of-the-tongue.mdx`
+- Known unknowns: None observed; image copy warning is harmless (source/dest identical).
+- Recommendations: If other posts use underline placeholders, re-export after pulling changes.
