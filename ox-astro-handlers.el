@@ -23,6 +23,7 @@
 (declare-function org-astro--sanitize-filename "ox-astro-helpers")
 (declare-function org-astro--path-to-var-name "ox-astro-helpers")
 (declare-function org-astro--get-front-matter-data "ox-astro-helpers")
+(declare-function org-astro--validate-front-matter "ox-astro-helpers")
 (declare-function org-astro--gen-yaml-front-matter "ox-astro-helpers")
 (declare-function org-astro--dbg-log "ox-astro-helpers")
 (declare-function org-astro--slugify "ox-astro-helpers")
@@ -208,7 +209,8 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
 (defun org-astro-body-filter (body _backend info)
   "Add front-matter, source comment, and imports to BODY."
   (let* ((tree (plist-get info :parse-tree))  ; Use the already-parsed tree from export
-         (front-matter-data (org-astro--get-front-matter-data tree info))
+         (front-matter-data (org-astro--validate-front-matter
+                             (org-astro--get-front-matter-data tree info)))
          (front-matter-string (org-astro--gen-yaml-front-matter front-matter-data))
          (processed-images (plist-get info :astro-body-images-imports))
          (hero-path (or (plist-get info :astro-hero-image)

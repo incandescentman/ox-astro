@@ -36,6 +36,7 @@ indicator/value pairs.  Returns the updated plist."
 (declare-function org-astro--build-render-map "ox-astro-image-handlers")
 (declare-function org-astro--image-entry-alt "ox-astro-image-handlers")
 (declare-function org-astro--update-source-buffer-image-path "ox-astro-image-handlers")
+(declare-function org-astro--clean-tag "ox-astro-metadata")
 (declare-function org-astro--parse-tags "ox-astro-metadata")
 (declare-function org-astro--parse-categories "ox-astro-metadata")
 (declare-function org-astro--parse-places "ox-astro-metadata")
@@ -839,6 +840,70 @@ reference-style links like [label][ref]."
      date-fmt
      (org-time-string-to-time date-raw))))
 
+(defun org-astro--yaml-quote-string (s)
+  "Return YAML-safe double-quoted string for S."
+  (format "\"%s\"" (replace-regexp-in-string "\"" "\\\\\"" s)))
+
+(defun org-astro--yaml-string-numeric-p (s)
+  "Return non-nil if S looks like a purely numeric string."
+  (and s (stringp s)
+       (string-match-p "^[0-9]+$" (string-trim s))))
+
+(defun org-astro--yaml-should-quote-string-p (s &optional key)
+  "Decide if string S should be quoted for YAML.
+KEY optionally provides field context."
+  (or (null s)
+      (memq key '(title slug excerpt))
+      (org-astro--yaml-string-numeric-p s)
+      (string-match-p "[\n\r]" s)
+      (string-match-p "^[|>:\\[\\]{}&#*?,-]" s)
+      (string-match-p "|" s)
+      (and (not (eq key 'publishDate))
+           (string-match-p ":" s))))
+
+(defun org-astro--yaml-encode-scalar (key value)
+  "Render VALUE for YAML key KEY as a scalar string or nil."
+  (cond
+   ((null value) nil)
+   ((eq key 'publishDate)
+    (when (and (stringp value) (not (string-empty-p value)))
+      (string-trim value)))
+   ((numberp value)
+    (org-astro--yaml-quote-string (format "%s" value)))
+   ((stringp value)
+    (let ((trimmed (string-trim value)))
+      (cond
+       ((string-empty-p trimmed) nil)
+       ((org-astro--yaml-should-quote-string-p trimmed key)
+        (org-astro--yaml-quote-string trimmed))
+       (t trimmed))))
+   (t (org-astro--yaml-quote-string (format "%s" value)))))
+
+(defun org-astro--yaml-format-list (items &optional indent key)
+  "Format ITEMS as a YAML list. INDENT is applied to each row.
+KEY is forwarded to scalar encoding for per-item quoting rules."
+  (let* ((prefix (or indent ""))
+         (clean-items (delq nil items))
+         (rendered (delq nil (mapcar (lambda (item)
+                                       (org-astro--yaml-encode-scalar key item))
+                                     clean-items))))
+    (mapconcat (lambda (item)
+                 (format "%s- %s" prefix item))
+               rendered
+               "\n")))
+
+(defun org-astro--format-tags-field (tags)
+  "Return YAML snippet for TAGS, handling empty and single-tag cases."
+  (cond
+   ((null tags)
+    "tags: []\n")
+   ((= (length tags) 1)
+    (format "tags: [%s]\n" (org-astro--yaml-encode-scalar 'tag (car tags))))
+   (t
+    (concat "tags:\n"
+            (org-astro--yaml-format-list tags "  " 'tag)
+            "\n"))))
+
 (defun org-astro--filename-to-alt-text (path)
   "Generate a human-readable alt text from an image PATH."
   (when (stringp path)
@@ -899,6 +964,8 @@ If the generated name starts with a number, it is prefixed with 'img'."
                   (setq yaml-str
                         (concat yaml-str
                                 (format "%s:\n%s\n" key-name raw))))))
+             ((eq key 'tags)
+              (setq yaml-str (concat yaml-str (org-astro--format-tags-field val))))
              ((and (listp val) (null val))
               ;; Skip empty lists
               )
@@ -907,24 +974,19 @@ If the generated name starts with a number, it is prefixed with 'img'."
               )
              (t
               (setq yaml-str
-                    (concat yaml-str
-                            (format "%s: " key-name)
-                            (if (listp val)
-                                (concat "\n"
-                                        (mapconcat (lambda (item)
-                                                     (format "- %s" item))
-                                                   val "\n")
-                                        "\n")
-                                (format "%s\n"
-                                        (if (and (stringp val)
-                                                 (or (string-match-p ":" val)
-                                                     (string-match-p "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$" val))
-                                                 (not (eq key 'publishDate)))
-                                            ;; Quote strings that contain ':' or look like dates (avoid YAML parse issues)
-                                            (format "\"%s\""
-                                                    (replace-regexp-in-string
-                                                     "\"" "\\\\\"" val))
-                                            val)))))))))
+                    (concat
+                     yaml-str
+                     (cond
+                      ((listp val)
+                       (let ((body (org-astro--yaml-format-list val "" key)))
+                         (if (string-empty-p body)
+                             ""
+                           (format "%s:\n%s\n" key-name body))))
+                      (t
+                       (let ((rendered (org-astro--yaml-encode-scalar key val)))
+                         (if rendered
+                             (format "%s: %s\n" key-name rendered)
+                           ""))))))))))
         (concat yaml-str "---\n"))))
 
 (defun org-astro--get-title (tree info)
@@ -957,6 +1019,22 @@ If the generated name starts with a number, it is prefixed with 'img'."
      ;; Fallback
      ("Untitled Post"))))
 
+(defun org-astro--sanitize-excerpt (text)
+  "Clean TEXT for safe YAML usage in excerpts."
+  (when (and text (stringp text))
+    (let* ((clean (string-trim text)))
+      ;; Drop property drawer style lines like :ID: and other keys.
+      (setq clean (replace-regexp-in-string "^:[A-Z_]+:\\s-*.*$" "" clean))
+      ;; Remove roam preamble boilerplate (Links/Source lines).
+      (setq clean (replace-regexp-in-string "^-[ \t]*\\*\\*\\(Links\\|Source\\):\\*\\*[ \t]*$" "" clean))
+      ;; Collapse whitespace/newlines
+      (setq clean (replace-regexp-in-string "[\n\r]+" " " clean))
+      (setq clean (replace-regexp-in-string "[[:space:]]+" " " clean))
+      ;; Cap length to keep front matter manageable
+      (when (> (length clean) 300)
+        (setq clean (concat (substring clean 0 297) "...")))
+      (string-trim clean))))
+
 (defun org-astro--get-excerpt (tree info)
   "Return an excerpt string from TREE/INFO, possibly empty but never nil.
 Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
@@ -973,22 +1051,25 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                            nil 'first-match))
          (first-paragraph (org-element-map tree 'paragraph 'identity nil 'first-match)))
     (or
-     (when kw-excerpt
-       (let ((v (org-element-property :value kw-excerpt)))
-         (string-trim (replace-regexp-in-string "[*_/]" "" v))))
-     (when kw-description
-       (let ((v (org-element-property :value kw-description)))
-         (string-trim (replace-regexp-in-string "[*_/]" "" v))))
-     (when first-paragraph
-       (let* ((raw (org-astro--safe-export (org-element-contents first-paragraph) info))
-              (clean (replace-regexp-in-string "[*_/]" "" raw))
-              ;; Remove image tags like ![img](path) and <img...> tags
-              (no-images (replace-regexp-in-string "!\\[.*?\\]([^)]*)" "" clean))
-              (no-html-images (replace-regexp-in-string "<img[^>]*>" "" no-images))
-              (one (replace-regexp-in-string "\n" " " no-html-images)))
-         (if (string-match "^\\(.\\{1,300\\}?[.?!]\\)" one)
-             (org-trim (match-string 1 one))
-           (truncate-string-to-width (org-trim one) 300 nil nil "…"))))
+     (org-astro--sanitize-excerpt
+      (when kw-excerpt
+        (let ((v (org-element-property :value kw-excerpt)))
+          (string-trim (replace-regexp-in-string "[*_/]" "" v)))))
+     (org-astro--sanitize-excerpt
+      (when kw-description
+        (let ((v (org-element-property :value kw-description)))
+          (string-trim (replace-regexp-in-string "[*_/]" "" v)))))
+     (org-astro--sanitize-excerpt
+      (when first-paragraph
+        (let* ((raw (org-astro--safe-export (org-element-contents first-paragraph) info))
+               (clean (replace-regexp-in-string "[*_/]" "" raw))
+               ;; Remove image tags like ![img](path) and <img...> tags
+               (no-images (replace-regexp-in-string "!\\[.*?\\]([^)]*)" "" clean))
+               (no-html-images (replace-regexp-in-string "<img[^>]*>" "" no-images))
+               (one (replace-regexp-in-string "\n" " " no-html-images)))
+          (if (string-match "^\\(.\\{1,300\\}?[.?!]\\)" one)
+              (org-trim (match-string 1 one))
+            (truncate-string-to-width (org-trim one) 300 nil nil "…")))))
      "")))
 
 
@@ -1177,6 +1258,47 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       ,@(when visibility `((visibility . ,visibility)))
       ,@(when theme `((theme . ,theme)))
       ,@(when draft `((draft . ,draft))))))
+
+(defun org-astro--validate-front-matter (data)
+  "Validate and sanitize front-matter DATA alist.
+Returns cleaned alist; emits warnings when coercions occur."
+  (let ((warnings nil)
+        (cleaned nil))
+    (dolist (pair data)
+      (let* ((key (car pair))
+             (val (cdr pair)))
+        (pcase key
+          ((or 'title 'slug)
+           (cond
+            ((numberp val)
+             (push (format "Converting numeric %s to string: %s" key val) warnings)
+             (push (cons key (format "%s" val)) cleaned))
+            ((stringp val)
+             (push (cons key (string-trim val)) cleaned))
+            (t
+             (push (format "Coercing %s of type %s to string" key (type-of val)) warnings)
+             (push (cons key (format "%s" val)) cleaned))))
+          ('excerpt
+           (let ((clean (org-astro--sanitize-excerpt val)))
+             (when (and (stringp val) (not (string= (string-trim val) (or clean ""))))
+               (push "Sanitized excerpt for YAML safety" warnings))
+             (push (cons key (or clean "")) cleaned)))
+          ('tags
+           (let* ((as-list (cond
+                            ((null val) nil)
+                            ((listp val) val)
+                            (t (list val))))
+                  (clean-tags (delq nil (mapcar #'org-astro--clean-tag as-list)))
+                  (dropped (- (length as-list) (length clean-tags))))
+             (when (> dropped 0)
+               (push (format "Filtered %d invalid tag(s)" dropped) warnings))
+             (push (cons key clean-tags) cleaned)))
+          (_
+           (push pair cleaned)))))
+    (when warnings
+      (message "[ox-astro] Front matter warnings:\n%s"
+               (string-join (nreverse warnings) "\n")))
+    (nreverse cleaned)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transcode Functions

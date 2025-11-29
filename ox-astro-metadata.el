@@ -13,6 +13,21 @@
 (declare-function org-astro--format-date "ox-astro-helpers")
 (declare-function org-astro--debug-log-direct "ox-astro-helpers")
 
+(defun org-astro--clean-tag (tag)
+  "Return a sanitized TAG string or nil if invalid.
+Strips whitespace, drops org-capture template markers, and ignores
+empty or whitespace-only values."
+  (cond
+   ((null tag) nil)
+   ((stringp tag)
+    (let ((trimmed (string-trim tag)))
+      (cond
+       ((string-empty-p trimmed) nil)
+       ((string-match-p "^%\\^{" trimmed) nil)
+       (t trimmed))))
+   ((numberp tag) (number-to-string tag))
+   (t nil)))
+
 (defun org-astro--split-quoted-list (s)
   "Split S by commas/whitespace; preserve items wrapped in quotes.
 
@@ -125,14 +140,16 @@ or double quotes retain internal spacing; quotes are stripped in the result."
                        (plist-get info :tags)))
          (filetags (plist-get info :filetags))
          (parsed (org-astro--split-quoted-list tags-raw))
-         (from-filetags (when filetags
-                          (mapcar (lambda (tag)
-                                    (let ((name (org-no-properties tag)))
-                                      (if (string-prefix-p ":" name)
-                                          (string-trim name ":")
-                                        name)))
-                                  filetags))))
-    (cl-remove-duplicates (append parsed from-filetags) :test #'string=)))
+        (from-filetags (when filetags
+                         (mapcar (lambda (tag)
+                                   (let ((name (org-no-properties tag)))
+                                     (if (string-prefix-p ":" name)
+                                         (string-trim name ":")
+                                       name)))
+                                 filetags))))
+    (cl-remove-duplicates
+     (delq nil (mapcar #'org-astro--clean-tag (append parsed from-filetags)))
+     :test #'string=)))
 
 (defun org-astro--parse-categories (tree info)
   "Return list of categories from TREE/INFO, honoring ASTRO_CATEGORIES."
