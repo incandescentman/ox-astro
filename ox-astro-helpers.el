@@ -131,7 +131,7 @@ standard Image component string."
            (record-hero (plist-get record :hero))
            (already-suppressed (plist-get info :astro-hero-body-suppressed))
            (is-hero (or record-hero
-                        (and hero entry (org-astro--hero-image-entry-p entry hero))))
+                        (and hero entry (org-astro--hero-image-entry-p entry hero)))))
       (if (and is-hero (not already-suppressed))
           (progn
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
@@ -142,7 +142,7 @@ standard Image component string."
             (let ((current (plist-get info :astro-render-used-vars)))
               (setf (plist-get info :astro-render-used-vars)
                     (cl-adjoin var-name current :test #'equal))))
-          (org-astro--format-image-component var-name alt))))
+          (org-astro--format-image-component var-name alt)))))
 
 (defun org-astro--lookup-render-record (path info)
   "Return render metadata for PATH from INFO's render map."
@@ -161,12 +161,12 @@ standard Image component string."
           (setf (plist-get info :astro-render-imports)
                 (cl-remove-duplicates
                  (append imports (plist-get info :astro-render-imports))
-                 :test #'equal))))
+                 :test #'equal)))))
     (when clean
       (or (and render-map (gethash clean render-map))
           (let ((sanitized (org-astro--sanitize-filename
                             (file-name-sans-extension
-                             (file-name-nondirectory clean))))
+                             (file-name-nondirectory clean)))))
             (and render-map sanitized (gethash sanitized render-map)))
           (let* ((entry (and processed
                              (or (cl-find clean processed
@@ -174,7 +174,7 @@ standard Image component string."
                                           :test #'string-equal)
                                  (cl-find clean processed
                                           :key (lambda (item) (plist-get item :original-path))
-                                          :test #'string-equal))))
+                                          :test #'string-equal)))))
             (when entry
               (let* ((astro (plist-get entry :astro-path))
                      (var-name (plist-get entry :var-name))
@@ -184,7 +184,7 @@ standard Image component string."
                         :var-name var-name
                         :astro-path astro
                         :alt alt
-                        :jsx (org-astro--format-image-component var-name alt))))))))
+                        :jsx (org-astro--format-image-component var-name alt))))))))))
 
 ;; Simple debug logging function that writes directly to file
 (defun org-astro--debug-log-direct (fmt &rest args)
@@ -237,7 +237,7 @@ standard Image component string."
                                          (filename (if slug (concat slug ".mdx") "exported-file.mdx"))
                                          (resolved-folder (cdr (assoc posts-folder org-astro-known-posts-folders))))
                                     (when resolved-folder
-                                      (expand-file-name filename resolved-folder)))))
+                                      (expand-file-name filename resolved-folder))))))
                (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
                                        source-file
                                        (or output-file "[determining...]")
@@ -268,7 +268,7 @@ standard Image component string."
           (with-temp-buffer
             (insert line)
             (write-region (point-min) (point-max) debug-file t 'silent))
-        (error nil))))
+        (error nil)))))
 
 (defun org-astro--dbg-update-output-file (info actual-output-file)
   "Update the debug file header with the actual output file path."
@@ -312,7 +312,7 @@ standard Image component string."
                     (with-temp-buffer
                       (insert clipboard-text)
                       (call-process-region (point-min) (point-max) pbcopy nil nil nil))
-                  (error nil))))))))
+                  (error nil))))))))))
 
 (defun org-astro--dbg-mdx-comments (info)
   "Return MDX comments string for any collected debug messages in INFO."
@@ -320,7 +320,7 @@ standard Image component string."
     (let ((log (plist-get info :astro-debug-log)))
       (when log
         (concat (mapconcat (lambda (s) (format "{/* %s */}" s)) (nreverse log) "\n")
-                "\n\n"))))
+                "\n\n")))))
 
 ;; Org-roam ID link helpers
 (defun org-astro--normalize-display-path (path)
@@ -333,7 +333,7 @@ standard Image component string."
        ((and root (file-directory-p root) (string-prefix-p root abs))
         (file-relative-name abs root))
        (t
-        (file-name-nondirectory abs)))))
+        (file-name-nondirectory abs))))))
 
 (defun org-astro--resolve-destination-config (value)
   "Resolve VALUE (nickname or path) to an output directory description.
@@ -342,7 +342,7 @@ Returns a plist with keys :path, :preserve, :nickname, :raw."
          (config (and trim
                       (cdr (cl-find trim org-astro-known-posts-folders
                                     :test (lambda (needle pair)
-                                            (string= needle (string-trim (car pair)))))))
+                                            (string= needle (string-trim (car pair))))))))
          (path (or (and (stringp config) config)
                    (and (listp config) (plist-get config :path))
                    (and trim (file-name-absolute-p trim) trim)))
@@ -365,7 +365,7 @@ Returns a plist with keys :path, :preserve, :nickname, :raw."
         (unless (string-prefix-p ".." relative)
           (let ((dir (file-name-directory relative)))
             (when (and dir (not (member dir '("" "./"))))
-              dir))))))
+              dir)))))))
 
 (defun org-astro--keyword-value (tree key-or-keys)
   "Return trimmed value for KEY-OR-KEYS from TREE, or nil if missing.
@@ -379,7 +379,7 @@ This helper respects the first matching keyword encountered in TREE."
          (lambda (kw)
            (when (string-equal key (org-element-property :key kw))
              (let ((value (org-element-property :value kw)))
-               (when value (string-trim value))))
+               (when value (string-trim value)))))
          nil 'first-match))
      search-keys)))
 
@@ -420,7 +420,7 @@ This helper respects the first matching keyword encountered in TREE."
           (unless title
             (goto-char (point-min))
             (when (re-search-forward "^\\*+ \\(.+\\)$" nil t)
-              (setq title (string-trim (match-string 1))))
+              (setq title (string-trim (match-string 1)))))
           (let* ((slug-final (if (and slug (not (string-blank-p slug)))
                                  slug
                                  (when (and title (not (string-blank-p title)))
@@ -482,7 +482,7 @@ This helper respects the first matching keyword encountered in TREE."
             (when meta
               (dolist (id (plist-get meta :id-list))
                 (when (and id (not (string-blank-p id)))
-                  (org-astro--id-map-store map id meta)))))
+                  (org-astro--id-map-store map id meta))))))
         (when root
           (message "[ox-astro] ID map skipped: source directory %s not found" root)))
     map))
@@ -494,7 +494,7 @@ This helper respects the first matching keyword encountered in TREE."
       (when meta
         (dolist (id (plist-get meta :id-list))
           (when (and id (not (string-blank-p id)))
-            (org-astro--id-map-store map id meta)))))
+            (org-astro--id-map-store map id meta))))))
   map)
 
 (defun org-astro--effective-source-root (source-dir current-file)
@@ -545,7 +545,7 @@ is not under SOURCE-DIR, fall back to a detected root by searching for
             "./"
             relative))
        (t
-        (concat "./" relative)))))
+        (concat "./" relative))))))
 
 (defun org-astro--compute-collection-id (entry)
   "Compute the Astro content collection ID from ENTRY metadata.
@@ -566,7 +566,7 @@ This is derived from the relative-subdir and slug, or from the filename."
         (if (and relative-subdir (not (string-blank-p relative-subdir)))
             ;; Remove trailing slash from subdir, combine with base-name
             (concat (string-trim-right relative-subdir "/") "/" base-name)
-            base-name))))
+            base-name)))))
 
 (defun org-astro--compute-collection-id-from-outfile (entry)
   "Compute collection ID by diffing OUTFILE against POSTS-FOLDER in ENTRY.
@@ -577,7 +577,7 @@ absent in the ENTRY."
     (when (and outfile posts-folder)
       (let* ((relative (file-relative-name outfile posts-folder))
              (no-ext (file-name-sans-extension relative)))
-        (string-trim-left no-ext "./"))))
+        (string-trim-left no-ext "./")))))
 
 (defun org-astro--record-missing-id-link (info target-id desc)
   "Log and record a missing TARGET-ID using INFO and DESC.
@@ -585,7 +585,7 @@ Returns fallback text that should be inserted into the document."
   (let* ((text (or (and desc (string-trim desc)) target-id))
          (source-file (or (plist-get info :input-file)
                           (and (buffer-file-name)
-                               (expand-file-name (buffer-file-name))))
+                               (expand-file-name (buffer-file-name)))))
          (display (org-astro--normalize-display-path source-file))
          (warning-key (format "%s::%s::%s"
                               (or org-astro--current-outfile "[unknown]")
@@ -629,7 +629,7 @@ Existing reports are cleared when there are no broken links."
            (push (cons relative payload) entries)))
        links-hash)
       (if entries
-          (let* ((sorted (sort entries (lambda (a b) (string< (car a) (car b))))
+          (let* ((sorted (sort entries (lambda (a b) (string< (car a) (car b)))))
                  (json-object-type 'alist)
                  (json-array-type 'list)
                  (json-encoding-pretty-print t))
@@ -638,7 +638,7 @@ Existing reports are cleared when there are no broken links."
             (message "[ox-astro] Wrote broken link report to %s" report-path))
           (when (file-exists-p report-path)
             (delete-file report-path)
-            (message "[ox-astro] Cleared broken link report at %s (no broken links)" report-path)))))
+            (message "[ox-astro] Cleared broken link report at %s (no broken links)" report-path))))))
 
 ;; Insert or replace a #+KEY: VALUE line in the top keyword block.
 (defun org-astro--upsert-keyword (key value)
@@ -651,7 +651,7 @@ Respects narrowing - works within the current narrowed region."
     (save-excursion
       (goto-char (point-min))
       (let ((limit (save-excursion
-                     (or (re-search-forward "^\\*" nil t) (point-max))))
+                     (or (re-search-forward "^\\*" nil t) (point-max)))))
         (if (re-search-forward re limit t)
             ;; Replace existing line
             (progn
@@ -701,7 +701,7 @@ Respects narrowing - works within the current narrowed region."
                                          (when last-pos
                                            (goto-char last-pos)
                                            (forward-line 1)
-                                           (point)))))
+                                           (point))))))
                     (if roam-anchor
                         (goto-char roam-anchor)
                         ;; Fall back: skip over keywords, comments, and blank lines
@@ -709,11 +709,11 @@ Respects narrowing - works within the current narrowed region."
                                     (or (looking-at-p "^#\\+")
                                         (looking-at-p "^#\\s-")
                                         (looking-at-p "^\\s-*$")))
-                          (forward-line 1)))))
+                          (forward-line 1))))))
             ;; Keep one blank line before insert unless at BOF or already blank
             (unless (or (bobp) (looking-at-p "^\\s-*$"))
               (insert "\n"))
-            (insert (format "#+%s: %s\n" ukey (or value "")))))))
+            (insert (format "#+%s: %s\n" ukey (or value ""))))))))
 
 ;; Back-compat alias for existing calls
 (defun org-astro--insert-keyword-at-end-of-block (key value)
@@ -732,12 +732,12 @@ Respects narrowing - works within the current narrowed region."
                        (let ((last-pos nil))
                          (while (re-search-forward "^-[ \t]+\\(Links\\|Source\\) ::[ \t]*$" nil t)
                            (setq last-pos (line-end-position)))
-                         (when last-pos (goto-char last-pos) (forward-line 1) (point))))))
+                         (when last-pos (goto-char last-pos) (forward-line 1) (point)))))))
       (if anchor
           (progn (goto-char anchor)
                  (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
                  (insert (format "#+%s: %s\n" (upcase key) value)))
-          (org-astro--upsert-keyword key value))))
+          (org-astro--upsert-keyword key value)))))
 
 (defun org-astro--normalize-user-blocks ()
   "Convert org headings to markdown inside user/prompt/quote blocks.
@@ -750,7 +750,7 @@ these special blocks, which would break the block structure."
         (let ((block-start (point))
               (block-end (save-excursion
                            (when (re-search-forward "^#\\+end_src" nil t)
-                             (match-beginning 0))))
+                             (match-beginning 0)))))
           (when block-end
             (save-restriction
               (narrow-to-region block-start block-end)
@@ -774,7 +774,7 @@ these special blocks, which would break the block structure."
             ;; Move past this block to continue searching
             (goto-char block-end))))
       (when modified
-        (message "[ox-astro] Auto-converted org headings to markdown in user/prompt/quote blocks"))))
+        (message "[ox-astro] Auto-converted org headings to markdown in user/prompt/quote blocks")))))
 
 (defun org-astro--safe-export (data info)
   "Like `org-export-data' but never throws. Falls back to readable plain text."
@@ -787,7 +787,7 @@ these special blocks, which would break the block structure."
        (setq s (replace-regexp-in-string "\\[\\[\\([^]]+\\)\\]\\]" "\\1" s))
        ;; Drop common inline markup and collapse whitespace/newlines
        (setq s (replace-regexp-in-string "[*_~/=]" "" s))
-       (string-trim (replace-regexp-in-string "\n+" " " s)))))
+       (string-trim (replace-regexp-in-string "\n+" " " s))))))
 
 (defun org-astro--date-string-p (s)
   "Return non-nil if string S looks like a numeric date (digits plus separators)."
@@ -796,7 +796,7 @@ these special blocks, which would break the block structure."
            (non-date-chars (replace-regexp-in-string "[0-9./_[:space:]-]" "" trimmed))
            (digits-only (replace-regexp-in-string "[^0-9]" "" trimmed)))
       (and (string-empty-p non-date-chars)
-           (>= (length digits-only) 6))))
+           (>= (length digits-only) 6)))))
 
 (defun org-astro--slugify (s)
   "Convert string S to a slug."
@@ -830,7 +830,7 @@ reference-style links like [label][ref]."
     (let* ((beg (org-element-property :begin paragraph))
            (end (org-element-property :end paragraph))
            (raw (and beg end (buffer-substring-no-properties beg end))))
-      (and raw (org-astro--markdown-link-definition-line-p raw))))
+      (and raw (org-astro--markdown-link-definition-line-p raw)))))
 
 (defun org-astro--format-date (date-raw info)
   "Format DATE-RAW into a string suitable for Astro front matter."
@@ -867,7 +867,7 @@ If the generated name starts with a number, it is prefixed with 'img'."
            (var-name (if (null non-empty-parts)
                          "image"
                          (concat (downcase (car non-empty-parts))
-                                 (mapconcat #'capitalize (cdr non-empty-parts) ""))))
+                                 (mapconcat #'capitalize (cdr non-empty-parts) "")))))
       ;; Ensure it starts with a letter (prefix with 'img' if starts with number)
       (if (and (> (length var-name) 0) (string-match-p "^[0-9]" var-name))
           (concat "img" var-name)
@@ -898,7 +898,7 @@ If the generated name starts with a number, it is prefixed with 'img'."
                 (when (not (string-empty-p raw))
                   (setq yaml-str
                         (concat yaml-str
-                                (format "%s:\n%s\n" key-name raw)))))
+                                (format "%s:\n%s\n" key-name raw))))))
              ((and (listp val) (null val))
               ;; Skip empty lists
               )
@@ -924,7 +924,7 @@ If the generated name starts with a number, it is prefixed with 'img'."
                                             (format "\"%s\""
                                                     (replace-regexp-in-string
                                                      "\"" "\\\\\"" val))
-                                            val))))))))
+                                            val)))))))))
         (concat yaml-str "---\n"))))
 
 (defun org-astro--get-title (tree info)
@@ -937,14 +937,14 @@ If the generated name starts with a number, it is prefixed with 'img'."
          (title-values (org-element-map tree 'keyword
                          (lambda (k)
                            (when (string-equal "TITLE" (org-element-property :key k))
-                             (org-element-property :value k))))
+                             (org-element-property :value k)))))
          (title-values (delq nil title-values))
          (non-date-title (cl-find-if (lambda (v) (not (org-astro--date-string-p v)))
                                      (reverse title-values)))
          (first-title (car title-values))
          (date-only (and (null non-date-title)
                          (or (and first-title (org-astro--date-string-p first-title))
-                             (and filename-base (org-astro--date-string-p filename-base)))))
+                             (and filename-base (org-astro--date-string-p filename-base))))))
     (cond
      ;; Prefer any non-date #+TITLE (last one wins)
      (non-date-title non-date-title)
@@ -1000,7 +1000,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                       (plist-get info :date))))
     (if date-raw
         (org-astro--format-date date-raw info)
-        (format-time-string (plist-get info :astro-date-format) (current-time))))
+        (format-time-string (plist-get info :astro-date-format) (current-time)))))
 
 (defun org-astro--get-author-image (info posts-folder)
   "Get the author image path from INFO, with defaults."
@@ -1016,7 +1016,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
   (let* ((slug (or (plist-get info :slug)
                    (let ((title (or (plist-get info :title)
                                     (org-astro--get-title (plist-get info :parse-tree) info))))
-                     (and title (org-astro--slugify title))))
+                     (and title (org-astro--slugify title)))))
          (image-raw (or (plist-get info :astro-image)
                         (plist-get info :cover-image)))
          (image (and image-raw posts-folder
@@ -1030,7 +1030,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          (final-image (or image fallback-image))
          (image-alt (or (plist-get info :astro-image-alt)
                         (plist-get info :cover-image-alt)
-                        (and final-image (org-astro--filename-to-alt-text final-image))))
+                        (and final-image (org-astro--filename-to-alt-text final-image)))))
     (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
       (org-astro--debug-log-direct "Hero image selection: explicit=%s fallback=%s final=%s" image fallback-image final-image))
     (setf (plist-get info :astro-hero-image)
@@ -1048,7 +1048,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
         (when values
           (push (format "  %s:" key) lines)
           (dolist (value values)
-            (push (format "    - %s" value) lines))))
+            (push (format "    - %s" value) lines)))))
     (when lines
       (string-join (nreverse lines) "\n"))))
 
@@ -1067,13 +1067,13 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       (plist-get info :ID)
       ;; Fallback: scan the source file for a top-level :ID: property
       (let ((file (or (plist-get info :input-file)
-                      (and (buffer-file-name) (expand-file-name (buffer-file-name)))))
+                      (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
         (when (and file (file-readable-p file))
           (with-temp-buffer
             (insert-file-contents file nil 0 (min 4096 (nth 7 (file-attributes file))))
             (goto-char (point-min))
             (when (re-search-forward "^:ID:\\s-*\\(.+\\)$" nil t)
-              (string-trim (match-string 1)))))))
+              (string-trim (match-string 1))))))))
 
 (defun org-astro--get-roam-aliases (tree info)
   "Return list of ROAM_ALIASES from TREE/INFO."
@@ -1094,13 +1094,13 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                (plist-get info :roam-alias)
                ;; Fallback: scan the source file for a top-level ROAM_ALIASES property
                (let ((file (or (plist-get info :input-file)
-                               (and (buffer-file-name) (expand-file-name (buffer-file-name)))))
+                               (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
                  (when (and file (file-readable-p file))
                    (with-temp-buffer
                      (insert-file-contents file nil 0 (min 4096 (nth 7 (file-attributes file))))
                      (goto-char (point-min))
                      (when (re-search-forward "^:ROAM_ALIASES:\\s-*\\(.+\\)$" nil t)
-                       (match-string 1)))))))
+                       (match-string 1))))))))
     (org-astro--split-quoted-list raw)))
 
 (defun org-astro--get-front-matter-data (tree info)
@@ -1137,7 +1137,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          (org-roam-id (org-astro--get-org-roam-id tree info))
          (org-roam-aliases (org-astro--get-roam-aliases tree info))
          (org-path (or (plist-get info :input-file)
-                       (and (buffer-file-name) (expand-file-name (buffer-file-name))))
+                       (and (buffer-file-name) (expand-file-name (buffer-file-name)))))
          (connections-data (org-astro--parse-connections tree info))
          (connections-yaml (org-astro--format-connections-yaml connections-data))
          (visibility (let ((v (plist-get info :visibility)))
@@ -1176,7 +1176,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
           `((connections . (:raw-yaml . ,connections-yaml))))
       ,@(when visibility `((visibility . ,visibility)))
       ,@(when theme `((theme . ,theme)))
-      ,@(when draft `((draft . ,draft)))))
+      ,@(when draft `((draft . ,draft))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transcode Functions
@@ -1239,7 +1239,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                                                      (let ((base (if (and relative-dir (not (string-blank-p relative-dir)))
                                                                      (expand-file-name relative-dir posts-folder)
                                                                      posts-folder)))
-                                                       (expand-file-name filename base))))))
+                                                       (expand-file-name filename base)))))))
                         (if target-outfile
                             (let ((relative (org-astro--calculate-relative-mdx-path
                                              org-astro--current-outfile target-outfile)))
@@ -1258,7 +1258,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       (let* ((record (org-astro--lookup-render-record path info))
              (_ (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
                   (message "[ox-astro][img] LINK path=%s record=%s"
-                           path (and record (plist-get record :var-name)))))
+                           path (and record (plist-get record :var-name))))))
         (if record
             (let* ((var-name (plist-get record :var-name))
                    (default-alt (plist-get record :alt))
@@ -1267,9 +1267,9 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                   (org-astro--image-component-for-record record info alt)
                   (plist-get record :jsx)))
             (let ((md (when (fboundp 'org-md-link)
-                        (ignore-errors (org-md-link link desc info))))
+                        (ignore-errors (org-md-link link desc info)))))
               (or md (or (org-element-property :raw-link link)
-                         (concat (or type "file") ":" path))))))
+                         (concat (or type "file") ":" path)))))))
      ;; PDF links → emit a Markdown link with URL-encoded spaces; normalize label.
      ((and path
            (or (string= type "file") (and (null type) (string-prefix-p "/" path)))
@@ -1328,17 +1328,17 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
               (setf (plist-get info :astro-uses-linkpeek) t)
               (format "<LinkPeek href=\"%s\"></LinkPeek>"
                       (or (org-element-property :raw-link link)
-                          (concat type ":" path))))))
+                          (concat type ":" path)))))))
 
      ;; Everything else → prefer org's MD translator; fall back to plain Markdown
      (t
       (let ((md (when (fboundp 'org-md-link)
-                  (ignore-errors (org-md-link link desc info))))
+                  (ignore-errors (org-md-link link desc info)))))
         (or md
             (let* ((raw (or (org-element-property :raw-link link)
                             (concat type ":" path)))
                    (text (or desc raw)))
-              (format "[%s](%s)" text raw)))))))
+              (format "[%s](%s)" text raw))))))))
 
 (defun org-astro-src-block (src-block contents info)
   "Transcode a SRC-BLOCK element into fenced Markdown format.
@@ -1381,7 +1381,7 @@ literally - convert org headings to markdown equivalents."
       ;; Fallback to simple fenced code block
       (let* ((lang (org-element-property :language src-block))
              (code (org-element-property :value src-block)))
-        (format "```%s\n%s\n```" (or lang "") (org-trim code))))
+        (format "```%s\n%s\n```" (or lang "") (org-trim code)))))
 
 (defun org-astro-heading (heading contents info)
   (let ((todo-keyword (org-element-property :todo-keyword heading)))
@@ -1413,7 +1413,7 @@ literally - convert org headings to markdown equivalents."
                          (or (plist-get info :headline-offset) 0)))
                (level (min (max level 1) 6))
                (header (concat (make-string level ?#) " " title)))
-          (concat header "\n\n" (or contents "")))))
+          (concat header "\n\n" (or contents ""))))))
 
 (defun org-astro--handle-broken-image-paragraph (paragraph info)
   "Handle a paragraph containing a broken image path with subscripts."
@@ -1436,7 +1436,7 @@ literally - convert org headings to markdown equivalents."
         (let* ((raw-text (org-element-property :value child))
                (text (when (stringp raw-text) (org-trim raw-text))))
           (when (and text (string-match-p "^/.*\\.(png\\|jpe?g\\|webp)$" text))
-            (org-astro--dbg-log info "PARAGRAPH processing raw image path: %s" text)))))
+            (org-astro--dbg-log info "PARAGRAPH processing raw image path: %s" text))))))
   (let* ((children (org-element-contents paragraph))
          (child (and (= 1 (length children)) (car children)))
          (is-image-path nil)
@@ -1462,7 +1462,7 @@ literally - convert org headings to markdown equivalents."
               ;; This paragraph contains a broken image path - try to handle it
               (org-astro--handle-broken-image-paragraph paragraph info)
               ;; Regular paragraph
-              (org-md-paragraph paragraph contents info)))))
+              (org-md-paragraph paragraph contents info))))))
 
 
 (defun org-astro-plain-text (text info)
@@ -1496,7 +1496,7 @@ literally - convert org headings to markdown equivalents."
                            line)))
                     ;; Regular remote URL (non-image) is now handled correctly by org-astro-link.
                     ;; Regular line
-                    (t line))))
+                    (t line)))))
            lines)))
     ;; Store LinkPeek usage in info for import generation
     (when has-linkpeek
@@ -1514,7 +1514,7 @@ literally - convert org headings to markdown equivalents."
         ;; The raw image collection will handle the proper image processing
         ""
         ;; Regular subscript - use default markdown handling
-        (format "_%s_" (or contents ""))))
+        (format "_%s_" (or contents "")))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1552,7 +1552,7 @@ can share a single discovery pass."
         (setq potential-path (string-trim potential-path))
         ;; If it looks like a valid absolute path, return it
         (when (string-match-p "^/" potential-path)
-          potential-path))))
+          potential-path)))))
 
 
 

@@ -245,14 +245,15 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                   (let* ((used-vars (plist-get info :astro-render-used-vars))
                          (updated (cl-remove hero-var used-vars :test #'equal)))
                     (setf (plist-get info :astro-render-used-vars) updated))))))
-         ;; Copy frontmatter to clipboard
-         (_ (let ((pbcopy (executable-find "pbcopy")))
-              (when (and pbcopy front-matter-string)
-                (condition-case _
-                    (with-temp-buffer
-                      (insert front-matter-string)
-                      (call-process-region (point-min) (point-max) pbcopy nil nil nil))
-                  (error nil)))))
+         ;; Copy frontmatter to clipboard (opt-in)
+         (_ (when (and (boundp 'org-astro-copy-to-clipboard) org-astro-copy-to-clipboard)
+              (let ((pbcopy (executable-find "pbcopy")))
+                (when (and pbcopy front-matter-string)
+                  (condition-case _
+                      (with-temp-buffer
+                        (insert front-matter-string)
+                        (call-process-region (point-min) (point-max) pbcopy nil nil nil))
+                    (error nil))))))
          ;; Add an HTML comment noting the source .org file path, placed
          ;; after the frontmatter (frontmatter should remain at top-of-file).
          (source-path (or (plist-get info :input-file)
