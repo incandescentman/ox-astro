@@ -527,10 +527,11 @@ generated and added to the Org source file."
                         (when org-astro--broken-link-accumulator
                           (org-astro--write-broken-link-report org-astro--broken-link-accumulator
                                                                org-astro--current-output-root))
-                        ;; Log completion and ensure clipboard copy
+                        ;; Log completion
                         (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-                          (org-astro--debug-log-direct "Export complete: %s" outfile)
-                          ;; Copy file paths to clipboard
+                          (org-astro--debug-log-direct "Export complete: %s" outfile))
+                        ;; Copy file paths to clipboard (opt-in)
+                        (when (and (boundp 'org-astro-copy-to-clipboard) org-astro-copy-to-clipboard)
                           (let* ((source-file (buffer-file-name))
                                  (debug-file (expand-file-name org-astro-debug-log-file))
                                  (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"

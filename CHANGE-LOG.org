@@ -2,6 +2,30 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Make Clipboard Copying Opt-In (2025-11-29)
+
+** Summary
+Clipboard copying of source/output/debug paths is now disabled by default and controlled by a new `org-astro-copy-to-clipboard` defcustom.
+
+** Rationale
+Automatic clipboard copying on every export was intrusive for users who didn't need this feature. Making it opt-in respects user workflow preferences.
+
+** Key Behavior
+- Default: clipboard copying disabled
+- Enable with: `(setq org-astro-copy-to-clipboard t)`
+- When enabled, macOS `pbcopy` copies source file path, output MDX path, and debug log path to clipboard
+
+** Implementation
+- Added `org-astro-copy-to-clipboard` defcustom in `ox-astro.el`
+- Guarded all `pbcopy` calls with this setting in:
+  - `ox-astro-helpers.el` (lines 257-265, 307-315)
+  - `ox-astro-handlers.el` (lines 249-256)
+
+** Files Changed
+- `ox-astro.el` - New defcustom
+- `ox-astro-helpers.el` - Guarded pbcopy calls
+- `ox-astro-handlers.el` - Guarded pbcopy calls
+
 * Fix Link Conversion in User/Prompt/Quote Blocks (2025-11-13)
 
 ** Summary

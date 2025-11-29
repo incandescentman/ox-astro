@@ -62,6 +62,29 @@ Set =org-astro-id-link-base-path= to apply absolute routes to all exports:
 - Add a destination nickname with =:preserve-folder-structure t= if you want exports to mirror the roam hierarchy
 - Verify your notes include =:ID:= drawers when you expect cross-note linking
 
+* Debug and Development Options
+
+** Clipboard Copying (macOS)
+By default, clipboard copying is disabled. To enable copying of source/output/debug paths to macOS clipboard after export:
+
+#+begin_src emacs-lisp
+(setq org-astro-copy-to-clipboard t)
+#+end_src
+
+When enabled, exports copy the following paths to the system clipboard via =pbcopy=:
+- Source Org file path
+- Output MDX file path
+- Debug log path (when debug mode is active)
+
+** Debug Logging
+Enable verbose debug logging for image processing:
+
+#+begin_src emacs-lisp
+(setq org-astro-debug-images t)
+#+end_src
+
+Debug output is written to the file specified by =org-astro-debug-log-file= (defaults to =ox-astro-debug.log= in the system temp directory).
+
 * Image Configuration
 
 ** Responsive Images (Default)

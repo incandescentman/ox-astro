@@ -93,3 +93,26 @@
   - When debugging export differences, diff `org-export-before-*-functions` between environments early.
   - Keep the blocklist updated if new destructive hooks appear.
   - Prefer adding guardrails in the exporter rather than relying on users to disable their tweaks.
+
+** Gotcha: Deeply nested elisp parens cause cascading errors
+- *Date:* 2025-11-29
+- *Trigger:* Fixing one paren imbalance often introduced others; ended up with 56 missing parens across ~30 functions
+- *Mechanism:* Complex `let*` bindings, nested `if`/`cond`/`when` forms, and multi-line `progn` blocks make manual paren counting error-prone
+- *Clue we missed:* Attempting to fix parens one at a time without checking overall balance led to more errors
+- *The Fix:* Reverted to last known working commit (1128b61) and applied changes incrementally
+- *Prevention:*
+  - Use `emacs --batch --eval '(check-parens)'` to verify paren balance before committing
+  - When paren errors cascade, revert to known-good state rather than fixing forward
+  - Use Emacs' `show-paren-mode` and structural editing tools during development
+  - Test syntax with byte-compilation: `emacs --batch -f batch-byte-compile file.el`
+
+** Gotcha: org-export-get-environment overwrites cached plist data
+- *Date:* 2025-11-29
+- *Trigger:* Export succeeds (file written) but then shows "Astro export cancelled: No posts folder selected" and returns nil
+- *Mechanism:* The `info` plist gets rebuilt by `org-export-get-environment` calls during export, blowing away cached folder info from preprocessing
+- *Symptom:* Folder resolution works first time, but second lookup (after buffer modifications) fails
+- *Prevention:*
+  - Resolve critical paths (destination folder, output file) exactly once per invocation
+  - Store in local variables, not just the info plist
+  - Reattach to info plist after any environment refresh if needed downstream
+- *Fix strategy:* Cache folder resolution results in `let`-bound locals before any `org-export-get-environment` calls
