@@ -466,6 +466,11 @@ generated and added to the Org source file."
   :group 'org-export-astro
   :type 'file)
 
+(defcustom org-astro-copy-to-clipboard nil
+  "When non-nil, copy source/output/debug paths to the clipboard after export."
+  :group 'org-export-astro
+  :type 'boolean)
+
             ;; Update debug system with actual output file path now that we know it
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
               (org-astro--debug-log-direct "Export starting - Output file: %s" outfile)
@@ -511,22 +516,22 @@ generated and added to the Org source file."
                         (when org-astro--broken-link-accumulator
                           (org-astro--write-broken-link-report org-astro--broken-link-accumulator
                                                                org-astro--current-output-root))
-                        ;; Log completion and ensure clipboard copy
+                        ;; Log completion; optional clipboard copy when enabled
                         (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
                           (org-astro--debug-log-direct "Export complete: %s" outfile)
-                          ;; Copy file paths to clipboard
-                          (let* ((source-file (buffer-file-name))
-                                 (debug-file (expand-file-name org-astro-debug-log-file))
-                                 (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
-                                                         source-file outfile debug-file))
-                                 (pbcopy (executable-find "pbcopy")))
-                            (when pbcopy
-                              (condition-case _
-                                  (with-temp-buffer
-                                    (insert clipboard-text)
-                                    (call-process-region (point-min) (point-max) pbcopy nil nil nil)
-                                    (message "File paths copied to clipboard!"))
-                                (error nil)))))
+                          (when (and (boundp 'org-astro-copy-to-clipboard) org-astro-copy-to-clipboard)
+                            (let* ((source-file (buffer-file-name))
+                                   (debug-file (expand-file-name org-astro-debug-log-file))
+                                   (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
+                                                           source-file outfile debug-file))
+                                   (pbcopy (executable-find "pbcopy")))
+                              (when pbcopy
+                                (condition-case _
+                                    (with-temp-buffer
+                                      (insert clipboard-text)
+                                      (call-process-region (point-min) (point-max) pbcopy nil nil nil)
+                                      (message "File paths copied to clipboard!"))
+                                  (error nil)))))))
                         (message "Export complete! All images should now be visible.")
                         outfile)  ; Return the output file path
                     (progn
