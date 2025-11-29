@@ -254,14 +254,15 @@ standard Image component string."
                 (insert file-header)
                 (write-region (point-min) (point-max) debug-file nil 'silent))
             (error nil))
-          ;; Copy clipboard text to clipboard via pbcopy
-          (let ((pbcopy (executable-find "pbcopy")))
-            (when pbcopy
-              (condition-case _
-                  (with-temp-buffer
-                    (insert clipboard-text)
-                    (call-process-region (point-min) (point-max) pbcopy nil nil nil))
-                (error nil))))))
+          ;; Copy clipboard text to clipboard via pbcopy (opt-in)
+          (when (and (boundp 'org-astro-copy-to-clipboard) org-astro-copy-to-clipboard)
+            (let ((pbcopy (executable-find "pbcopy")))
+              (when pbcopy
+                (condition-case _
+                    (with-temp-buffer
+                      (insert clipboard-text)
+                      (call-process-region (point-min) (point-max) pbcopy nil nil nil))
+                  (error nil))))))))
       ;; Append the actual log line
       (condition-case _
           (with-temp-buffer
@@ -303,14 +304,15 @@ standard Image component string."
                       (insert file-header))
                   (write-region (point-min) (point-max) debug-file nil 'silent)))
             (error nil))
-          ;; Update clipboard
-          (let ((pbcopy (executable-find "pbcopy")))
-            (when pbcopy
-              (condition-case _
-                  (with-temp-buffer
-                    (insert clipboard-text)
-                    (call-process-region (point-min) (point-max) pbcopy nil nil nil))
-                (error nil)))))))))
+          ;; Update clipboard (opt-in)
+          (when (and (boundp 'org-astro-copy-to-clipboard) org-astro-copy-to-clipboard)
+            (let ((pbcopy (executable-find "pbcopy")))
+              (when pbcopy
+                (condition-case _
+                    (with-temp-buffer
+                      (insert clipboard-text)
+                      (call-process-region (point-min) (point-max) pbcopy nil nil nil))
+                  (error nil))))))))))
 
 (defun org-astro--dbg-mdx-comments (info)
   "Return MDX comments string for any collected debug messages in INFO."
