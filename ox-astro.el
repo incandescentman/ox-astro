@@ -339,6 +339,9 @@ generated and added to the Org source file."
                  ;; Extract preserve-folder-structure flag
                  (preserve-folder-structure (and (listp folder-config)
                                                  (plist-get folder-config :preserve-folder-structure)))
+                 ;; Extract id-link-base-path from folder config (for absolute routes)
+                 (id-link-base-path-from-config (and (listp folder-config)
+                                                     (plist-get folder-config :id-link-base-path)))
                  ;; Store the selected folder nickname for later use
                  (selected-folder-nickname posts-folder-from-file)
                  ;; Trim whitespace from resolved path to handle configuration errors
@@ -375,6 +378,8 @@ generated and added to the Org source file."
                       (setq selected-folder-nickname selection)
                       (setq preserve-folder-structure (and (listp selected-config)
                                                            (plist-get selected-config :preserve-folder-structure)))
+                      (setq id-link-base-path-from-config (and (listp selected-config)
+                                                               (plist-get selected-config :id-link-base-path)))
                       (when selected-path
                         ;; Add the DESTINATION_FOLDER keyword to the org file
                         (save-excursion
@@ -473,6 +478,8 @@ generated and added to the Org source file."
                                                    (expand-file-name (buffer-file-name)))))
                    (org-astro--current-outfile outfile)
                    (org-astro--current-output-root pub-dir-base)
+                   ;; Use :id-link-base-path from destination config if present
+                   (org-astro--current-id-link-base-path id-link-base-path-from-config)
                    (org-astro--broken-link-accumulator (make-hash-table :test #'equal))
                    (org-astro--broken-link-warnings-issued (make-hash-table :test #'equal)))
               (prog1

@@ -1,6 +1,27 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-11-28
+** Session Summary: Link Routes and List Parsing
+- Fixed comma-separated list parsing to preserve internal spaces (e.g., =#+places: Brooklyn, Hungry Ghost Coffee= stays "Hungry Ghost Coffee" instead of stripping spaces).
+- Strengthened absolute route mode for ID links: when =org-astro-id-link-base-path= is set, links now use extensionless absolute routes even when slug metadata is missing by diffing outfile against posts folder.
+- Added =filetags= passthrough into front matter =tags= (deduped with =TAGS=/=ASTRO_TAGS=).
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] List splitting preserves internal spaces in comma-separated items (ox-astro-metadata.el)
+- [x] ID absolute route mode resolves extensionless paths via slug/subdir or outfile fallback (ox-astro-helpers.el)
+- [x] Filetags merged into front matter tags (ox-astro-metadata.el)
+- [x] Tests not re-run here; re-export of life-web fixture pending for verification
+
+*IN-PROGRESS (Requires completion)*
+- [ ] Re-export life-web fixture to confirm: places spacing, absolute ID routes, tags population
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: =ox-astro-metadata.el=, =ox-astro-helpers.el=
+- Verification target: re-export =~/Dropbox/roam-life/stories/20251022-brooklyn-coffee-ai.org= and inspect =~/Dropbox/github/life-web/src/content/notes/stories/coffee-shop-conversation-about-ai-and-purpose.mdx=
+
 * 2025-11-26
 ** Session Summary: Add Responsive Images Support
 

@@ -21,6 +21,7 @@
 * ID-Based Link Resolution
 - The exporter builds an ID→path map by scanning all =.org= files under =org-astro-source-root-folder=
 - During export, =[[id:...][Label]]= links become standard Markdown links pointing to the correct =.mdx= output
+- If you set =org-astro-id-link-base-path= (e.g., ="/notes"=), ID links emit extensionless absolute routes like =/notes/characters/rachel=; default =nil= keeps relative =.mdx= links.
 - Astro export now sanitizes known-destructive hooks (e.g., =org-export-id-link-removal=), but
   always double-check local hook lists if links disappear—the sanitization only helps when the
   hook name is on our blocklist.

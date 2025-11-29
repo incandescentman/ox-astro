@@ -69,6 +69,11 @@ indicator/value pairs.  Returns the updated plist."
 (defvar org-astro--current-output-root nil
   "Root output directory for the current export destination.")
 
+(defvar org-astro--current-id-link-base-path nil
+  "Base path for absolute ID link routes during current export.
+When non-nil, ID links render as /base-path/collection-id instead of relative .mdx paths.
+Set from :id-link-base-path in destination config or global `org-astro-id-link-base-path'.")
+
 (defun org-astro--escape-attribute (text)
   "Escape double quotes in TEXT for safe use in JSX attributes."
   (replace-regexp-in-string "\"" "\\\\\"" (or text "")))
@@ -1158,35 +1163,39 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                               target-id))))
             (if entry
                 ;; Check if we should use absolute routes or relative MDX paths
-                (if (and (boundp 'org-astro-id-link-base-path) org-astro-id-link-base-path)
-                    ;; Absolute route mode: /base-path/collection-id
-                    (let ((collection-id (or (org-astro--compute-collection-id entry)
-                                             (org-astro--compute-collection-id-from-outfile entry))))
-                      (if collection-id
-                          (let* ((base (string-trim-right org-astro-id-link-base-path "/"))
-                                 (route (concat base "/" collection-id)))
-                            (format "[%s](%s)" link-text route))
-                        (org-astro--record-missing-id-link info target-id link-text)))
-              ;; Relative MDX path mode (original behavior)
-              (if org-astro--current-outfile
-                  (let* ((target-outfile (or (plist-get entry :outfile)
-                                             (let* ((posts-folder (plist-get entry :posts-folder))
-                                                    (filename (plist-get entry :filename))
-                                                    (relative-dir (plist-get entry :relative-subdir)))
-                                               (when (and posts-folder filename)
-                                                 (let ((base (if (and relative-dir (not (string-blank-p relative-dir)))
-                                                                 (expand-file-name relative-dir posts-folder)
-                                                               posts-folder)))
-                                                   (expand-file-name filename base)))))))
-                    (if target-outfile
-                        (let ((relative (org-astro--calculate-relative-mdx-path
-                                         org-astro--current-outfile target-outfile)))
-                          (if relative
-                              (format "[%s](%s)" link-text relative)
+                ;; Priority: dynamic var (from dest config) > global var
+                (let ((effective-base-path (or org-astro--current-id-link-base-path
+                                               (and (boundp 'org-astro-id-link-base-path)
+                                                    org-astro-id-link-base-path))))
+                  (if effective-base-path
+                      ;; Absolute route mode: /base-path/collection-id
+                      (let ((collection-id (or (org-astro--compute-collection-id entry)
+                                               (org-astro--compute-collection-id-from-outfile entry))))
+                        (if collection-id
+                            (let* ((base (string-trim-right effective-base-path "/"))
+                                   (route (concat base "/" collection-id)))
+                              (format "[%s](%s)" link-text route))
+                          (org-astro--record-missing-id-link info target-id link-text)))
+                    ;; Relative MDX path mode (original behavior)
+                    (if org-astro--current-outfile
+                        (let* ((target-outfile (or (plist-get entry :outfile)
+                                                   (let* ((posts-folder (plist-get entry :posts-folder))
+                                                          (filename (plist-get entry :filename))
+                                                          (relative-dir (plist-get entry :relative-subdir)))
+                                                     (when (and posts-folder filename)
+                                                       (let ((base (if (and relative-dir (not (string-blank-p relative-dir)))
+                                                                       (expand-file-name relative-dir posts-folder)
+                                                                     posts-folder)))
+                                                         (expand-file-name filename base)))))))
+                          (if target-outfile
+                              (let ((relative (org-astro--calculate-relative-mdx-path
+                                               org-astro--current-outfile target-outfile)))
+                                (if relative
+                                    (format "[%s](%s)" link-text relative)
+                                  (org-astro--record-missing-id-link info target-id link-text)))
                             (org-astro--record-missing-id-link info target-id link-text)))
-                      (org-astro--record-missing-id-link info target-id link-text)))
-                (org-astro--record-missing-id-link info target-id link-text)))
-          (org-astro--record-missing-id-link info target-id link-text))))
+                      (org-astro--record-missing-id-link info target-id link-text))))
+              (org-astro--record-missing-id-link info target-id link-text))))
      ;; Local file image links → render Image component using imports
      ((and (or (string= type "file")
                (and (null type) path (string-prefix-p "/" path)))
