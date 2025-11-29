@@ -91,19 +91,47 @@ To revert to basic image behavior without the layout prop:
 - Re-export once missing IDs exist—the links will auto-heal on the next run
 
 * Metadata Fields
-- The exporter recognizes both plain and =ASTRO_= prefixed keywords for enriched front matter.
-- Supported mappings:
-  - =#+date_occurred:= → `dateOccurred` (ISO date)
-  - =#+era:= → `era`
-  - =#+place:= → `place`
-  - =#+people:= → `people` array (comma or whitespace separated)
-  - =#+emotions:= → `emotions` array
-  - =#+places:= → `places` array
-  - =#+themes:= → `themes` array
-  - =#+story_type:= → `storyType` (validated against `full-story`, `vignette`, `snapshot`, `fragment`, `conversation`)
-  - =#+filetags:= → merged into `tags` array (deduped with =#+TAGS:= and =#+ASTRO_TAGS:=)
-- Arrays accept quoted multi-word tokens (e.g., =#+people: "Mom's apartment"=).
-- After enriching an Org note, re-export to confirm the MDX front matter includes the expected fields.
+
+The exporter recognizes both plain and =ASTRO_= prefixed keywords for front matter.
+
+** Standard Astro Fields
+These are common fields used by most Astro content collections:
+
+| Org Keyword        | Front Matter    | Notes                              |
+|--------------------+-----------------+------------------------------------|
+| =#+title:=         | =title=         | Required                           |
+| =#+date:=          | =publishDate=   | ISO date format                    |
+| =#+author:=        | =author=        | Defaults to "Jay Dixit"            |
+| =#+excerpt:=       | =excerpt=       | Also accepts =SUBHED=, =DESCRIPTION= |
+| =#+tags:=          | =tags=          | Array (comma-separated)            |
+| =#+filetags:=      | =tags=          | Merged with =#+tags:=, deduped     |
+| =#+categories:=    | =categories=    | Array                              |
+| =#+image:=         | =image=         | Cover/hero image                   |
+| =#+draft:=         | =draft=         | Boolean                            |
+
+** Extended Fields (life-web project)
+These fields are custom extensions for narrative/memoir content. They require a matching schema in your Astro content collection config. Standard Astro users can ignore these or adapt them for their own projects.
+
+| Org Keyword             | Front Matter     | Notes                                        |
+|-------------------------+------------------+----------------------------------------------|
+| =#+date_occurred:=      | =dateOccurred=   | When the story happened (vs publish date)    |
+| =#+era:=                | =era=            | Time period identifier                       |
+| =#+place:=              | =place=          | Single location string                       |
+| =#+places:=             | =places=         | Array of locations                           |
+| =#+people:=             | =people=         | Array of people involved                     |
+| =#+emotions:=           | =emotions=       | Array of emotional themes                    |
+| =#+themes:=             | =themes=         | Array of thematic elements                   |
+| =#+story_type:=         | =storyType=      | full-story, vignette, snapshot, fragment, conversation |
+| =#+incomplete:=         | =incomplete=     | Boolean - story is unfinished                |
+| =#+connection_temporal:= | =connections.temporal= | Related stories by time             |
+| =#+connection_emotional:= | =connections.emotional= | Related stories by emotion        |
+| =#+connection_thematic:= | =connections.thematic= | Related stories by theme           |
+| =#+media:=              | =media=          | Array of media attachments                   |
+
+** Usage Notes
+- Arrays accept quoted multi-word tokens (e.g., =#+people: "Mom's apartment"=)
+- Comma-separated values preserve internal spaces (e.g., =#+places: Brooklyn, Hungry Ghost Coffee=)
+- After enriching an Org note, re-export to confirm the MDX front matter includes the expected fields
 
 * Theme Sections and Model Banners
 
