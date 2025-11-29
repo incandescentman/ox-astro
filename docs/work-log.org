@@ -394,6 +394,26 @@ When =org-astro-id-link-base-path= is nil (default), behavior unchanged—relati
 - Wired underline transcoder into backend and removed final-output hack; front matter now also includes slug for consistency.
 - Re-exported `tip_of_the_tongue.org` → `apps/socratic/src/content/blog/tip-of-the-tongue.mdx` to verify underscores stay literal.
 
+* 2025-12-03
+** Session Summary
+- Added org-roam metadata to exported frontmatter: `orgRoamId`, `aliases`, and `orgPath` now emit from `ox-astro-helpers.el` (pulling from properties/keywords with file scan fallback).
+- Hardened excerpt extractor to reduce paren errors; fixed helper parens and ensured file loads cleanly.
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Frontmatter now includes org-roam ID/aliases/path for link resolution: `ox-astro-helpers.el`
+- [x] Paren/scan errors resolved; file parses and loads cleanly.
+
+*IN-PROGRESS (Requires completion)*
+- [ ] Re-export content to pick up orgRoamId/aliases/orgPath in MDX outputs.
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro-helpers.el`, `docs/work-log.org`
+- Recommendations:
+  - Re-export representative notes to verify org-roam fields appear.
+  - Use the new metadata in link conversion/downstream index.
+
 ** Handoff
 
 *COMPLETED (Safe to rely on)*
