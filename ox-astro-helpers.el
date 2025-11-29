@@ -5,6 +5,7 @@
 (require 'subr-x) ; for string-trim, string-trim-right
 (require 'cl-lib)
 (require 'json)
+(require 'org-element)
 
 ;; Compatibility helpers for older Emacs builds.
 (unless (fboundp 'cl-putf)
