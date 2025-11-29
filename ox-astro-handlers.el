@@ -92,6 +92,12 @@ the MDX output preserves the intended hierarchy."
                                    contents)))
                    (org-trim indented))))))
 
+(defun org-astro-property-drawer (_property-drawer _contents _info)
+  "Transcode a PROPERTY-DRAWER element.
+Property drawers are suppressed in Astro MDX output - they contain
+org-roam metadata that belongs in frontmatter, not the body."
+  "")
+
 (defun org-astro-keyword (keyword _contents _info)
   "Transcode THEME and MODEL keywords into inline markers.
 #+THEME: emits a JSX comment marker for remarkThemeSections.

@@ -600,7 +600,8 @@ resolved to plain text in the temporary export buffer."
     (table-cell . org-astro-table-cell)
     (special-block . org-astro-special-block)
     (export-block . org-astro-export-block)
-    (keyword . org-astro-keyword))
+    (keyword . org-astro-keyword)
+    (property-drawer . org-astro-property-drawer))
 
   :filters-alist
   '((:filter-parse-tree . (org-astro-auto-wrap-image-paths-filter
@@ -662,7 +663,7 @@ resolved to plain text in the temporary export buffer."
     (:astro-connection-thematic "ASTRO_CONNECTION_THEMATIC" nil nil 'newline)
     (:astro-imports      "ASTRO_IMPORTS"       nil nil 'newline)
     (:astro-posts-folder "ASTRO_POSTS_FOLDER"  nil nil nil)
-    (:astro-date-format  nil "date-format" org-astro-date-format nil)))
+    (:astro-date-format  nil "date-format" org-astro-date-format nil))))
 
 (provide 'ox-astro)
 
