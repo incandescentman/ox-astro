@@ -1057,6 +1057,39 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
     (when lines
       (string-join (nreverse lines) "\n"))))
 
+(defun org-astro--get-org-roam-id (tree info)
+  "Return first org-roam ID found in TREE or INFO."
+  (or (org-element-map tree 'node-property
+        (lambda (p)
+          (when (string-equal (org-element-property :key p) "ID")
+            (string-trim (or (org-element-property :value p) ""))))
+        nil 'first-match)
+      (org-element-map tree 'keyword
+        (lambda (k)
+          (when (string-equal (org-element-property :key k) "ID")
+            (string-trim (or (org-element-property :value k) ""))))
+        nil 'first-match)
+      (plist-get info :ID)))
+
+(defun org-astro--get-roam-aliases (tree info)
+  "Return list of ROAM_ALIASES from TREE/INFO."
+  (let* ((raw (or
+               (org-element-map tree 'node-property
+                 (lambda (p)
+                   (when (member (org-element-property :key p)
+                                 '("ROAM_ALIASES" "ROAM_ALIAS"))
+                     (org-element-property :value p)))
+                 nil 'first-match)
+               (org-element-map tree 'keyword
+                 (lambda (k)
+                   (when (member (org-element-property :key k)
+                                 '("ROAM_ALIASES" "ROAM_ALIAS"))
+                     (org-element-property :value k)))
+                  nil 'first-match)
+               (plist-get info :roam-aliases)
+               (plist-get info :roam-alias))))
+    (org-astro--split-quoted-list raw)))
+
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
   (let* ((posts-folder (or (plist-get info :destination-folder)
@@ -1088,6 +1121,10 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                       ((eq incomplete-token :true) "true")
                       ((eq incomplete-token :false) "false")
                       (t nil)))
+         (org-roam-id (org-astro--get-org-roam-id tree info))
+         (org-roam-aliases (org-astro--get-roam-aliases tree info))
+         (org-path (or (plist-get info :input-file)
+                       (and (buffer-file-name) (expand-file-name (buffer-file-name)))))
          (connections-data (org-astro--parse-connections tree info))
          (connections-yaml (org-astro--format-connections-yaml connections-data))
          (visibility (let ((v (plist-get info :visibility)))
@@ -1119,6 +1156,9 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       (categories . ,categories)
       ,@(when era `((era . ,era)))
       ,@(when incomplete `((incomplete . ,incomplete)))
+      ,@(when org-roam-id `((orgRoamId . ,org-roam-id)))
+      ,@(when org-roam-aliases `((aliases . ,org-roam-aliases)))
+      ,@(when org-path `((orgPath . ,org-path)))
       ,@(when connections-yaml
           `((connections . (:raw-yaml . ,connections-yaml))))
       ,@(when visibility `((visibility . ,visibility)))
