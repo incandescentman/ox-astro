@@ -451,3 +451,51 @@ When =org-astro-id-link-base-path= is nil (default), behavior unchanged—relati
 - Files touched: `ox-astro-helpers.el`, `ox-astro.el`, `apps/socratic/src/content/blog/tip-of-the-tongue.mdx`
 - Known unknowns: None observed; image copy warning is harmless (source/dest identical).
 - Recommendations: If other posts use underline placeholders, re-export after pulling changes.
+
+* 2025-11-29
+** Session Summary: Clipboard Copy Opt-In and Paren Fixes
+
+*** Changes Made
+- Made clipboard copying opt-in via `org-astro-copy-to-clipboard` defcustom (defaults to nil)
+- Fixed paren imbalance in `org-export-define-derived-backend` call that caused export to return nil
+- Reverted to commit 1128b61 to restore working baseline after multiple paren issues
+
+*** Clipboard Copy Behavior
+The exporter previously copied source/output/debug paths to macOS clipboard via `pbcopy` on every export. This is now controlled by:
+
+#+begin_src emacs-lisp
+(setq org-astro-copy-to-clipboard t)  ; Enable clipboard copying
+#+end_src
+
+Default is nil (disabled). When enabled, paths are copied to clipboard after export completes.
+
+*** Files Modified
+- `ox-astro.el` - Added `org-astro-copy-to-clipboard` defcustom, fixed paren balance
+- `ox-astro-helpers.el` - Guarded pbcopy calls at lines 257-265 and 307-315
+- `ox-astro-handlers.el` - Guarded pbcopy call at lines 249-256
+
+*** Commits
+- `915bc4e` - Guard clipboard copies behind org-astro-copy-to-clipboard
+- `8547ec8` - Fix paren imbalance in debug clipboard guard
+
+** Handoff
+
+*COMPLETED (Safe to rely on)*
+- [x] Clipboard copying is now opt-in via `org-astro-copy-to-clipboard`
+- [x] All pbcopy calls guarded in helpers.el and handlers.el
+- [x] Paren balance restored in ox-astro.el
+
+*IN-PROGRESS (Requires completion)*
+- [ ] Verify end-to-end export works without "cancelled" message
+- [ ] May need to unify dual folder resolution paths if issue persists
+
+*CONTEXT FOR NEXT SESSION*
+- Files touched: `ox-astro.el`, `ox-astro-helpers.el`, `ox-astro-handlers.el`
+- Root cause of "cancelled" message: folder lookup happens twice, second lookup fails after `org-export-get-environment` rebuilds info plist
+- Fix strategy: resolve destination exactly once per invocation, cache in locals, reattach after environment refresh
+
+* 2025-12-05
+** Regression Analysis (Astro export double-message)
+- Observed behavior: first pass writes file and logs "Export complete", but the command returns nil with "Astro export cancelled: No posts folder selected."
+- Likely cause: `org-astro-export-to-mdx` resolves destination twice; after buffer modifications `info` is rebuilt via `org-export-get-environment`, blowing away the cached folder info. A later call (or the `?o` wrapper that calls `org-astro-export-to-mdx` again) loses the posts folder and falls into the "no posts folder" branch.
+- Fix strategy: resolve destination exactly once per invocation, keep it in locals, and reattach to `info` after any environment refresh. Reuse cached values for pub-dir/outfile; optionally guard against re-entrancy.

@@ -83,6 +83,9 @@
 This prevents external configuration from stripping org-roam ID links before
 our custom transcoders run.")
 
+(defvar org-astro--mdx-export-active nil
+  "Guard to prevent re-entrant MDX exports within the same command.")
+
 (defun org-astro--sanitize-export-hook-list (hooks)
   "Return HOOKS without entries listed in `org-astro--parsing-hook-blocklist'.
 The return value is a cons cell (SANITIZED . REMOVED) where REMOVED holds any
@@ -136,7 +139,10 @@ generated and added to the Org source file."
   (interactive)
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
-      (org-astro--with-export-sanitization
+      (if org-astro--mdx-export-active
+          org-astro--current-outfile
+        (let ((org-astro--mdx-export-active t))
+          (org-astro--with-export-sanitization
         (save-restriction
           (let* ((was-narrowed (buffer-narrowed-p))
                  (narrow-start (when was-narrowed (point-min)))
@@ -471,6 +477,11 @@ generated and added to the Org source file."
                        (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
                  (outfile (expand-file-name final-filename out-dir)))
 
+(defcustom org-astro-debug-log-file (expand-file-name "ox-astro-debug.log" temporary-file-directory)
+  "File path for writing debug logs when `org-astro-debug-images` is non-nil."
+  :group 'org-export-astro
+  :type 'file)
+
             ;; Update debug system with actual output file path now that we know it
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
               (org-astro--debug-log-direct "Export starting - Output file: %s" outfile)
@@ -516,29 +527,29 @@ generated and added to the Org source file."
                         (when org-astro--broken-link-accumulator
                           (org-astro--write-broken-link-report org-astro--broken-link-accumulator
                                                                org-astro--current-output-root))
-                        ;; Log completion; optional clipboard copy when enabled
+                        ;; Log completion and ensure clipboard copy
                         (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
                           (org-astro--debug-log-direct "Export complete: %s" outfile)
-                          (when (and (boundp 'org-astro-copy-to-clipboard) org-astro-copy-to-clipboard)
-                            (let* ((source-file (buffer-file-name))
-                                   (debug-file (expand-file-name org-astro-debug-log-file))
-                                   (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
-                                                           source-file outfile debug-file))
-                                   (pbcopy (executable-find "pbcopy")))
-                              (when pbcopy
-                                (condition-case _
-                                    (with-temp-buffer
-                                      (insert clipboard-text)
-                                      (call-process-region (point-min) (point-max) pbcopy nil nil nil)
-                                      (message "File paths copied to clipboard!"))
-                                  (error nil)))))))
+                          ;; Copy file paths to clipboard
+                          (let* ((source-file (buffer-file-name))
+                                 (debug-file (expand-file-name org-astro-debug-log-file))
+                                 (clipboard-text (format "Source: %s\nOutput: %s\nDebug: %s"
+                                                         source-file outfile debug-file))
+                                 (pbcopy (executable-find "pbcopy")))
+                            (when pbcopy
+                              (condition-case _
+                                  (with-temp-buffer
+                                    (insert clipboard-text)
+                                    (call-process-region (point-min) (point-max) pbcopy nil nil nil)
+                                    (message "File paths copied to clipboard!"))
+                                (error nil)))))
                         (message "Export complete! All images should now be visible.")
                         outfile)  ; Return the output file path
                     (progn
                       (message "Astro export cancelled: No posts folder selected.")
                       nil))
                 (when (and was-narrowed narrow-start narrow-end)
-                  (narrow-to-region narrow-start narrow-end)))))))))
+                  (narrow-to-region narrow-start narrow-end))))))))))))
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -581,10 +592,8 @@ resolved to plain text in the temporary export buffer."
         (?x "To MDX file" org-astro-export-to-mdx)
         (?o "To MDX file and open"
             (lambda (_a _s _v _b)
-              (let ((outfile (org-astro-export-to-mdx)))
-                (if outfile
-                    (org-open-file outfile)
-                  (message "Astro export failed (no output file). Check DESTINATION_FOLDER or org-astro-known-posts-folders."))))))
+              (org-open-file
+               (org-astro-export-to-mdx))))))
 
   :translate-alist
   '((src-block . org-astro-src-block)
@@ -600,8 +609,7 @@ resolved to plain text in the temporary export buffer."
     (table-cell . org-astro-table-cell)
     (special-block . org-astro-special-block)
     (export-block . org-astro-export-block)
-    (keyword . org-astro-keyword)
-    (property-drawer . org-astro-property-drawer))
+    (keyword . org-astro-keyword))
 
   :filters-alist
   '((:filter-parse-tree . (org-astro-auto-wrap-image-paths-filter
@@ -663,7 +671,7 @@ resolved to plain text in the temporary export buffer."
     (:astro-connection-thematic "ASTRO_CONNECTION_THEMATIC" nil nil 'newline)
     (:astro-imports      "ASTRO_IMPORTS"       nil nil 'newline)
     (:astro-posts-folder "ASTRO_POSTS_FOLDER"  nil nil nil)
-    (:astro-date-format  nil "date-format" org-astro-date-format nil))))
+    (:astro-date-format  nil "date-format" org-astro-date-format nil)))
 
 (provide 'ox-astro)
 
