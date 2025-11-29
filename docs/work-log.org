@@ -2,7 +2,30 @@
 #+DATE: 2025-10-07
 
 * 2025-11-28
-** Session Summary: Per-Destination ID Link Routes and Metadata Fixes
+** Session 2: Fix Elisp Parse Errors in ox-astro-helpers.el
+
+*** Bugs Fixed
+Three elisp parse errors that caused "End of file during parsing":
+
+1. *with-temp-buffer scoping bug in =org-astro--get-org-roam-id=* (lines 1070-1074)
+   - =goto-char= and =re-search-forward= were outside the =with-temp-buffer= form
+   - They ran in the original buffer instead of the temp buffer containing file contents
+
+2. *Same bug in =org-astro--get-roam-aliases=* (lines 1096-1101)
+   - Identical issue with premature closing of =with-temp-buffer=
+
+3. *Broken regex in =org-astro--contains-markdown-link-p=* (line 813)
+   - Changed from =\\([^)]\\|\\n\\)+= to =[^)]+= (simpler, avoids parse issues)
+
+4. *Broken regex in =org-astro--get-excerpt=* (line 987)
+   - Changed from =\`\(.\{1,300\}?[.?!]\)= to =^\\(.\\{1,300\\}?[.?!]\\)=
+   - Fixed missing closing paren for =when first-paragraph= form
+
+*** Verification
+- Ran =emacs --batch -f batch-byte-compile ox-astro-helpers.el=
+- No syntax errors, only expected warnings (free variables from other modules, wide docstrings)
+
+** Session 1: Per-Destination ID Link Routes and Metadata Fixes
 
 *** Changes Made
 - Fixed comma-separated list parsing to preserve internal spaces (e.g., =#+places: Brooklyn, Hungry Ghost Coffee= stays "Hungry Ghost Coffee" instead of stripping spaces)
