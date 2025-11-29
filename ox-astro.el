@@ -54,6 +54,16 @@
 (require 'ox-astro-image-handlers)
 (require 'ox-astro-pdf-handlers)
 
+(defcustom org-astro-debug-log-file (expand-file-name "ox-astro-debug.log" temporary-file-directory)
+  "File path for writing debug logs when `org-astro-debug-images` is non-nil."
+  :group 'org-export-astro
+  :type 'file)
+
+(defcustom org-astro-copy-to-clipboard nil
+  "When non-nil, copy source/output/debug paths to the clipboard after export."
+  :group 'org-export-astro
+  :type 'boolean)
+
 ;; Declare functions from handler modules
 (declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
 (declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
@@ -460,16 +470,6 @@ generated and added to the Org source file."
                        "_" "-"
                        (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
                  (outfile (expand-file-name final-filename out-dir)))
-
-(defcustom org-astro-debug-log-file (expand-file-name "ox-astro-debug.log" temporary-file-directory)
-  "File path for writing debug logs when `org-astro-debug-images` is non-nil."
-  :group 'org-export-astro
-  :type 'file)
-
-(defcustom org-astro-copy-to-clipboard nil
-  "When non-nil, copy source/output/debug paths to the clipboard after export."
-  :group 'org-export-astro
-  :type 'boolean)
 
             ;; Update debug system with actual output file path now that we know it
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
