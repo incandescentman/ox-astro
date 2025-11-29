@@ -9,6 +9,7 @@
 - Added =filetags= passthrough into front matter =tags= (deduped with =TAGS=/=ASTRO_TAGS=)
 - Added "conversation" to valid =story_type= values
 - Implemented per-destination =:id-link-base-path= config option for absolute routes
+- Added export-scoped =org-astro--current-id-link-base-path= so routing style is bound per destination, falling back to global then relative paths
 
 *** Per-Destination ID Link Base Path
 New =:id-link-base-path= option in destination config allows different routing styles per project:
