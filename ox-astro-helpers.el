@@ -1069,7 +1069,16 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
           (when (string-equal (org-element-property :key k) "ID")
             (string-trim (or (org-element-property :value k) ""))))
         nil 'first-match)
-      (plist-get info :ID)))
+      (plist-get info :ID)
+      ;; Fallback: scan the source file for a top-level :ID: property
+      (let ((file (or (plist-get info :input-file)
+                      (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
+        (when (and file (file-readable-p file))
+          (with-temp-buffer
+            (insert-file-contents file nil 0 (min 4096 (nth 7 (file-attributes file)))))
+            (goto-char (point-min))
+            (when (re-search-forward "^:ID:\\s-*\\(.+\\)$" nil t)
+              (string-trim (match-string 1))))))))
 
 (defun org-astro--get-roam-aliases (tree info)
   "Return list of ROAM_ALIASES from TREE/INFO."
@@ -1085,9 +1094,18 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                    (when (member (org-element-property :key k)
                                  '("ROAM_ALIASES" "ROAM_ALIAS"))
                      (org-element-property :value k)))
-                  nil 'first-match)
+                 nil 'first-match)
                (plist-get info :roam-aliases)
-               (plist-get info :roam-alias))))
+               (plist-get info :roam-alias)
+               ;; Fallback: scan the source file for a top-level ROAM_ALIASES property
+               (let ((file (or (plist-get info :input-file)
+                               (and (buffer-file-name) (expand-file-name (buffer-file-name))))))
+                 (when (and file (file-readable-p file))
+                   (with-temp-buffer
+                     (insert-file-contents file nil 0 (min 4096 (nth 7 (file-attributes file)))))
+                     (goto-char (point-min))
+                     (when (re-search-forward "^:ROAM_ALIASES:\\s-*\\(.+\\)$" nil t)
+                       (match-string 1)))))))
     (org-astro--split-quoted-list raw)))
 
 (defun org-astro--get-front-matter-data (tree info)
