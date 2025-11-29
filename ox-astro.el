@@ -538,7 +538,7 @@ generated and added to the Org source file."
                       (message "Astro export cancelled: No posts folder selected.")
                       nil))
                 (when (and was-narrowed narrow-start narrow-end)
-                  (narrow-to-region narrow-start narrow-end))))))))))
+                  (narrow-to-region narrow-start narrow-end)))))))))
 ;;; Backend Definition
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
