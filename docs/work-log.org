@@ -2,25 +2,45 @@
 #+DATE: 2025-10-07
 
 * 2025-11-28
-** Session Summary: Link Routes and List Parsing
-- Fixed comma-separated list parsing to preserve internal spaces (e.g., =#+places: Brooklyn, Hungry Ghost Coffee= stays "Hungry Ghost Coffee" instead of stripping spaces).
-- Strengthened absolute route mode for ID links: when =org-astro-id-link-base-path= is set, links now use extensionless absolute routes even when slug metadata is missing by diffing outfile against posts folder.
-- Added =filetags= passthrough into front matter =tags= (deduped with =TAGS=/=ASTRO_TAGS=).
+** Session Summary: Per-Destination ID Link Routes and Metadata Fixes
+
+*** Changes Made
+- Fixed comma-separated list parsing to preserve internal spaces (e.g., =#+places: Brooklyn, Hungry Ghost Coffee= stays "Hungry Ghost Coffee" instead of stripping spaces)
+- Added =filetags= passthrough into front matter =tags= (deduped with =TAGS=/=ASTRO_TAGS=)
+- Added "conversation" to valid =story_type= values
+- Implemented per-destination =:id-link-base-path= config option for absolute routes
+
+*** Per-Destination ID Link Base Path
+New =:id-link-base-path= option in destination config allows different routing styles per project:
+
+#+begin_src emacs-lisp
+(setq org-astro-known-posts-folders
+      '(("roam-life" . (:path "/path/to/life-web/src/content/notes/"
+                        :preserve-folder-structure t
+                        :id-link-base-path "/notes"))  ; absolute routes
+        ("socraticai" . (:path "/path/to/socratic/src/content/blog"))))  ; relative .mdx paths
+#+end_src
+
+Priority: destination config → global =org-astro-id-link-base-path= → nil (relative paths)
+
+*** Verification
+Re-exported =~/Dropbox/roam-life/stories/20251022-brooklyn-coffee-ai.org= and confirmed:
+- [x] =places:= shows "Hungry Ghost Coffee" (spaces preserved)
+- [x] =tags:= includes filetags (story, conversation, ai, career, purpose)
+- [x] =storyType: conversation= now exports
+- [x] ID links render as =/notes/characters/rachel= (absolute route)
 
 ** Handoff
 
 *COMPLETED (Safe to rely on)*
-- [x] List splitting preserves internal spaces in comma-separated items (ox-astro-metadata.el)
-- [x] ID absolute route mode resolves extensionless paths via slug/subdir or outfile fallback (ox-astro-helpers.el)
-- [x] Filetags merged into front matter tags (ox-astro-metadata.el)
-- [x] Tests not re-run here; re-export of life-web fixture pending for verification
-
-*IN-PROGRESS (Requires completion)*
-- [ ] Re-export life-web fixture to confirm: places spacing, absolute ID routes, tags population
+- [x] List splitting preserves internal spaces in comma-separated items (=ox-astro-metadata.el=)
+- [x] Filetags merged into front matter tags with deduplication (=ox-astro-metadata.el=)
+- [x] "conversation" added to valid story types (=ox-astro-metadata.el=)
+- [x] Per-destination =:id-link-base-path= config (=ox-astro.el=, =ox-astro-helpers.el=)
+- [x] New dynamic var =org-astro--current-id-link-base-path= for export-scoped routing
 
 *CONTEXT FOR NEXT SESSION*
-- Files touched: =ox-astro-metadata.el=, =ox-astro-helpers.el=
-- Verification target: re-export =~/Dropbox/roam-life/stories/20251022-brooklyn-coffee-ai.org= and inspect =~/Dropbox/github/life-web/src/content/notes/stories/coffee-shop-conversation-about-ai-and-purpose.mdx=
+- Files touched: =ox-astro-metadata.el=, =ox-astro-helpers.el=, =ox-astro.el=, =docs/instructions.org=
 
 * 2025-11-26
 ** Session Summary: Add Responsive Images Support
