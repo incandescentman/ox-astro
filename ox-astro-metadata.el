@@ -43,7 +43,10 @@ or double quotes retain internal spacing; quotes are stripped in the result."
                   (push-char ch))
               (cond
                ((memq ch '(?\s ?\t ?\n))
-                (unless has-comma
+                (if has-comma
+                    ;; In comma mode, keep internal spaces (trim later) but
+                    ;; ignore leading whitespace before a token starts.
+                    (when token (push-char ch))
                   (finish-token)))
                ((= ch ?,)
                 (finish-token))
@@ -119,8 +122,17 @@ or double quotes retain internal spacing; quotes are stripped in the result."
   "Return list of tags from TREE/INFO, honoring ASTRO_TAGS and TAGS."
   (let* ((tags-raw (or (org-astro--keyword-raw-tags tree)
                        (plist-get info :astro-tags)
-                       (plist-get info :tags))))
-    (org-astro--split-quoted-list tags-raw)))
+                       (plist-get info :tags)))
+         (filetags (plist-get info :filetags))
+         (parsed (org-astro--split-quoted-list tags-raw))
+         (from-filetags (when filetags
+                          (mapcar (lambda (tag)
+                                    (let ((name (org-no-properties tag)))
+                                      (if (string-prefix-p ":" name)
+                                          (string-trim name ":")
+                                        name)))
+                                  filetags))))
+    (cl-remove-duplicates (append parsed from-filetags) :test #'string=)))
 
 (defun org-astro--parse-categories (tree info)
   "Return list of categories from TREE/INFO, honoring ASTRO_CATEGORIES."

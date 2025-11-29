@@ -561,6 +561,17 @@ This is derived from the relative-subdir and slug, or from the filename."
             (concat (string-trim-right relative-subdir "/") "/" base-name)
           base-name)))))
 
+(defun org-astro--compute-collection-id-from-outfile (entry)
+  "Compute collection ID by diffing OUTFILE against POSTS-FOLDER in ENTRY.
+Falls back to stripping the .mdx extension from the outfile when slug data is
+absent in the ENTRY."
+  (let ((outfile (plist-get entry :outfile))
+        (posts-folder (plist-get entry :posts-folder)))
+    (when (and outfile posts-folder)
+      (let* ((relative (file-relative-name outfile posts-folder))
+             (no-ext (file-name-sans-extension relative)))
+        (string-trim-left no-ext "./")))))
+
 (defun org-astro--record-missing-id-link (info target-id desc)
   "Log and record a missing TARGET-ID using INFO and DESC.
 Returns fallback text that should be inserted into the document."
@@ -1145,16 +1156,17 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                             desc
                           (or (and entry (plist-get entry :title))
                               target-id))))
-        (if entry
-            ;; Check if we should use absolute routes or relative MDX paths
-            (if (and (boundp 'org-astro-id-link-base-path) org-astro-id-link-base-path)
-                ;; Absolute route mode: /base-path/collection-id
-                (let ((collection-id (org-astro--compute-collection-id entry)))
-                  (if collection-id
-                      (let* ((base (string-trim-right org-astro-id-link-base-path "/"))
-                             (route (concat base "/" collection-id)))
-                        (format "[%s](%s)" link-text route))
-                    (org-astro--record-missing-id-link info target-id link-text)))
+            (if entry
+                ;; Check if we should use absolute routes or relative MDX paths
+                (if (and (boundp 'org-astro-id-link-base-path) org-astro-id-link-base-path)
+                    ;; Absolute route mode: /base-path/collection-id
+                    (let ((collection-id (or (org-astro--compute-collection-id entry)
+                                             (org-astro--compute-collection-id-from-outfile entry))))
+                      (if collection-id
+                          (let* ((base (string-trim-right org-astro-id-link-base-path "/"))
+                                 (route (concat base "/" collection-id)))
+                            (format "[%s](%s)" link-text route))
+                        (org-astro--record-missing-id-link info target-id link-text)))
               ;; Relative MDX path mode (original behavior)
               (if org-astro--current-outfile
                   (let* ((target-outfile (or (plist-get entry :outfile)
