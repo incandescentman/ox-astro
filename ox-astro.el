@@ -581,8 +581,10 @@ resolved to plain text in the temporary export buffer."
         (?x "To MDX file" org-astro-export-to-mdx)
         (?o "To MDX file and open"
             (lambda (_a _s _v _b)
-              (org-open-file
-               (org-astro-export-to-mdx))))))
+              (let ((outfile (org-astro-export-to-mdx)))
+                (if outfile
+                    (org-open-file outfile)
+                  (message "Astro export failed (no output file). Check DESTINATION_FOLDER or org-astro-known-posts-folders."))))))
 
   :translate-alist
   '((src-block . org-astro-src-block)
