@@ -480,10 +480,32 @@ Default is nil (disabled). When enabled, paths are copied to clipboard after exp
 
 ** Handoff
 
-* 2025-11-30 ID Map Defaults to First Destination
+* 2025-11-30 Fix ID Map Building (Critical Bug)
 ** Summary
-- Fixed ID map construction so files without an explicit `#+DESTINATION_FOLDER`/`#+ASTRO_POSTS_FOLDER` fall back to the first `org-astro-known-posts-folders` entry. Ensures existing IDs always map to an outfile and aren’t flagged as missing.
+Fixed critical bug where the ID map was always empty (0 IDs), causing all cross-file ID links to be reported as broken even though the target files existed.
+
+*** Root Cause
+The regex in `directory-files-recursively` was malformed:
+#+begin_src emacs-lisp
+;; BROKEN - single backslashes in double-quoted string
+(directory-files-recursively root "\.org\'")
+;; This became literal ".org'" - matching no files
+
+;; FIXED - proper escaping
+(directory-files-recursively root "\\.org\\'")
+;; This correctly matches files ending in .org
+#+end_src
+
+*** Additional Fix
+Also added fallback so files without `#+DESTINATION_FOLDER` use the first entry in `org-astro-known-posts-folders`, ensuring all IDs map to an outfile.
+
+*** Symptoms
+- `[ox-astro] ID map built: 0 IDs from root /Users/jay/dropbox/roam`
+- All ID links reported as broken despite target files existing
+- org-id separately reported "691 files scanned, 728 IDs found" (different system)
+
 ** Files
-- `ox-astro-helpers.el`
-** Commit
-- `f80f68d` fix: default destination for id map
+- `ox-astro-helpers.el` - Fixed regex, added destination fallback, added debug logging
+
+** Lesson Learned
+In Emacs Lisp, regex special sequences like `\'` (end of string) require double backslashes in double-quoted strings: `"\\'"`. Single backslashes are consumed by the string parser, leaving just `'`.

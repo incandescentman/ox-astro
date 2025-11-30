@@ -538,7 +538,7 @@ Set environment variable OX_ASTRO_DUP_LOG_MODE=verbose to log every duplicate ID
          (dup-verbose (member dup-log-mode '("verbose" "full" "all" "1" "t"))))
     ;; Build map and track duplicates.
     (if (and root (file-directory-p root))
-        (dolist (file (directory-files-recursively root "\.org\'"))
+        (dolist (file (directory-files-recursively root "\\.org\\'"))
           (let ((meta (org-astro--collect-org-file-export-metadata file)))
             (when meta
               (dolist (id (plist-get meta :id-list))
@@ -581,6 +581,9 @@ Set environment variable OX_ASTRO_DUP_LOG_MODE=verbose to log every duplicate ID
             (message "[ox-astro] Duplicate org-roam IDs: %d total. Examples: %s. Set OX_ASTRO_DUP_LOG_MODE=verbose for full list."
                      total examples)))))
 
+    ;; Debug: report how many IDs ox-astro found
+    (message "[ox-astro] ID map built: %d IDs from root %s"
+             (hash-table-count map) root)
     map))
 
 (defun org-astro--add-file-to-id-map (map file)
@@ -1427,6 +1430,11 @@ Returns cleaned alist; emits warnings when coercions occur."
       (let* ((target-id path)
              (entry (and org-astro--id-path-map
                          (gethash target-id org-astro--id-path-map)))
+             (_ (unless entry
+                  (message "[ox-astro DEBUG] ID lookup failed: %s (map has %d entries, map=%s)"
+                           target-id
+                           (if org-astro--id-path-map (hash-table-count org-astro--id-path-map) 0)
+                           (if org-astro--id-path-map "exists" "NIL"))))
              (link-text (if (and desc (not (string-blank-p desc)))
                             desc
                             (or (and entry (plist-get entry :title))
