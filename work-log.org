@@ -48,6 +48,6 @@ Fixed MDX parse failures caused by raw `<file:///...>` links when exporting `fil
 Made duplicate org-roam ID handling deterministic and quiet during batch exports.
 ** Changes
 - `ox-astro-helpers.el`: added scoring to prefer canonical sources (penalize “conflicted copy”/“ copy.org” paths) when the same ID appears in multiple files.
-- Logging now emits a single line per duplicate ID with the chosen winner and a count of skipped files, instead of flooding the log once per file.
+- Logging now defaults to a compact summary; set `OX_ASTRO_DUP_LOG_MODE=verbose` for per-ID detail.
 ** Impact
 - Export output is readable again while still warning about ID collisions; exports pick stable winners for duplicated IDs without touching source org files.

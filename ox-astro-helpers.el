@@ -511,7 +511,9 @@ TRACKER, when non-nil, accumulates duplicate counts keyed by ID."
 Logs duplicate IDs once per ID with a summary of the kept/ignored sources."
   (let* ((root (and source-dir (expand-file-name source-dir)))
          (map (make-hash-table :test #'equal))
-         (duplicate-tracker (make-hash-table :test #'equal)))
+         (duplicate-tracker (make-hash-table :test #'equal))
+         (dup-log-mode (downcase (or (getenv "OX_ASTRO_DUP_LOG_MODE") "summary")))
+         (dup-verbose (member dup-log-mode '("verbose" "full" "all" "1" "t"))))
     (if (and root (file-directory-p root))
         (dolist (file (directory-files-recursively root "\\.org\\'"))
           (let ((meta (org-astro--collect-org-file-export-metadata file)))
@@ -521,22 +523,44 @@ Logs duplicate IDs once per ID with a summary of the kept/ignored sources."
                   (org-astro--id-map-store map id meta duplicate-tracker))))))
       (when root
         (message "[ox-astro] ID map skipped: source directory %s not found" root)))
-    ;; Emit one log line per duplicated ID.
-    (maphash
-     (lambda (id info)
-       (let ((count (plist-get info :count)))
-         (when (> count 0)
-           (let ((winner (plist-get info :winner))
-                 (examples (plist-get info :examples)))
-             (message "[ox-astro] Duplicate org-roam ID %s: kept %s; skipped %d other%s%s"
-                      id
-                      (plist-get winner :source)
-                      count
-                      (if (= count 1) "" "s")
-                      (if examples
-                          (format " (e.g., %s)" (car (last examples)))
-                        ""))))))
-     duplicate-tracker)
+    ;; Emit duplicate summary (verbose lists each ID; summary logs examples only).
+    (let ((dups '()))
+      (maphash
+       (lambda (id info)
+         (let ((count (plist-get info :count)))
+           (when (> count 0)
+             (push (list :id id
+                         :count count
+                         :winner (plist-get info :winner)
+                         :examples (plist-get info :examples))
+                   dups))))
+       duplicate-tracker)
+      (setq dups (nreverse dups))
+      (cond
+       (dup-verbose
+        (dolist (d dups)
+          (message "[ox-astro] Duplicate org-roam ID %s: kept %s; skipped %d other%s%s"
+                   (plist-get d :id)
+                   (plist-get (plist-get d :winner) :source)
+                   (plist-get d :count)
+                   (if (= (plist-get d :count) 1) "" "s")
+                   (if (plist-get d :examples)
+                       (format " (e.g., %s)" (car (last (plist-get d :examples))))
+                     "")))))
+       ((> (length dups) 0)
+        (let* ((total (length dups))
+               (sample (seq-take dups 8))
+               (examples
+                (mapconcat
+                 (lambda (d)
+                   (format "%s (kept %s; skipped %d)"
+                           (plist-get d :id)
+                           (plist-get (plist-get d :winner) :source)
+                           (plist-get d :count)))
+                 sample
+                 "; ")))
+          (message "[ox-astro] Duplicate org-roam IDs: %d total. Examples: %s. Set OX_ASTRO_DUP_LOG_MODE=verbose for full list."
+                   total examples))))))
     map))
 
 (defun org-astro--add-file-to-id-map (map file)
