@@ -429,26 +429,27 @@ Returns a plist with keys:
         (message "DEBUG: Current buffer (%s) is not suitable, searching for source buffer..." (buffer-name))
         (message "DEBUG: Current buffer file: %s, read-only: %s" (buffer-file-name) buffer-read-only))
       (org-astro--debug-log-direct "UPDATE-BUFFER: Searching for source buffer containing path: %s" old-path)
-      (dolist (buf (buffer-list))
-        (with-current-buffer buf
-          (let ((buf-file (buffer-file-name))
-                (buf-readonly buffer-read-only))
-            (when (and buf-file (string-match-p "\\.org$" buf-file))
-              (org-astro--debug-log-direct "UPDATE-BUFFER: Checking buffer %s (file: %s, readonly: %s)"
-                                           (buffer-name) buf-file buf-readonly))
-            (when (and buf-file
-                       (not buf-readonly)
-                       (string-match-p "\\.org$" buf-file)
-                       ;; Check if this buffer contains the image path (raw or bracketed)
-                       (save-excursion
-                         (goto-char (point-min))
-                         (or (search-forward old-path nil t)
-                             (search-forward (format "[[%s]]" old-path) nil t))))
-              (when org-astro-debug-console
-                (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file))
-              (org-astro--debug-log-direct "UPDATE-BUFFER: FOUND source buffer: %s" (buffer-name))
-              (setq source-buffer buf)
-              (cl-return)))))))
+      (catch 'found-buffer
+        (dolist (buf (buffer-list))
+          (with-current-buffer buf
+            (let ((buf-file (buffer-file-name))
+                  (buf-readonly buffer-read-only))
+              (when (and buf-file (string-match-p "\\.org$" buf-file))
+                (org-astro--debug-log-direct "UPDATE-BUFFER: Checking buffer %s (file: %s, readonly: %s)"
+                                             (buffer-name) buf-file buf-readonly))
+              (when (and buf-file
+                         (not buf-readonly)
+                         (string-match-p "\\.org$" buf-file)
+                         ;; Check if this buffer contains the image path (raw or bracketed)
+                         (save-excursion
+                           (goto-char (point-min))
+                           (or (search-forward old-path nil t)
+                               (search-forward (format "[[%s]]" old-path) nil t))))
+                (when org-astro-debug-console
+                  (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file))
+                (org-astro--debug-log-direct "UPDATE-BUFFER: FOUND source buffer: %s" (buffer-name))
+                (setq source-buffer buf)
+                (throw 'found-buffer nil))))))))
 
     ;; Now use the source-buffer within the same let binding
     (if source-buffer
@@ -607,13 +608,14 @@ Returns a plist with keys:
      ((and (buffer-file-name) (not buffer-read-only))
       (setq source-buffer (current-buffer)))
      (t
-      (dolist (buf (buffer-list))
-        (with-current-buffer buf
-          (let ((bf (buffer-file-name)))
-            (when (and bf (not buffer-read-only)
-                       (string-match-p "\\.org$" bf))
-              (setq source-buffer buf)
-              (cl-return)))))))
+      (catch 'found-buffer
+        (dolist (buf (buffer-list))
+          (with-current-buffer buf
+            (let ((bf (buffer-file-name)))
+              (when (and bf (not buffer-read-only)
+                         (string-match-p "\\.org$" bf))
+                (setq source-buffer buf)
+                (throw 'found-buffer nil))))))))
     (when source-buffer
       (with-current-buffer source-buffer
         (org-astro--upsert-image-paths-comment-in-current-buffer items)
