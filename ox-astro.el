@@ -515,14 +515,14 @@ generated and added to the Org source file."
                         (when org-astro-debug-console
                           (message "[DEBUG-EXPORT] Calling org-export-to-file with backend: astro")
                           (message "[DEBUG-EXPORT] Backend details: %S" (org-export-get-backend 'astro)))
-                        ;; DEBUG: Check if ID links exist in buffer before export
-                        (save-excursion
-                          (goto-char (point-min))
-                          (let ((id-link-count 0))
-                            (while (re-search-forward "\\[\\[id:" nil t)
-                              (setq id-link-count (1+ id-link-count)))
+                        ;; DEBUG: Check if ID links exist in buffer before export (console-gated)
                         (when org-astro-debug-console
-                          (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count))))
+                          (save-excursion
+                            (goto-char (point-min))
+                            (let ((id-link-count 0))
+                              (while (re-search-forward "\\[\\[id:" nil t)
+                                (setq id-link-count (1+ id-link-count)))
+                              (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count))))
                         (save-excursion
                           (when narrow-start (goto-char narrow-start))
                           (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only))
