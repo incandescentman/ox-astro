@@ -480,37 +480,10 @@ Default is nil (disabled). When enabled, paths are copied to clipboard after exp
 
 ** Handoff
 
-*COMPLETED (Safe to rely on)*
-- [x] Clipboard copying is now opt-in via `org-astro-copy-to-clipboard`
-- [x] All pbcopy calls guarded in helpers.el and handlers.el
-- [x] Paren balance restored in ox-astro.el
-
-*IN-PROGRESS (Requires completion)*
-- [ ] Verify end-to-end export works without "cancelled" message
-- [ ] May need to unify dual folder resolution paths if issue persists
-
-*CONTEXT FOR NEXT SESSION*
-- Files touched: `ox-astro.el`, `ox-astro-helpers.el`, `ox-astro-handlers.el`
-- Root cause of "cancelled" message: folder lookup happens twice, second lookup fails after `org-export-get-environment` rebuilds info plist
-- Fix strategy: resolve destination exactly once per invocation, cache in locals, reattach after environment refresh
-
-* 2025-12-05
-** Regression Analysis (Astro export double-message)
-- Observed behavior: first pass writes file and logs "Export complete", but the command returns nil with "Astro export cancelled: No posts folder selected."
-- Likely cause: `org-astro-export-to-mdx` resolves destination twice; after buffer modifications `info` is rebuilt via `org-export-get-environment`, blowing away the cached folder info. A later call (or the `?o` wrapper that calls `org-astro-export-to-mdx` again) loses the posts folder and falls into the "no posts folder" branch.
-- Fix strategy: resolve destination exactly once per invocation, keep it in locals, and reattach to `info` after any environment refresh. Reuse cached values for pub-dir/outfile; optionally guard against re-entrancy.
-
-** Session Summary: YAML/frontmatter hardening
-
-*** Changes Made
-- Cleaned tag parsing to drop nil/empty/capture-template tags and format YAML with proper quoting/indentation (`ox-astro-metadata.el`, `ox-astro-helpers.el`).
-- Sanitized excerpts for YAML (strip property drawers/roam preamble, collapse whitespace, escape quotes, cap length) and quote numeric/ambiguous scalars (title/slug/excerpt).
-- Added front-matter validator to coerce numeric titles/slugs, filter bad tags, and emit warnings; body filter now runs validation before emitting YAML.
-
-*** Tests
-- `emacs -Q --batch -L . -l test/image-pipeline-test.el -f ert-run-tests-batch-and-exit`
-  - Pass: 3/4
-  - Fail: `ox-astro-gallery-export-test` (fixture mismatch; actual output now includes slug/tags/orgRoamId/orgPath and retains roam preamble lines).
-
-*** Next Actions
-- Refresh `test/gallery_test_rigorous.expected.mdx` (or relax assertions) to reflect new front-matter shape before expecting green CI.
+* 2025-11-30 ID Map Defaults to First Destination
+** Summary
+- Fixed ID map construction so files without an explicit `#+DESTINATION_FOLDER`/`#+ASTRO_POSTS_FOLDER` fall back to the first `org-astro-known-posts-folders` entry. Ensures existing IDs always map to an outfile and aren’t flagged as missing.
+** Files
+- `ox-astro-helpers.el`
+** Commit
+- `f80f68d` fix: default destination for id map
