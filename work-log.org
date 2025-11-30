@@ -1,3 +1,39 @@
+* 2025-11-30 - Audio file support for media imports
+
+** Summary
+Added support for audio files (.mp3, .wav, .ogg, .m4a, .aac, .flac) alongside images.
+Audio files are now:
+- Detected in org links and plain text
+- Copied to assets folder
+- Import statements generated
+- But NO <Image> JSX generated (audio imports are for manual use with custom components)
+
+** Usage in org files
+Add audio file path as a link:
+#+begin_example
+[[/path/to/audio.mp3]]
+#+end_example
+
+The export will generate:
+#+begin_example
+import audioFile from '~/assets/images/posts/slug/audio.mp3';
+#+end_example
+
+Then manually use with AudioPlayer component in MDX.
+
+** Files Modified
+- `ox-astro-image-handlers.el`:
+  - Added `org-astro--audio-extension-regexp` and `org-astro--media-extension-regexp`
+  - Added `org-astro--audio-path-matches-p` and `org-astro--media-path-matches-p` helpers
+  - Updated `org-astro--build-image-manifest` to use media matcher (images + audio)
+  - Updated `org-astro--build-render-map` to skip JSX generation for audio files
+  - Audio entries marked with `:audio t` for downstream identification
+
+** Impact
+- Audio files now get copied and imported automatically
+- No breaking changes to existing image handling
+- Manual component usage gives full control over audio player styling
+
 * 2025-11-30 - Image credits/captions polish and reliability
 
 ** Summary

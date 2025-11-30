@@ -30,6 +30,14 @@
   "\\.\\(png\\|jpe?g\\|jpeg\\|gif\\|svg\\|webp\\)"
   "Regular expression that matches supported image file extensions.")
 
+(defconst org-astro--audio-extension-regexp
+  "\\.\\(mp3\\|wav\\|ogg\\|m4a\\|aac\\|flac\\)"
+  "Regular expression that matches supported audio file extensions.")
+
+(defconst org-astro--media-extension-regexp
+  "\\.\\(png\\|jpe?g\\|jpeg\\|gif\\|svg\\|webp\\|mp3\\|wav\\|ogg\\|m4a\\|aac\\|flac\\)"
+  "Regular expression that matches all supported media file extensions (images + audio).")
+
 (defun org-astro--image-remote-p (path)
   "Return non-nil when PATH references a remote image."
   (and (stringp path)
@@ -50,6 +58,20 @@
     (let ((candidate (org-astro--image-query-stripped-path path)))
       (and candidate
            (string-match-p org-astro--image-extension-regexp candidate)))))
+
+(defun org-astro--audio-path-matches-p (path)
+  "Return non-nil when PATH looks like an audio file reference."
+  (when (stringp path)
+    (let ((candidate (org-astro--image-query-stripped-path path)))
+      (and candidate
+           (string-match-p org-astro--audio-extension-regexp candidate)))))
+
+(defun org-astro--media-path-matches-p (path)
+  "Return non-nil when PATH looks like any media file (image or audio)."
+  (when (stringp path)
+    (let ((candidate (org-astro--image-query-stripped-path path)))
+      (and candidate
+           (string-match-p org-astro--media-extension-regexp candidate)))))
 
 (defun org-astro--image-manifest--ensure (manifest-table key source-file)
   "Ensure KEY exists in MANIFEST-TABLE with SOURCE-FILE metadata.
@@ -101,11 +123,15 @@ Each manifest entry is a plist with keys:
           (order nil))
      (cl-labels
          ((register-entry (path origin &rest kvs)
-                          (when (org-astro--image-path-matches-p path)
+                          ;; Use media matcher to include both images and audio files
+                          (when (org-astro--media-path-matches-p path)
                             (let* ((entry (org-astro--image-manifest--ensure manifest path source-file))
                                    (occur (apply #'org-astro--image-manifest--normalize-occurrence
                                                  :origin origin kvs))
                                    (occurrences (plist-get entry :occurrences)))
+                              ;; Mark audio files for special handling downstream
+                              (when (org-astro--audio-path-matches-p path)
+                                (setq entry (plist-put entry :audio t)))
                               (setq entry (plist-put entry :occurrences (append occurrences (list occur))))
                               (puthash path entry manifest)
                               (unless (member path order)
@@ -117,7 +143,8 @@ Each manifest entry is a plist with keys:
              (let* ((type (or (org-element-property :type link) "file"))
                     (path (or (org-element-property :path link)
                               (org-element-property :raw-link link))))
-               (when (org-astro--image-path-matches-p path)
+               ;; Use media matcher to include both images and audio files
+               (when (org-astro--media-path-matches-p path)
                  (funcall register-entry-fn path
                           (if (org-astro--image-remote-p path) 'remote-link 'link)
                           :link-type type
@@ -126,16 +153,17 @@ Each manifest entry is a plist with keys:
                           :end (org-element-property :end link)
                           :line (org-astro--image-manifest--line-number (org-element-property :begin link)))))))
          ;; Raw plain-text occurrences (absolute paths, assets paths, remote URLs)
+         ;; Now uses media-extension-regexp to also find audio files
          (org-element-map tree 'plain-text
            (lambda (plain)
              (let* ((raw (org-element-property :value plain)))
                (when (stringp raw)
                  (let* ((begin (org-element-property :begin plain))
                         (line (org-astro--image-manifest--line-number begin))
-                        (regex (concat "\\(/[^[:space:]]+" org-astro--image-extension-regexp "\\)\\b\\|"
-                                       "\\(https?://[^[:space:]]+" org-astro--image-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
-                                       "\\(//[^[:space:]]+" org-astro--image-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
-                                       "\\(assets/images/[^[:space:]]+" org-astro--image-extension-regexp "\\)"))
+                        (regex (concat "\\(/[^[:space:]]+" org-astro--media-extension-regexp "\\)\\b\\|"
+                                       "\\(https?://[^[:space:]]+" org-astro--media-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
+                                       "\\(//[^[:space:]]+" org-astro--media-extension-regexp "\\(?:[?#][^[:space:]]*\\)?\\)\\|"
+                                       "\\(assets/images/[^[:space:]]+" org-astro--media-extension-regexp "\\)"))
                         (start 0))
                    (while (string-match regex raw start)
                      (let ((path (or (match-string 1 raw)
@@ -248,7 +276,7 @@ Returns a plist describing the outcome or nil on failure."
                         :status 'copied))))))))))))
 
 (defun org-astro--build-render-map (processed &optional hero-path)
-  "Return render metadata for PROCESSED image entries.
+  "Return render metadata for PROCESSED media entries (images and audio).
 The result is a plist with keys:
 - :map — hash table mapping lookup keys to render records
 - :imports — list of import lines to include in the MDX prolog."
@@ -259,27 +287,34 @@ The result is a plist with keys:
       (let* ((astro-path (plist-get entry :astro-path))
              (var-name (plist-get entry :var-name))
              (path (plist-get entry :path))
-             (original (plist-get entry :original-path)))
+             (original (plist-get entry :original-path))
+             (is-audio (org-astro--audio-path-matches-p (or astro-path path original))))
         (when (and astro-path var-name)
-          (let* ((alt (org-astro--image-entry-alt entry))
-                 (escaped-alt (replace-regexp-in-string "\"" "\\\\\"" alt))
-                 (layout-prop (when (and (boundp 'org-astro-image-default-layout)
+          (let* ((alt (unless is-audio (org-astro--image-entry-alt entry)))
+                 (escaped-alt (when alt (replace-regexp-in-string "\"" "\\\\\"" alt)))
+                 (layout-prop (when (and (not is-audio)
+                                         (boundp 'org-astro-image-default-layout)
                                          org-astro-image-default-layout
                                          (not (string= org-astro-image-default-layout "none")))
                                 (format " layout=\"%s\"" org-astro-image-default-layout)))
-                 (jsx (format "<Image src={%s} alt=\"%s\"%s />" var-name escaped-alt (or layout-prop "")))
+                 ;; For audio files, don't generate JSX - just import for manual use
+                 (jsx (unless is-audio
+                        (format "<Image src={%s} alt=\"%s\"%s />" var-name escaped-alt (or layout-prop ""))))
                  (import-line (format "import %s from '%s';" var-name astro-path))
                  (record (list :entry entry
                                :var-name var-name
                                :astro-path astro-path
                                :alt alt
-                               :jsx jsx))
-                 (is-hero (and hero-path (org-astro--hero-image-entry-p entry hero-path))))
+                               :jsx jsx
+                               :audio is-audio))
+                 (is-hero (and (not is-audio) hero-path (org-astro--hero-image-entry-p entry hero-path))))
             (when is-hero
               (setf (plist-get entry :hero) t)
               (setf (plist-get record :hero) t))
             (cl-pushnew import-line imports :test #'equal)
-            (setq include-image-component t)
+            ;; Only include Image component for actual images, not audio
+            (unless is-audio
+              (setq include-image-component t))
             (dolist (key (list path
                                original
                                astro-path
