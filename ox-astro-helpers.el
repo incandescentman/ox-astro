@@ -954,10 +954,15 @@ these special blocks, which would break the block structure."
            (>= (length digits-only) 6)))))
 
 (defun org-astro--slugify (s)
-  "Convert string S to a slug."
+  "Convert string S to a slug.
+Strips leading/trailing dashes that result from punctuation like question marks."
   (when (stringp s)
-    (let ((s (downcase s)))
-      (replace-regexp-in-string "[^a-z0-9]+" "-" (org-trim s) nil))))
+    (let* ((s (downcase s))
+           (s (replace-regexp-in-string "[^a-z0-9]+" "-" (org-trim s) nil))
+           ;; Strip leading and trailing dashes
+           (s (replace-regexp-in-string "^-+" "" s))
+           (s (replace-regexp-in-string "-+$" "" s)))
+      s)))
 
 ;; Detect whether TEXT contains Markdown link syntax that should be preserved
 ;; as-is. We check for inline links [text](url) and reference-style links
