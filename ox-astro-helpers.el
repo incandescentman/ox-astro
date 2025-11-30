@@ -5,7 +5,17 @@
 (require 'subr-x) ; for string-trim, string-trim-right
 (require 'cl-lib)
 (require 'json)
+(require 'org)
 (require 'org-element)
+(require 'org-id)
+
+;; Silence org-id scan chatter during batch exports.
+(when (fboundp 'org-id-locations--scan)
+  (advice-add 'org-id-locations--scan :around
+              (lambda (orig-fn &rest args)
+                (let ((inhibit-message t)
+                      (message-log-max nil))
+                  (apply orig-fn args)))))
 
 ;; Compatibility helpers for older Emacs builds.
 (unless (fboundp 'cl-putf)

@@ -45,6 +45,7 @@
 
 (require 'ox-md)
 (require 'org)
+(require 'org-element)
 (require 'cl-lib)
 
 (require 'ox-astro-config)
