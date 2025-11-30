@@ -558,5 +558,39 @@ Also added fallback so files without `#+DESTINATION_FOLDER` use the first entry 
 ** Lesson Learned
 In Emacs Lisp, regex special sequences like `\'` (end of string) require double backslashes in double-quoted strings: `"\\'"`. Single backslashes are consumed by the string parser, leaving just `'`.
 
-* 2025-11-30 Strip ID drawers from body
-- Strip PROPERTIES drawer output and org-roam boilerplate from MDX bodies, keeping IDs only in frontmatter (add property-drawer translator + final body cleanup of Links/Source lines). Addresses leaked `:ID:` lines like in journal/monday-february-12-2024.mdx.
+* 2025-11-30 Strip ID drawers and org-roam boilerplate from body
+
+** Session 3: Regex Fix for Links/Source Stripping
+
+*** Bug Fixed
+The regex pattern for stripping org-roam template boilerplate wasn't matching actual output.
+
+*Problem:* Actual export output has colon inside bold markers:
+#+begin_example
+    -   **Links:**
+    -   **Source:**
+#+end_example
+
+Original regex expected colon after bold: =**Links**:=. Fixed to handle colon inside or outside:
+
+#+begin_src emacs-lisp
+;; Before (broken)
+"^[ \t]*-[ \t]+\\*\\*\\(Links\\|Source\\)\\*\\*[ \t]*::?[ \t]*\n?"
+
+;; After (fixed)
+"^[ \t]*-[ \t]+\\*\\*\\(Links\\|Source\\):?\\*\\*[ \t]*:?[ \t]*\n?"
+#+end_src
+
+*** Verification
+Re-exported MDX files now have clean body content:
+- ✅ No =:ID:= lines (property drawer fix working)
+- ✅ No =- **Links:**= boilerplate
+- ✅ No =- **Source:**= boilerplate
+
+*** Files Modified
+- =ox-astro-handlers.el= (line 356 - regex pattern fix)
+
+** Session 2: Body Content Cleanup for org-roam Exports
+- Strip PROPERTIES drawer output and org-roam boilerplate from MDX bodies
+- Keep IDs only in frontmatter (add property-drawer translator + final body cleanup)
+- Addresses leaked =:ID:= lines like in journal/monday-february-12-2024.mdx

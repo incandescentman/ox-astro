@@ -65,8 +65,23 @@ Set =org-astro-id-link-base-path= to apply absolute routes to all exports:
 * org-roam Compatibility
 ox-astro handles org-roam files cleanly:
 - *Property drawers* (=:PROPERTIES:= / =:ID:= / =:END:=) are stripped from body content; IDs go to frontmatter as =orgRoamId=
-- *Template boilerplate* (=- **Links:**=, =- **Source:**=) is removed from output
+- *Template boilerplate* is removed from output:
+  - =- **Links:**= and =- **Source:**= list items (with or without content)
+  - Standalone =Links:= and =Source:= lines
+  - Various indentation/formatting variants
 - *ID links* (=[[id:...][Title]]=) resolve to MDX paths using the ID map built from your org-roam directory
+
+** What Gets Stripped
+The final output filter removes common org-roam template artifacts:
+
+| Pattern                    | Example                  | Status   |
+|----------------------------+--------------------------+----------|
+| Bold list item (empty)     | =- **Links:**=           | Stripped |
+| Bold list item (content)   | =- **Links:** [[id:...]]= | Preserved (links kept) |
+| Standalone label           | =Links:=                 | Stripped |
+| Property drawer lines      | =:ID: abc123=            | Stripped |
+
+Note: If you have actual content after =Links:= or =Source:= labels (not just empty placeholders), those links are preserved.
 
 * Debug and Development Options
 
