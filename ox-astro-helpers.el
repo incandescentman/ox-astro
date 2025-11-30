@@ -9,6 +9,9 @@
 (require 'org-element)
 (require 'org-id)
 
+(defvar org-astro-known-posts-folders nil
+  "List of destination folders for exports, each entry a (NICKNAME . PLIST).")
+
 ;; Silence org-id scan chatter during batch exports.
 (when (fboundp 'org-id-locations--scan)
   (advice-add 'org-id-locations--scan :around
