@@ -44,17 +44,18 @@
   "Return 1-based index for ITEM counting only numeric siblings in STRUCT."
   (let ((pos (org-element-property :begin item))
         (count 0))
-    (cl-loop for entry in struct
-             for entry-pos = (nth 0 entry)
-             for entry-bullet = (nth 2 entry)
-             do (cond
-                 ((< entry-pos pos)
-                  (when (and entry-bullet
-                             (string-match-p "^[0-9]+\\." entry-bullet))
-                    (cl-incf count)))
-                 ((= entry-pos pos)
-                  (cl-return (1+ count))))
-             finally (cl-return (1+ count)))))
+    (catch 'found
+      (cl-loop for entry in struct
+               for entry-pos = (nth 0 entry)
+               for entry-bullet = (nth 2 entry)
+               do (cond
+                   ((< entry-pos pos)
+                    (when (and entry-bullet
+                               (string-match-p "^[0-9]+\\." entry-bullet))
+                      (cl-incf count)))
+                   ((= entry-pos pos)
+                    (throw 'found (1+ count)))))
+      (1+ count))))
 
 (defun org-astro-item (item contents info)
   "Transcode ITEM into Markdown, honoring mixed list bullets.
