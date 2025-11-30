@@ -1,6 +1,36 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-11-30
+** Session: Debug Output Cleanup and Export Bug Fixes
+
+*** Bugs Fixed
+
+1. *ID map regex escaping bug*
+   - Regex ~"\.org\'"~ in double-quoted strings becomes literal ~.org'~
+   - Fixed to ~"\\.org\\'"~ for proper matching of .org files
+   - Was causing "ID map built: 0 IDs" - all files were being skipped
+
+2. *cl-return without cl-block errors*
+   - ~(no-catch --cl-block-nil-- nil)~ errors during export
+   - ~cl-return~ requires a named ~cl-block~, can't be used in ~cl-loop~ or ~dolist~
+   - Fixed 3 instances using ~catch/throw~ pattern instead:
+     - ~org-astro--ordered-item-number~ in ox-astro-handlers.el
+     - Two functions in ox-astro-image-handlers.el
+
+3. *Duplicate ID logging noise*
+   - Added ~org-astro--duplicate-ids-logged~ flag to only log duplicate ID summary once per batch
+   - Fixed tracker plist missing ~:id~ key (was showing ~nil~ instead of actual IDs)
+
+4. *DEBUG message flooding*
+   - Removed ~34 ungated DEBUG: messages from ox-astro-image-handlers.el
+   - Messages weren't gated behind ~org-astro-debug-console~
+
+*** Files Modified
+- ox-astro-helpers.el (regex fix, duplicate logging)
+- ox-astro-handlers.el (cl-return fix)
+- ox-astro-image-handlers.el (cl-return fixes, DEBUG removal)
+
 * 2025-11-28
 ** Session 2: Fix Elisp Parse Errors in ox-astro-helpers.el
 
