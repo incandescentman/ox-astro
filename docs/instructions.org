@@ -158,8 +158,8 @@ For images within the body content:
 Alternative keyword: ~#+IMAGE-PROMPT:~ (alias for ~IMAGE-CAPTION~)
 
 *** Display Behavior
-- *On page*: Credit appears as small gray text below the image
-- *In lightbox*: Both credit (bold) and caption (italic) appear at the bottom
+- *On page*: Credit appears as small gray text below the image (exact text you provide)
+- *In lightbox*: Both credit (bold) and caption (italic) appear at the bottom (no automatic prefix)
 
 *** Generated Output
 Body images with credit/caption produce a figure wrapper:
@@ -167,17 +167,17 @@ Body images with credit/caption produce a figure wrapper:
 #+begin_src html
 <figure class="image-figure">
 <a href={imgVar.src} data-pswp-item="true"
-   data-pswp-caption="<strong>Image:</strong> Credit<br/><em>Caption</em>" ...>
+   data-pswp-caption="<strong>Generated With:</strong> Model<br/><em>Caption</em>" ...>
 <Image src={imgVar} alt="..." layout="responsive" />
 </a>
 <figcaption class="image-caption text-xs text-gray-400 mt-2">
-<span class="font-medium">Image:</span> Credit
+Generated With: Model
 </figcaption>
 </figure>
 #+end_src
 
 *** Notes
-- Keywords must immediately follow the image (or other IMAGE-* keywords for the same image)
+- Keywords must immediately follow the image (or other IMAGE-* keywords for the same image); blank lines in between are ok
 - Underscores and hyphens are interchangeable (e.g., ~IMAGE_CREDIT~ = ~IMAGE-CREDIT~)
 - The hero image is automatically suppressed from the body; its credit/caption only appear in the header area
 

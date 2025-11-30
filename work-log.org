@@ -1,3 +1,21 @@
+* 2025-11-30 - Image credits/captions polish and reliability
+
+** Summary
+- Remove baked-in "Image:" labels; authors supply their own prefixes (e.g., "Generated With:").
+- Use real image dimensions for PhotoSwipe links when available; omit attrs when unknown.
+- Avoid credit/caption collisions by keying metadata on normalized relative paths (source root/source file), not just filenames.
+- More reliable IMAGE-* association: scan forward from each image paragraph, skipping blanks, to pick up following IMAGE-CREDIT/CAPTION/PROMPT keywords.
+
+** Files
+- `ox-astro-helpers.el`: normalize-image-key, image-dimensions helper, format-image-component, image-component-for-record.
+- `ox-astro-handlers.el`: collect-image-metadata-filter (forward scan, normalized keys).
+
+** Impact
+- Consistent wording controlled by content; no surprise prefixes.
+- Better lightbox sizing; safer defaults when dimensions are unknown.
+- Credits/captions stick to the correct image even when filenames repeat across folders.
+- IMAGE-* keywords immediately after an image are picked up more reliably.
+
 * 2025-11-26 Wednesday - Absolute Route Links & Narrowing Fix
 
 ** Summary
