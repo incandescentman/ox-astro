@@ -334,25 +334,16 @@ Returns a plist with keys:
   - Org links [[file:OLD]][DESC] → [[file:NEW]][DESC]
   - Bare org links [[OLD]][DESC] → [[NEW]][DESC]
   - Raw lines containing only the path (ignoring surrounding whitespace)."
-  (message "DEBUG: Starting buffer update - old: %s -> new: %s" old-path new-path)
-  (message "DEBUG: Current buffer: %s (file: %s)" (buffer-name) (buffer-file-name))
-  (message "DEBUG: Buffer modified: %s, read-only: %s" (buffer-modified-p) buffer-read-only)
-
   (save-excursion
     (goto-char (point-min))
-    (let ((changes-made nil)
-          (buffer-content-preview (buffer-substring (point-min) (min (+ (point-min) 200) (point-max)))))
-      (message "DEBUG: Buffer preview: %s..." buffer-content-preview)
-
+    (let ((changes-made nil))
       ;; 1) Update [[file:OLD]] and [[file:OLD][DESC]]
       (goto-char (point-min))
       (while (re-search-forward "\\[\\[file:\\([^]]+\\)\\]\\(\\[[^]]*\\]\\)?\\]" nil t)
         (let ((match-beg (match-beginning 1))
               (match-end (match-end 1))
               (captured (match-string 1)))
-          (message "DEBUG: Found file link: %s" captured)
           (when (string-equal captured old-path)
-            (message "DEBUG: Updating file link match")
             (goto-char match-beg)
             (delete-region match-beg match-end)
             (insert new-path)
@@ -364,11 +355,7 @@ Returns a plist with keys:
         (let ((match-beg (match-beginning 1))
               (match-end (match-end 1))
               (captured (match-string 1)))
-          (when org-astro-debug-console
-            (message "DEBUG: Found bare link: %s" captured))
           (when (string-equal captured old-path)
-            (when org-astro-debug-console
-              (message "DEBUG: Updating bare link match"))
             (goto-char match-beg)
             (delete-region match-beg match-end)
             (insert new-path)
@@ -377,16 +364,10 @@ Returns a plist with keys:
       ;; 3) Update raw lines containing only the path (allowing whitespace)
       (goto-char (point-min))
       (let ((search-pattern (format "^[\t ]*%s[\t ]*$" (regexp-quote old-path))))
-        (when org-astro-debug-console
-          (message "DEBUG: Searching for raw pattern: %s" search-pattern))
         (while (re-search-forward search-pattern nil t)
-          (when org-astro-debug-console
-            (message "DEBUG: Found raw path match at line %d" (line-number-at-pos)))
           (replace-match new-path t t)
           (setq changes-made t)))
 
-      (when org-astro-debug-console
-        (message "DEBUG: Buffer update complete. Changes made: %s" changes-made))
       changes-made)))
 
 (defun org-astro--update-image-path-in-file (file old-path new-path)
@@ -402,13 +383,6 @@ Returns a plist with keys:
 (defun org-astro--update-source-buffer-image-path (old-path new-path)
   "Update image path in the original source buffer, not the export copy.
                This function finds the source buffer and modifies it directly."
-  (when org-astro-debug-console
-    (message "DEBUG: Looking for source buffer to update path %s -> %s" old-path new-path))
-  (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-    (message "[ox-astro][img] UPDATE-BUFFER: Attempting to update %s -> %s" old-path new-path)
-    (message "[ox-astro][img] UPDATE-BUFFER: Current buffer: %s, file: %s, read-only: %s"
-             (buffer-name) (buffer-file-name) buffer-read-only))
-
   ;; Strategy 1: Check if current buffer has a file name and is writable
   (let ((source-buffer nil))
     (cond
@@ -416,52 +390,32 @@ Returns a plist with keys:
      ((and (buffer-file-name)
            (not buffer-read-only)
            (not (string-match-p "^ \\*temp\\*" (buffer-name))))
-     (message "DEBUG: Using current buffer as source: %s" (buffer-name))
-      (when org-astro-debug-console
-        (message "DEBUG: Using current buffer as source: %s" (buffer-name)))
-      (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-        (message "[ox-astro][img] UPDATE-BUFFER: Using current buffer as source"))
       (setq source-buffer (current-buffer)))
 
      ;; Try to find source buffer by examining all buffers
      (t
-      (when org-astro-debug-console
-        (message "DEBUG: Current buffer (%s) is not suitable, searching for source buffer..." (buffer-name))
-        (message "DEBUG: Current buffer file: %s, read-only: %s" (buffer-file-name) buffer-read-only))
-      (org-astro--debug-log-direct "UPDATE-BUFFER: Searching for source buffer containing path: %s" old-path)
       (catch 'found-buffer
         (dolist (buf (buffer-list))
           (with-current-buffer buf
-            (let ((buf-file (buffer-file-name))
-                  (buf-readonly buffer-read-only))
-              (when (and buf-file (string-match-p "\\.org$" buf-file))
-                (org-astro--debug-log-direct "UPDATE-BUFFER: Checking buffer %s (file: %s, readonly: %s)"
-                                             (buffer-name) buf-file buf-readonly))
+            (let ((buf-file (buffer-file-name)))
               (when (and buf-file
-                         (not buf-readonly)
+                         (not buffer-read-only)
                          (string-match-p "\\.org$" buf-file)
                          ;; Check if this buffer contains the image path (raw or bracketed)
                          (save-excursion
                            (goto-char (point-min))
                            (or (search-forward old-path nil t)
                                (search-forward (format "[[%s]]" old-path) nil t))))
-                (when org-astro-debug-console
-                  (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file))
-                (org-astro--debug-log-direct "UPDATE-BUFFER: FOUND source buffer: %s" (buffer-name))
                 (setq source-buffer buf)
                 (throw 'found-buffer nil))))))))
 
     ;; Now use the source-buffer within the same let binding
-    (if source-buffer
-        (progn
-          (message "DEBUG: Updating source buffer: %s" (buffer-name source-buffer))
-          (with-current-buffer source-buffer
-            (let ((changes-made (org-astro--update-image-path-in-buffer old-path new-path)))
-              (when changes-made
-                (message "DEBUG: Saving source buffer after changes")
-                (save-buffer))
-              changes-made)))
-        (message "DEBUG: WARNING - Could not find source buffer to update!"))))
+    (when source-buffer
+      (with-current-buffer source-buffer
+        (let ((changes-made (org-astro--update-image-path-in-buffer old-path new-path)))
+          (when changes-made
+            (save-buffer))
+          changes-made)))))
 
 (defun org-astro--get-assets-folder (posts-folder sub-dir)
   "Get the assets folder based on POSTS-FOLDER and SUB-DIR."
@@ -602,7 +556,6 @@ Returns a plist with keys:
 
 (defun org-astro--upsert-image-paths-comment (items)
   "Find the source Org buffer and upsert the suggestions comment block."
-  (message "DEBUG: Upserting image suggestions block...")
   (let ((source-buffer nil))
     (cond
      ((and (buffer-file-name) (not buffer-read-only))
@@ -739,32 +692,22 @@ Returns the local file path if successful, nil otherwise."
   "Process IMAGE-PATH for POSTS-FOLDER, copying local files or downloading remote URLs to SUB-DIR.
 Returns the processed path suitable for Astro imports.
 If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path."
-  (message "DEBUG: Processing image - path: %s, posts-folder: %s, sub-dir: %s, update-buffer: %s"
-           image-path posts-folder sub-dir update-buffer)
-
   (when (and image-path posts-folder)
     (let ((image-path (substring-no-properties image-path)))
       (cond
        ;; Handle images already in the assets folder - just return the alias path
        ((let ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir)))
-          (message "DEBUG: Checking if in assets - assets-folder: %s, image-path: %s"
-                   assets-folder image-path)
           (and assets-folder
                (string-match-p (regexp-quote (expand-file-name assets-folder))
                                (expand-file-name image-path))))
         (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-               (relative-path (file-relative-name image-path (expand-file-name assets-folder)))
-               (filename (file-name-nondirectory image-path))
-               (result (concat "~/assets/images/" sub-dir filename)))
-          (message "DEBUG: Image already in assets folder - returning: %s" result)
-          result))
+               (filename (file-name-nondirectory image-path)))
+          (concat "~/assets/images/" sub-dir filename)))
 
        ;; Handle remote URLs (both full https:// and protocol-relative //)
-       ((let ((is-remote (or (string-match-p "^https?://" image-path)
-                             (and (string-match-p "^//" image-path)
-                                  (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)" image-path)))))
-          (message "DEBUG: Checking remote URL for %s. Is remote: %s" image-path is-remote)
-          is-remote)
+       ((or (string-match-p "^https?://" image-path)
+            (and (string-match-p "^//" image-path)
+                 (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)" image-path)))
         (let* ((full-url (if (string-match-p "^//" image-path)
                              (concat "https:" image-path)
                              image-path))
@@ -773,31 +716,19 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
             (let* ((clean-filename (file-name-nondirectory downloaded-path))
                    (result (concat "~/assets/images/" sub-dir clean-filename)))
               ;; Update the buffer to replace remote URL with local path
-              ;; For protocol-relative URLs, we need to find the original https:// version in the buffer
               (when update-buffer
                 (let ((original-url (if (string-match-p "^//" image-path)
-                                        ;; Try to find the original https:// version in the buffer
                                         full-url
-                                        ;; Use the path as-is if it already has protocol
                                         image-path)))
-                  (message "DEBUG: Updating buffer - remote URL %s -> local path %s" original-url downloaded-path)
                   (org-astro--update-source-buffer-image-path original-url downloaded-path)))
-              (message "DEBUG: Remote image processed - returning astro path: %s" result)
               result))))
 
        ;; Handle local files
        (t
-        (message "DEBUG: Handling local file: %s" image-path)
-        (message "DEBUG: File exists check: %s" (file-exists-p image-path))
         (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
                (original-filename (file-name-nondirectory image-path))
                (clean-filename (org-astro--sanitize-filename original-filename))
                (target-path (when assets-folder (expand-file-name clean-filename assets-folder))))
-
-          (message "DEBUG: Assets folder: %s" assets-folder)
-          (message "DEBUG: Target path: %s" target-path)
-          (message "DEBUG: About to check conditions - target-path: %s, file-exists: %s"
-                   (and target-path t) (file-exists-p image-path))
 
           (when (and target-path (file-exists-p image-path))
             ;; Create assets directory if it doesn't exist
@@ -805,23 +736,16 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
               (make-directory assets-folder t))
             ;; Copy the file
             (condition-case err
-                (progn
-                  (copy-file image-path target-path t)
-                  (message "DEBUG: Successfully copied %s to %s" image-path target-path))
-              (error (message "Failed to copy image %s: %s" image-path err)))
+                (copy-file image-path target-path t)
+              (error (message "[ox-astro][img] Failed to copy %s: %s" image-path err)))
 
-            ;; Update the buffer if requested (even if file already exists from previous run)
+            ;; Update the buffer if requested
             (when update-buffer
-              (message "DEBUG: Attempting buffer update...")
-              (org-astro--debug-log-direct "UPDATE: Calling buffer update for %s -> %s" image-path target-path)
-              (let ((update-result (org-astro--update-source-buffer-image-path image-path target-path)))
-                (org-astro--debug-log-direct "UPDATE: Buffer update result: %s" (if update-result "SUCCESS" "FAILED"))))
+              (org-astro--update-source-buffer-image-path image-path target-path))
 
             ;; Return the alias path for imports
             (when (file-exists-p target-path)
-              (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
-                (message "DEBUG: Returning astro path: %s" result)
-                result)))))))))
+              (concat "~/assets/images/" sub-dir clean-filename)))))))))
 
 
 (defun org-astro--collect-raw-images-from-tree-region (tree)

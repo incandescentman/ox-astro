@@ -20,6 +20,13 @@
                       (message-log-max nil))
                   (apply orig-fn args)))))
 
+(when (fboundp 'org-id-locations--message)
+  (advice-add 'org-id-locations--message :around
+              (lambda (orig-fn &rest args)
+                (let ((inhibit-message t)
+                      (message-log-max nil))
+                  (apply orig-fn args)))))
+
 ;; Compatibility helpers for older Emacs builds.
 (unless (fboundp 'cl-putf)
   (defun cl-putf (plist indicator value &rest pairs)
@@ -91,6 +98,12 @@ indicator/value pairs.  Returns the updated plist."
   "Base path for absolute ID link routes during current export.
 When non-nil, ID links render as /base-path/collection-id instead of relative .mdx paths.
 Set from :id-link-base-path in destination config or global `org-astro-id-link-base-path'.")
+
+(defun org-astro--string-truthy-p (value)
+  "Return non-nil when VALUE (a string) looks truthy.
+Accepts t/true/yes/y/on/1 (case-insensitive)."
+  (let* ((val (downcase (string-trim (or value "")))))
+    (member val '("t" "true" "yes" "y" "on" "1"))))
 
 (defun org-astro--escape-attribute (text)
   "Escape double quotes in TEXT for safe use in JSX attributes."
@@ -417,7 +430,23 @@ This helper respects the first matching keyword encountered in TREE."
         (insert-file-contents file)
         (let ((case-fold-search t)
               (ids nil)
-              slug title astro-folder dest-folder)
+              slug title astro-folder dest-folder filetags noexport)
+          (goto-char (point-min))
+          (when (re-search-forward "^#\\+FILETAGS:\\s-*\\(.+\\)$" nil t)
+            (setq filetags (match-string 1))
+            (when (and filetags
+                       (string-match-p ":noexport:" (downcase filetags)))
+              (setq noexport t)))
+          (goto-char (point-min))
+          (when (re-search-forward "^#\\+NOEXPORT:\\s-*\\(.+\\)$" nil t)
+            (let ((raw (match-string 1)))
+              (when (org-astro--string-truthy-p raw)
+                (setq noexport t))))
+          (goto-char (point-min))
+          (when (re-search-forward "^#\\+ROAM_EXCLUDE:\\s-*\\(.+\\)$" nil t)
+            (let ((raw (match-string 1)))
+              (when (org-astro--string-truthy-p raw)
+                (setq noexport t))))
           (goto-char (point-min))
           (while (re-search-forward "^:ID:\\s-*\\(.+\\)$" nil t)
             (let ((id (string-trim (match-string 1))))
@@ -476,6 +505,7 @@ This helper respects the first matching keyword encountered in TREE."
                   :relative-subdir relative-subdir
                   :outfile outfile
                   :filename filename
+                  :noexport noexport
                   :destination-raw (plist-get destination-info :raw)
                   :source file))))
     (error
@@ -547,7 +577,7 @@ Set environment variable OX_ASTRO_DUP_LOG_MODE=verbose to log every duplicate ID
     (if (and root (file-directory-p root))
         (dolist (file (directory-files-recursively root "\\.org\\'"))
           (let ((meta (org-astro--collect-org-file-export-metadata file)))
-            (when meta
+            (when (and meta (not (plist-get meta :noexport)))
               (dolist (id (plist-get meta :id-list))
                 (when (and id (not (string-blank-p id)))
                   (org-astro--id-map-store map id meta duplicate-tracker))))))
@@ -599,7 +629,7 @@ Set environment variable OX_ASTRO_DUP_LOG_MODE=verbose to log every duplicate ID
   "Ensure FILE's IDs are present in MAP."
   (when (and map file (file-exists-p file))
     (let ((meta (org-astro--collect-org-file-export-metadata file)))
-      (when meta
+      (when (and meta (not (plist-get meta :noexport)))
         (dolist (id (plist-get meta :id-list))
           (when (and id (not (string-blank-p id)))
             (org-astro--id-map-store map id meta))))))
