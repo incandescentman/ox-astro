@@ -16,6 +16,9 @@
 - Credits/captions stick to the correct image even when filenames repeat across folders.
 - IMAGE-* keywords immediately after an image are picked up more reliably.
 
+** Fixes
+- Corrected paren balance in `org-astro--image-component-for-record` to restore clean load.
+
 * 2025-11-26 Wednesday - Absolute Route Links & Narrowing Fix
 
 ** Summary
