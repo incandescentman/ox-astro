@@ -187,6 +187,54 @@ paragraphs). Keys are normalized with source context to avoid collisions."
     (plist-put info :astro-image-captions caption-map))
   tree)
 
+(defun org-astro--ensure-inline-theme-markers (tree _backend _info)
+  "Ensure theme markers precede top-level Claude/ChatGPT headings.
+If a level-1 heading title is exactly \"Claude\" or \"ChatGPT\", insert or move
+the corresponding THEME keyword immediately before it in the parse tree. This
+keeps inline theme sections aligned with remarkThemeSections without manual
+marker placement in Org."
+  (let ((children (org-element-contents tree))
+        (result '()))
+    (cl-labels
+        ((theme-keyword-p
+          (node theme)
+          (and (eq (org-element-type node) 'keyword)
+               (string-equal (org-element-property :key node) "THEME")
+               (string-equal (downcase (org-element-property :value node)) theme)))
+         (make-theme-node
+          (theme)
+          (org-element-create 'keyword
+                              (list :key "THEME"
+                                    :value theme
+                                    :raw-value theme
+                                    :post-blank 1)))))
+      (while children
+        (let* ((node (car children))
+               (next (cadr children)))
+          (if (and (eq (org-element-type node) 'headline)
+                   (= 1 (org-element-property :level node))
+                   (member (downcase (org-element-property :raw-value node))
+                           '("claude" "chatgpt")))
+              (let* ((theme (downcase (org-element-property :raw-value node))))
+                ;; Ensure correct theme keyword immediately before headline.
+                (cond
+                 ;; Already have the correct theme keyword immediately before.
+                 ((and result (theme-keyword-p (car (last result)) theme))
+                  nil)
+                 ;; If the next node is the correct theme keyword, move it before.
+                 ((theme-keyword-p next theme)
+                  (setq children (cdr children)) ; drop the keyword from its current spot
+                  (push (make-theme-node theme) result))
+                 (t
+                  (push (make-theme-node theme) result)))
+                ;; Always push the headline itself
+                (push node result))
+            ;; Non-target nodes pass through unchanged
+            (push node result)))
+        (setq children (cdr children)))
+      (org-element-set-contents tree (nreverse result)))
+  tree)
+
 (defun org-astro-auto-wrap-image-paths-filter (tree _backend info)
   "Pre-processing filter that automatically wraps raw image paths in [[ ]] brackets.
 This runs FIRST, before all other processing, to simulate manual bracket addition."

@@ -629,6 +629,7 @@ resolved to plain text in the temporary export buffer."
 
   :filters-alist
   '((:filter-parse-tree . (org-astro-auto-wrap-image-paths-filter
+                           org-astro--ensure-inline-theme-markers
                            org-astro--collect-image-metadata-filter
                            org-astro-prepare-images-filter))
     (:filter-body . org-astro-body-filter)
