@@ -78,6 +78,9 @@ indicator/value pairs.  Returns the updated plist."
 (defvar org-astro--broken-link-warnings-issued nil
   "Hash table used to deduplicate warnings for missing org-roam IDs.")
 
+(defvar org-astro--duplicate-ids-logged nil
+  "When non-nil, duplicate ID summary has been logged for this batch.")
+
 (defvar org-astro--current-outfile nil
   "Absolute path to the MDX file currently being generated.")
 
@@ -551,43 +554,45 @@ Set environment variable OX_ASTRO_DUP_LOG_MODE=verbose to log every duplicate ID
       (when root
         (message "[ox-astro] ID map skipped: source directory %s not found" root)))
 
-    ;; Emit duplicate summary (verbose lists each ID; summary logs examples only).
-    (let ((dups '()))
-      (maphash
-       (lambda (_id info)
-         (let ((count (plist-get info :count)))
-           (when (> count 0)
-             (push info dups))))
-       duplicate-tracker)
-      (setq dups (nreverse dups))
-      (when dup-verbose
-        (dolist (info dups)
-          (message "[ox-astro] Duplicate org-roam ID %s: kept %s; skipped %d other%s%s"
-                   (plist-get info :id)
-                   (plist-get (plist-get info :winner) :source)
-                   (plist-get info :count)
-                   (if (= (plist-get info :count) 1) "" "s")
-                   (if (plist-get info :examples)
-                       (format " (e.g., %s)" (car (last (plist-get info :examples))))
-                     ""))))
-      (let ((total (length dups)))
-        (when (> total 0)
-          (let* ((sample (seq-take dups 8))
-                 (examples
-                  (mapconcat
-                   (lambda (info)
-                     (format "%s (kept %s; skipped %d)"
-                             (plist-get info :id)
-                             (plist-get (plist-get info :winner) :source)
-                             (plist-get info :count)))
-                   sample
-                   "; ")))
-            (message "[ox-astro] Duplicate org-roam IDs: %d total. Examples: %s. Set OX_ASTRO_DUP_LOG_MODE=verbose for full list."
-                     total examples)))))
-
-    ;; Debug: report how many IDs ox-astro found
-    (message "[ox-astro] ID map built: %d IDs from root %s"
-             (hash-table-count map) root)
+    ;; Emit duplicate summary only once per batch (not for every file).
+    (unless org-astro--duplicate-ids-logged
+      (let ((dups '()))
+        (maphash
+         (lambda (_id info)
+           (let ((count (plist-get info :count)))
+             (when (> count 0)
+               (push info dups))))
+         duplicate-tracker)
+        (setq dups (nreverse dups))
+        (when dup-verbose
+          (dolist (info dups)
+            (message "[ox-astro] Duplicate org-roam ID %s: kept %s; skipped %d other%s%s"
+                     (plist-get info :id)
+                     (plist-get (plist-get info :winner) :source)
+                     (plist-get info :count)
+                     (if (= (plist-get info :count) 1) "" "s")
+                     (if (plist-get info :examples)
+                         (format " (e.g., %s)" (car (last (plist-get info :examples))))
+                       ""))))
+        (let ((total (length dups)))
+          (when (> total 0)
+            (let* ((sample (seq-take dups 8))
+                   (examples
+                    (mapconcat
+                     (lambda (info)
+                       (format "%s (kept %s; skipped %d)"
+                               (plist-get info :id)
+                               (plist-get (plist-get info :winner) :source)
+                               (plist-get info :count)))
+                     sample
+                     "; ")))
+              (message "[ox-astro] Duplicate org-roam IDs: %d total. Examples: %s. Set OX_ASTRO_DUP_LOG_MODE=verbose for full list."
+                       total examples))))
+        ;; Log ID map size on first build
+        (message "[ox-astro] ID map built: %d IDs from root %s"
+                 (hash-table-count map) root)
+        ;; Mark as logged so we don't repeat for subsequent files
+        (setq org-astro--duplicate-ids-logged t)))
     map))
 
 (defun org-astro--add-file-to-id-map (map file)
