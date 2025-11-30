@@ -444,7 +444,8 @@ Returns a plist with keys:
                          (goto-char (point-min))
                          (or (search-forward old-path nil t)
                              (search-forward (format "[[%s]]" old-path) nil t))))
-              (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file)
+              (when org-astro-debug-console
+                (message "DEBUG: Found source buffer: %s (%s)" (buffer-name) buf-file))
               (org-astro--debug-log-direct "UPDATE-BUFFER: FOUND source buffer: %s" (buffer-name))
               (setq source-buffer buf)
               (cl-return)))))))

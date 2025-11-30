@@ -510,7 +510,8 @@ generated and added to the Org source file."
                       (progn
                         (make-directory pub-dir t)
                         ;; First export pass
-                        (message "Running first export pass...")
+                        (when org-astro-debug-console
+                          (message "Running first export pass..."))
                         (when org-astro-debug-console
                           (message "[DEBUG-EXPORT] Calling org-export-to-file with backend: astro")
                           (message "[DEBUG-EXPORT] Backend details: %S" (org-export-get-backend 'astro)))
@@ -520,14 +521,16 @@ generated and added to the Org source file."
                           (let ((id-link-count 0))
                             (while (re-search-forward "\\[\\[id:" nil t)
                               (setq id-link-count (1+ id-link-count)))
-                            (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count)))
+                        (when org-astro-debug-console
+                          (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count))))
                         (save-excursion
                           (when narrow-start (goto-char narrow-start))
                           (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only))
                         ;; Clear import state for second pass
                         (setq org-astro--current-body-images-imports nil)
                         ;; Second export pass to ensure complete image processing
-                        (message "Running second export pass to ensure complete image processing...")
+                        (when org-astro-debug-console
+                          (message "Running second export pass to ensure complete image processing..."))
                         (save-excursion
                           (when narrow-start (goto-char narrow-start))
                           (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only))
@@ -552,7 +555,8 @@ generated and added to the Org source file."
                                     (call-process-region (point-min) (point-max) pbcopy nil nil nil)
                                     (message "File paths copied to clipboard!"))
                                 (error nil)))))
-                        (message "Export complete! All images should now be visible.")
+                        (when org-astro-debug-console
+                          (message "Export complete! All images should now be visible."))
                         outfile)  ; Return the output file path
                     (progn
                       (message "Astro export cancelled: No posts folder selected.")
