@@ -42,3 +42,12 @@ Fixed MDX parse failures caused by raw `<file:///...>` links when exporting `fil
 - `ox-astro-helpers.el`: `org-astro-link` now rewrites non-image `file+emacs`/`file+sys` links to standard Markdown links (`file://...`), preventing invalid JSX autolinks in MDX output. Org buffers remain untouched during export.
 ** Impact
 - Eliminates MDX parse errors from valid org file links (e.g., project references) without mutating source org files. 
+
+* 2025-12-01 - Duplicate ID noise reduction
+** Summary
+Made duplicate org-roam ID handling deterministic and quiet during batch exports.
+** Changes
+- `ox-astro-helpers.el`: added scoring to prefer canonical sources (penalize “conflicted copy”/“ copy.org” paths) when the same ID appears in multiple files.
+- Logging now emits a single line per duplicate ID with the chosen winner and a count of skipped files, instead of flooding the log once per file.
+** Impact
+- Export output is readable again while still warning about ID collisions; exports pick stable winners for duplicated IDs without touching source org files.

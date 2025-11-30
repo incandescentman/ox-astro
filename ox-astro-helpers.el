@@ -456,37 +456,87 @@ This helper respects the first matching keyword encountered in TREE."
               file (error-message-string err))
      nil)))
 
-(defun org-astro--id-map-store (map id meta)
-  "Store ID mapping derived from META into MAP."
-  (let ((entry (list :source (plist-get meta :source)
-                     :outfile (plist-get meta :outfile)
-                     :filename (plist-get meta :filename)
-                     :posts-folder (plist-get meta :posts-folder)
-                     :relative-subdir (plist-get meta :relative-subdir)
-                     :preserve (plist-get meta :preserve)
-                     :slug (plist-get meta :slug)
-                     :title (plist-get meta :title)
-                     :destination-raw (plist-get meta :destination-raw))))
-    (when-let ((existing (gethash id map)))
-      (unless (string-equal (plist-get existing :source)
-                            (plist-get meta :source))
-        (message "[ox-astro] Duplicate org-roam ID %s found in %s (already mapped to %s)"
-                 id (plist-get meta :source) (plist-get existing :source))))
-    (puthash id entry map)))
+(defun org-astro--id-path-score (path)
+  "Return a score for PATH to choose a canonical source.
+Lower is better; penalize conflicted/copy variants, then use length as tiebreaker."
+  (let* ((p (downcase path))
+         (score (length path)))
+    (when (string-match "conflicted copy" p)
+      (cl-incf score 10000))
+    (when (string-match "\\bcopy\\.org\\'" p)
+      (cl-incf score 5000))
+    score))
+
+(defun org-astro--id-choose-winner (existing candidate)
+  "Return the preferred entry between EXISTING and CANDIDATE."
+  (let* ((path-existing (plist-get existing :source))
+         (path-candidate (plist-get candidate :source))
+         (score-existing (org-astro--id-path-score path-existing))
+         (score-candidate (org-astro--id-path-score path-candidate)))
+    (if (< score-candidate score-existing) candidate existing)))
+
+(defun org-astro--id-map-store (map id meta &optional tracker)
+  "Store ID mapping derived from META into MAP.
+TRACKER, when non-nil, accumulates duplicate counts keyed by ID."
+  (let* ((entry (list :source (plist-get meta :source)
+                      :outfile (plist-get meta :outfile)
+                      :filename (plist-get meta :filename)
+                      :posts-folder (plist-get meta :posts-folder)
+                      :relative-subdir (plist-get meta :relative-subdir)
+                      :preserve (plist-get meta :preserve)
+                      :slug (plist-get meta :slug)
+                      :title (plist-get meta :title)
+                      :destination-raw (plist-get meta :destination-raw)))
+         (existing (gethash id map)))
+    (cond
+     ((not existing)
+      (puthash id entry map)
+      (when tracker
+        (puthash id (list :winner entry :count 0 :examples nil) tracker)))
+     (t
+      (let* ((winner (org-astro--id-choose-winner existing entry))
+             (loser (if (eq winner existing) entry existing))
+             (info (and tracker (gethash id tracker))))
+        (puthash id winner map)
+        (when tracker
+          (let* ((count (1+ (or (plist-get info :count) 0)))
+                 (examples (plist-get info :examples)))
+            (puthash id (list :winner winner
+                              :count count
+                              :examples (cons (plist-get loser :source) examples))
+                     tracker))))))))
 
 (defun org-astro--build-id-map (source-dir)
-  "Build and return a hash table mapping org-roam IDs in SOURCE-DIR."
+  "Build and return a hash table mapping org-roam IDs in SOURCE-DIR.
+Logs duplicate IDs once per ID with a summary of the kept/ignored sources."
   (let* ((root (and source-dir (expand-file-name source-dir)))
-         (map (make-hash-table :test #'equal)))
+         (map (make-hash-table :test #'equal))
+         (duplicate-tracker (make-hash-table :test #'equal)))
     (if (and root (file-directory-p root))
         (dolist (file (directory-files-recursively root "\\.org\\'"))
           (let ((meta (org-astro--collect-org-file-export-metadata file)))
             (when meta
               (dolist (id (plist-get meta :id-list))
                 (when (and id (not (string-blank-p id)))
-                  (org-astro--id-map-store map id meta))))))
-        (when root
-          (message "[ox-astro] ID map skipped: source directory %s not found" root)))
+                  (org-astro--id-map-store map id meta duplicate-tracker))))))
+      (when root
+        (message "[ox-astro] ID map skipped: source directory %s not found" root)))
+    ;; Emit one log line per duplicated ID.
+    (maphash
+     (lambda (id info)
+       (let ((count (plist-get info :count)))
+         (when (> count 0)
+           (let ((winner (plist-get info :winner))
+                 (examples (plist-get info :examples)))
+             (message "[ox-astro] Duplicate org-roam ID %s: kept %s; skipped %d other%s%s"
+                      id
+                      (plist-get winner :source)
+                      count
+                      (if (= count 1) "" "s")
+                      (if examples
+                          (format " (e.g., %s)" (car (last examples)))
+                        ""))))))
+     duplicate-tracker)
     map))
 
 (defun org-astro--add-file-to-id-map (map file)
