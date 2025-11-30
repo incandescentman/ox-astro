@@ -351,8 +351,9 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     (let ((case-fold-search t))
       (setq s (replace-regexp-in-string "<br\\s*/?>" "<br />" s)))
     ;; Strip org-roam template boilerplate (Links/Source lines)
+    ;; Matches: "    -   **Links:**" or "-  **Source:**" (colon inside or outside bold)
     (setq s (replace-regexp-in-string
-             "^[ \t]*-[ \t]+\\*\\*\\(Links\\|Source\\)\\*\\*[ \t]*::?[ \t]*\n?"
+             "^[ \t]*-[ \t]+\\*\\*\\(Links\\|Source\\):?\\*\\*[ \t]*:?[ \t]*\n?"
              "" s))
     ;; Also strip standalone "Links:" or "Source:" lines
     (setq s (replace-regexp-in-string
