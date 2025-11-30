@@ -34,3 +34,11 @@ Updated `suggested-enhancements.org` to reflect the current implementation statu
 - Reorganized `suggested-enhancements.org` into priority-based sections (High, Medium, Low Priority / Future Opportunities, Implemented / Completed).
 - Marked "Remote Image Caching", "Absolute Route Mode for ID Links", and "PDF Asset Handling" as "Implemented / Completed".
 - Added "Responsive Images" and "SVG Components" as "High Priority" opportunities, and "Picture Component Support" as "Low Priority / Future Opportunity", reflecting their status based on Astro 5.x features.
+
+* 2025-12-01 - Exporter link handling hardening
+** Summary
+Fixed MDX parse failures caused by raw `<file:///...>` links when exporting `file+emacs`/`file+sys` links.
+** Changes
+- `ox-astro-helpers.el`: `org-astro-link` now rewrites non-image `file+emacs`/`file+sys` links to standard Markdown links (`file://...`), preventing invalid JSX autolinks in MDX output. Org buffers remain untouched during export.
+** Impact
+- Eliminates MDX parse errors from valid org file links (e.g., project references) without mutating source org files. 

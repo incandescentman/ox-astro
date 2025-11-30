@@ -1397,7 +1397,7 @@ Returns cleaned alist; emits warnings when coercions occur."
      ((and path
            (or (string= type "file") (and (null type) (string-prefix-p "/" path)))
            (string-match-p "\\.pdf\\(\\?\\|#\\|$\\)" path))
-      (let* (;; If this is an absolute local file path under a public/pdfs directory,
+     (let* (;; If this is an absolute local file path under a public/pdfs directory,
              ;; rewrite it to a site path beginning with /pdfs/.
              (site-path
               (cond
@@ -1419,6 +1419,20 @@ Returns cleaned alist; emits warnings when coercions occur."
              (label-a (replace-regexp-in-string "PDF:" "PDF: " label-1))
              (label   (replace-regexp-in-string "PDF:  +" "PDF: " label-a)))
         (format "[%s](%s)" label encoded)))
+
+     ;; Non-image file links (e.g., file+emacs) → regular Markdown link
+     ((member type '("file+emacs" "file+sys"))
+      (let* ((raw (or (org-element-property :raw-link link) path ""))
+             (url (cond
+                    ((string-prefix-p "file+emacs:" raw)
+                     (concat "file://" (string-remove-prefix "file+emacs:" raw)))
+                    ((string-prefix-p "file+sys:" raw)
+                     (concat "file://" (string-remove-prefix "file+sys:" raw)))
+                    ((string-prefix-p "file:" raw)
+                     (concat "file://" (string-remove-prefix "file:" raw)))
+                    (t raw)))
+             (label (or desc (file-name-nondirectory path) url)))
+        (format "[%s](%s)" label url)))
 
      ;; If the description is already a Markdown link, preserve it unchanged.
      ((and desc (org-astro--contains-markdown-link-p desc))
