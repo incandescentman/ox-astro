@@ -15,6 +15,18 @@
     "Return parent of ELEMENT via :parent property (compat shim)."
     (org-element-property :parent element)))
 
+(defun org-astro--normalize-image-key (path)
+  "Normalize PATH to a key for image metadata lookup.
+Returns the filename without directory, lowercased, with underscores converted to hyphens.
+This ensures consistent lookup across path rewrites during export."
+  (when path
+    (let* ((filename (file-name-nondirectory path))
+           (base (file-name-sans-extension filename))
+           (ext (file-name-extension filename)))
+      ;; Normalize: lowercase, underscores to hyphens
+      (concat (downcase (replace-regexp-in-string "_" "-" base))
+              (when ext (concat "." (downcase ext)))))))
+
 (defvar org-astro-known-posts-folders nil
   "List of destination folders for exports, each entry a (NICKNAME . PLIST).")
 
@@ -154,25 +166,48 @@ Accepts t/true/yes/y/on/1 (case-insensitive)."
                  (org-astro--same-image-path-p candidate hero-path))
                candidates))))
 
-(defun org-astro--format-image-component (var-name alt-text)
+(defun org-astro--format-image-component (var-name alt-text &optional credit caption)
   "Return a standardized Image component string for VAR-NAME and ALT-TEXT.
-Includes layout prop based on `org-astro-image-default-layout' config."
-  (let ((layout-prop (when (and (boundp 'org-astro-image-default-layout)
-                                org-astro-image-default-layout
-                                (not (string= org-astro-image-default-layout "none")))
-                       (format " layout=\"%s\"" org-astro-image-default-layout))))
-    (format "<Image src={%s} alt=\"%s\"%s />"
-            var-name
-            (org-astro--escape-attribute (or alt-text "Image"))
-            (or layout-prop ""))))
+Includes layout prop based on `org-astro-image-default-layout' config.
+If CREDIT or CAPTION is non-nil, wraps the image in a figure with PhotoSwipe support.
+CREDIT appears on the page, CAPTION appears in lightbox."
+  (let* ((layout-prop (when (and (boundp 'org-astro-image-default-layout)
+                                 org-astro-image-default-layout
+                                 (not (string= org-astro-image-default-layout "none")))
+                        (format " layout=\"%s\"" org-astro-image-default-layout)))
+         (escaped-alt (org-astro--escape-attribute (or alt-text "Image")))
+         (image-tag (format "<Image src={%s} alt=\"%s\"%s />"
+                            var-name
+                            escaped-alt
+                            (or layout-prop ""))))
+    (if (or credit caption)
+        ;; Wrap in figure with PhotoSwipe-compatible link and caption
+        (let* ((lightbox-parts
+                (delq nil
+                      (list (when credit (format "<strong>Image:</strong> %s" credit))
+                            (when caption (format "<em>%s</em>" caption)))))
+               (lightbox-caption (mapconcat #'identity lightbox-parts "<br/>"))
+               (escaped-lightbox (org-astro--escape-attribute lightbox-caption))
+               ;; Page caption shows credit only (caption/prompt shown in lightbox)
+               (page-caption (when credit
+                               (format "<span class=\"font-medium\">Image:</span> %s" credit))))
+          (format "<figure class=\"image-figure\">\n<a href={%s.src} data-pswp-item=\"true\" data-pswp-caption=\"%s\" data-pswp-width=\"1200\" data-pswp-height=\"800\">\n%s\n</a>%s\n</figure>"
+                  var-name
+                  escaped-lightbox
+                  image-tag
+                  (if page-caption
+                      (format "\n<figcaption class=\"image-caption text-xs text-gray-400 mt-2\">%s</figcaption>" page-caption)
+                    "")))
+      image-tag)))
 
-(defun org-astro--image-component-for-record (record info &optional alt-override)
+(defun org-astro--image-component-for-record (record info &optional alt-override img-path)
   "Render RECORD as an Image component, skipping the hero's first inline usage.
 
 INFO carries export state. When the record corresponds to the hero image and the
 hero has not yet been suppressed in the body, return an empty string and mark it
 as suppressed so later explicit uses still render. All other records return the
-standard Image component string."
+standard Image component string.
+IMG-PATH is used to look up credit/caption metadata if provided."
   (when record
     (let* ((entry (plist-get record :entry))
            (var-name (plist-get record :var-name))
@@ -187,12 +222,20 @@ standard Image component string."
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
               (org-astro--debug-log info "Skipping inline hero image for %s" var-name))
             (setf (plist-get info :astro-hero-body-suppressed) t)
+            ;; Hero suppressed - don't render anything (including credit/caption)
             "")
-          (when var-name
-            (let ((current (plist-get info :astro-render-used-vars)))
-              (setf (plist-get info :astro-render-used-vars)
-                    (cl-adjoin var-name current :test #'equal))))
-          (org-astro--format-image-component var-name alt)))))
+          ;; Look up credit and caption from info's hash tables (only for non-suppressed images)
+          ;; Use normalized key for lookup since paths get rewritten during export
+          (let* ((credit-map (plist-get info :astro-image-credits))
+                 (caption-map (plist-get info :astro-image-captions))
+                 (norm-key (and img-path (org-astro--normalize-image-key img-path)))
+                 (credit (and credit-map norm-key (gethash norm-key credit-map)))
+                 (caption (and caption-map norm-key (gethash norm-key caption-map))))
+            (when var-name
+              (let ((current (plist-get info :astro-render-used-vars)))
+                (setf (plist-get info :astro-render-used-vars)
+                      (cl-adjoin var-name current :test #'equal))))
+            (org-astro--format-image-component var-name alt credit caption))))))
 
 (defun org-astro--lookup-render-record (path info)
   "Return render metadata for PATH from INFO's render map."
@@ -1556,7 +1599,7 @@ Returns cleaned alist; emits warnings when coercions occur."
                    (default-alt (plist-get record :alt))
                    (alt (or desc default-alt "Image")))
               (if var-name
-                  (org-astro--image-component-for-record record info alt)
+                  (org-astro--image-component-for-record record info alt path)
                   (plist-get record :jsx)))
             (let ((md (when (fboundp 'org-md-link)
                         (ignore-errors (org-md-link link desc info)))))
@@ -1726,7 +1769,7 @@ literally - convert org headings to markdown equivalents."
   (let* ((path (org-astro--extract-image-path-from-paragraph paragraph))
          (record (and path (org-astro--lookup-render-record path info))))
     (if record
-        (org-astro--image-component-for-record record info)
+        (org-astro--image-component-for-record record info nil path)
         "")))
 
 
@@ -1760,7 +1803,7 @@ literally - convert org headings to markdown equivalents."
             (message "[ox-astro][img] PARA path=%s record=%s"
                      path (and record (plist-get record :var-name))))
           (if record
-              (org-astro--image-component-for-record record info)
+              (org-astro--image-component-for-record record info nil path)
               contents))
         ;; Check if this paragraph contains broken image path (subscripts)
         (let ((paragraph-context (org-element-interpret-data paragraph)))
@@ -1791,14 +1834,14 @@ literally - convert org headings to markdown equivalents."
                               (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" trimmed-line)))
                      (let ((record (org-astro--lookup-render-record trimmed-line info)))
                        (if record
-                           (org-astro--image-component-for-record record info)
+                           (org-astro--image-component-for-record record info nil trimmed-line)
                            line)))
                     ;; Remote image URL
                     ((and trimmed-line
                           (string-match-p "^https?://.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)\\(\\?.*\\)?$" trimmed-line))
                      (let ((record (org-astro--lookup-render-record trimmed-line info)))
                        (if record
-                           (org-astro--image-component-for-record record info)
+                           (org-astro--image-component-for-record record info nil trimmed-line)
                            line)))
                     ;; Regular remote URL (non-image) is now handled correctly by org-astro-link.
                     ;; Regular line

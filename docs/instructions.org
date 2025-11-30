@@ -129,6 +129,58 @@ To revert to basic image behavior without the layout prop:
 (setq org-astro-image-default-layout nil)
 #+end_src
 
+** Image Credits and Captions
+
+Add credit and caption metadata to images using keywords that follow the image link.
+
+*** Hero Image Metadata (Frontmatter)
+For the hero/cover image, use keywords at document level:
+
+#+begin_src org
+[[/path/to/hero-image.png]]
+#+HERO-CREDIT: Photographer Name or AI Model
+#+HERO-CAPTION: Prompt or description text
+#+end_src
+
+These appear in the frontmatter as ~heroCredit~ and ~heroCaption~, and are displayed:
+- Credit: On the page below the hero image
+- Caption: In the PhotoSwipe lightbox when the image is clicked
+
+*** Body Image Metadata
+For images within the body content:
+
+#+begin_src org
+[[/path/to/body-image.jpg]]
+#+IMAGE-CREDIT: Jay Dixit
+#+IMAGE-CAPTION: Description or AI prompt text
+#+end_src
+
+Alternative keyword: ~#+IMAGE-PROMPT:~ (alias for ~IMAGE-CAPTION~)
+
+*** Display Behavior
+- *On page*: Credit appears as small gray text below the image
+- *In lightbox*: Both credit (bold) and caption (italic) appear at the bottom
+
+*** Generated Output
+Body images with credit/caption produce a figure wrapper:
+
+#+begin_src html
+<figure class="image-figure">
+<a href={imgVar.src} data-pswp-item="true"
+   data-pswp-caption="<strong>Image:</strong> Credit<br/><em>Caption</em>" ...>
+<Image src={imgVar} alt="..." layout="responsive" />
+</a>
+<figcaption class="image-caption text-xs text-gray-400 mt-2">
+<span class="font-medium">Image:</span> Credit
+</figcaption>
+</figure>
+#+end_src
+
+*** Notes
+- Keywords must immediately follow the image (or other IMAGE-* keywords for the same image)
+- Underscores and hyphens are interchangeable (e.g., ~IMAGE_CREDIT~ = ~IMAGE-CREDIT~)
+- The hero image is automatically suppressed from the body; its credit/caption only appear in the header area
+
 * Verifying Broken Links
 - Open the generated MDX file and click through the links to confirm navigation
 - Review =broken-links.json= and resolve outstanding IDs before publishing

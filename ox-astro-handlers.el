@@ -127,7 +127,76 @@ Other keywords defer to the markdown backend."
       (if body-level
           (format "<div class=\"model-banner\">%s</div>\n\n" value)
         ""))
+     ;; #+IMAGE-CREDIT/CAPTION/PROMPT: → suppress (handled by image rendering)
+     ((member key '("IMAGE-CREDIT" "IMAGE_CREDIT"
+                    "IMAGE-CAPTION" "IMAGE_CAPTION"
+                    "IMAGE-PROMPT" "IMAGE_PROMPT"))
+      "")
      (t (org-md-keyword keyword _contents _info)))))
+
+(defun org-astro--collect-image-metadata-filter (tree _backend info)
+  "Pre-processing filter that collects IMAGE-CREDIT/CAPTION/PROMPT keywords following images.
+Builds hash tables mapping image paths to their metadata, stored in INFO.
+Supports: #+IMAGE-CREDIT:, #+IMAGE-CAPTION:, #+IMAGE-PROMPT:
+Keys are normalized filenames to handle path rewrites during export."
+  (let ((credit-map (make-hash-table :test 'equal))
+        (caption-map (make-hash-table :test 'equal)))
+    ;; Walk through elements looking for image+metadata patterns
+    (org-element-map tree '(paragraph keyword)
+      (lambda (element)
+        (when (eq (org-element-type element) 'keyword)
+          (let* ((key (org-element-property :key element))
+                 (value (org-element-property :value element)))
+            (when value
+              (let* ((parent (org-element-parent element))
+                     (siblings (and parent (org-element-contents parent)))
+                     (elem-pos (cl-position element siblings :test #'eq)))
+                ;; Find the nearest preceding image paragraph (may not be immediately previous)
+                (when elem-pos
+                  (let ((img-path nil)
+                        (search-pos (1- elem-pos)))
+                    ;; Search backward for an image paragraph
+                    (while (and (>= search-pos 0) (not img-path))
+                      (let ((prev-elem (nth search-pos siblings)))
+                        (cond
+                         ;; Found a paragraph - check if it has an image
+                         ((eq (org-element-type prev-elem) 'paragraph)
+                          (let ((img-link (org-element-map prev-elem 'link
+                                            (lambda (link)
+                                              (let ((path (org-element-property :path link)))
+                                                (when (and path
+                                                           (string-match-p
+                                                            "\\.\\(png\\|jpe?g\\|webp\\|gif\\)$"
+                                                            path))
+                                                  link)))
+                                            nil 'first-match)))
+                            (when img-link
+                              (setq img-path (org-element-property :path img-link))))
+                          ;; Stop searching after first paragraph (image or not)
+                          (setq search-pos -1))
+                         ;; Skip over other IMAGE-* keywords (they belong to same image)
+                         ((and (eq (org-element-type prev-elem) 'keyword)
+                               (member (org-element-property :key prev-elem)
+                                       '("IMAGE-CREDIT" "IMAGE_CREDIT"
+                                         "IMAGE-CAPTION" "IMAGE_CAPTION"
+                                         "IMAGE-PROMPT" "IMAGE_PROMPT")))
+                          (setq search-pos (1- search-pos)))
+                         ;; Any other element stops the search
+                         (t (setq search-pos -1)))))
+                    ;; Store the value if we found an image (using normalized key)
+                    (when img-path
+                      (let ((norm-key (org-astro--normalize-image-key img-path)))
+                        (cond
+                         ((member key '("IMAGE-CREDIT" "IMAGE_CREDIT"))
+                          (puthash norm-key (string-trim value) credit-map))
+                         ((member key '("IMAGE-CAPTION" "IMAGE_CAPTION"
+                                        "IMAGE-PROMPT" "IMAGE_PROMPT"))
+                          (puthash norm-key (string-trim value) caption-map)))))))))))
+        nil))
+    ;; Store the maps in info for later use
+    (plist-put info :astro-image-credits credit-map)
+    (plist-put info :astro-image-captions caption-map))
+  tree)
 
 (defun org-astro-auto-wrap-image-paths-filter (tree _backend info)
   "Pre-processing filter that automatically wraps raw image paths in [[ ]] brackets.
@@ -377,7 +446,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                    (if record
                        (let ((var-name (plist-get record :var-name)))
                          (if (and var-name (not (string-blank-p alt)))
-                             (org-astro--image-component-for-record record info alt)
+                             (org-astro--image-component-for-record record info alt path)
                            (plist-get record :jsx)))
                      match)))
                s t t)))

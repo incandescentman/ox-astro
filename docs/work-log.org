@@ -2,6 +2,48 @@
 #+DATE: 2025-10-07
 
 * 2025-11-30
+** Session 3: Image Credit and Caption Support
+
+*** Feature Added
+Implemented ~#+IMAGE-CREDIT:~ and ~#+IMAGE-CAPTION:~ (or ~#+IMAGE-PROMPT:~) keywords for body images, mirroring the ~#+HERO-CREDIT:~ and ~#+HERO-CAPTION:~ support added to frontmatter.
+
+*** Behavior
+- Credit appears below image on page as small text
+- Caption/prompt appears in PhotoSwipe lightbox when image is clicked
+- Both appear in lightbox caption (credit in bold, caption in italics)
+- Works with PhotoSwipe via ~data-pswp-item~ and ~data-pswp-caption~ attributes
+
+*** Syntax
+#+begin_src org
+[[/path/to/image.jpg]]
+#+IMAGE-CREDIT: Photographer Name
+#+IMAGE-CAPTION: Description or AI prompt text
+#+end_src
+
+*** Output
+#+begin_src html
+<figure class="image-figure">
+<a href={imgVar.src} data-pswp-item="true" data-pswp-caption="..." ...>
+<Image src={imgVar} alt="..." layout="responsive" />
+</a>
+<figcaption class="image-caption text-xs text-gray-400 mt-2">
+<span class="font-medium">Image:</span> Credit
+</figcaption>
+</figure>
+#+end_src
+
+*** Technical Details
+- Added ~org-astro--collect-image-metadata-filter~ to parse tree filter chain
+- Filter scans for IMAGE-CREDIT/CAPTION/PROMPT keywords following image paragraphs
+- Uses normalized filename keys (~org-astro--normalize-image-key~) to handle path rewrites
+- Keywords are suppressed from output (handled by image rendering instead)
+- Hero images are correctly suppressed from body (credit/caption not rendered for suppressed hero)
+
+*** Files Modified
+- ox-astro-helpers.el (format-image-component, image-component-for-record, normalize-image-key)
+- ox-astro-handlers.el (keyword suppression, collect-image-metadata-filter)
+- ox-astro.el (filter chain registration)
+
 ** Session 2: Body Content Cleanup for org-roam Exports
 
 *** Bugs Fixed
