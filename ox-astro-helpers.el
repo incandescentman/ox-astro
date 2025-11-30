@@ -9,6 +9,12 @@
 (require 'org-element)
 (require 'org-id)
 
+;; Fallback for older Org that might not provide org-element-parent.
+(unless (fboundp 'org-element-parent)
+  (defun org-element-parent (element)
+    "Return parent of ELEMENT via :parent property (compat shim)."
+    (org-element-property :parent element)))
+
 (defvar org-astro-known-posts-folders nil
   "List of destination folders for exports, each entry a (NICKNAME . PLIST).")
 
@@ -25,6 +31,17 @@
               (lambda (orig-fn &rest args)
                 (let ((inhibit-message t)
                       (message-log-max nil))
+                  (apply orig-fn args)))))
+
+;; Silence org-id-locations-update progress and force silent flag.
+(when (fboundp 'org-id-locations-update)
+  (advice-add 'org-id-locations-update :around
+              (lambda (orig-fn &rest args)
+                (let* ((args (if (>= (length args) 2)
+                                 (progn (setcar (nthcdr 1 args) t) args)
+                               (append args (list t))))
+                       (inhibit-message t)
+                       (message-log-max nil))
                   (apply orig-fn args)))))
 
 ;; Compatibility helpers for older Emacs builds.
