@@ -15,17 +15,50 @@
     "Return parent of ELEMENT via :parent property (compat shim)."
     (org-element-property :parent element)))
 
-(defun org-astro--normalize-image-key (path)
+(defun org-astro--normalize-image-key (path &optional source-file)
   "Normalize PATH to a key for image metadata lookup.
-Returns the filename without directory, lowercased, with underscores converted to hyphens.
-This ensures consistent lookup across path rewrites during export."
+Prefer a relative path (from `org-astro-source-root-folder' when available) to
+avoid filename collisions. Fall back to the normalized filename."
   (when path
-    (let* ((filename (file-name-nondirectory path))
-           (base (file-name-sans-extension filename))
-           (ext (file-name-extension filename)))
-      ;; Normalize: lowercase, underscores to hyphens
-      (concat (downcase (replace-regexp-in-string "_" "-" base))
-              (when ext (concat "." (downcase ext)))))))
+    (let* ((abs-path
+            (cond
+             ((string-match-p "\\`https?://" path) path)
+             ((string-prefix-p "//" path) (concat "https:" path))
+             ((file-name-absolute-p path) (expand-file-name path))
+             ((and source-file (file-name-absolute-p source-file))
+              (expand-file-name path (file-name-directory source-file)))
+             (t path)))
+           (root (and (boundp 'org-astro-source-root-folder)
+                      org-astro-source-root-folder
+                      (file-name-absolute-p org-astro-source-root-folder)
+                      (expand-file-name org-astro-source-root-folder)))
+           (source-dir (when (and source-file (file-name-absolute-p source-file))
+                         (file-name-directory source-file)))
+           (relative (when (and root abs-path (file-name-absolute-p abs-path)
+                                (string-prefix-p root (expand-file-name abs-path)))
+                       (file-relative-name abs-path root)))
+           (relative-from-source (when (and source-dir abs-path (file-name-absolute-p abs-path)
+                                            (string-prefix-p source-dir (expand-file-name abs-path)))
+                                   (file-relative-name abs-path source-dir))))
+      (cond
+       ;; Keep remote URLs as-is (case sensitive), but normalize underscores.
+       ((and abs-path (string-match-p "\\`https?://" abs-path))
+        (replace-regexp-in-string "_" "-" abs-path))
+       ;; Use normalized relative path when possible.
+       (relative
+        (let ((clean (replace-regexp-in-string "_" "-" (downcase relative))))
+          (replace-regexp-in-string "//+" "/" clean)))
+       ;; Fallback to relative path from the source file directory if available.
+       (relative-from-source
+        (let ((clean (replace-regexp-in-string "_" "-" (downcase relative-from-source))))
+          (replace-regexp-in-string "//+" "/" clean)))
+       ;; Fall back to normalized filename (lowercase + underscores → hyphens).
+       (t
+        (let* ((filename (file-name-nondirectory abs-path))
+               (base (file-name-sans-extension filename))
+               (ext (file-name-extension filename)))
+          (concat (downcase (replace-regexp-in-string "_" "-" base))
+                  (when ext (concat "." (downcase ext))))))))))
 
 (defvar org-astro-known-posts-folders nil
   "List of destination folders for exports, each entry a (NICKNAME . PLIST).")
@@ -82,6 +115,7 @@ indicator/value pairs.  Returns the updated plist."
 (declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
 (declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
 (declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
+(declare-function org-astro--image-remote-p "ox-astro-image-handlers")
 (declare-function org-astro--sanitize-filename "ox-astro-image-handlers")
 (declare-function org-astro--build-render-map "ox-astro-image-handlers")
 (declare-function org-astro--image-entry-alt "ox-astro-image-handlers")
@@ -140,6 +174,17 @@ Accepts t/true/yes/y/on/1 (case-insensitive)."
   "Escape double quotes in TEXT for safe use in JSX attributes."
   (replace-regexp-in-string "\"" "\\\\\"" (or text "")))
 
+(defun org-astro--image-dimensions (path)
+  "Return (WIDTH . HEIGHT) for PATH when readable; nil otherwise."
+  (when (and path (file-exists-p path) (not (org-astro--image-remote-p path)))
+    (condition-case _
+        (let* ((type (image-type-from-file-name path))
+               (image (and type (create-image path type)))
+               (size (and image (image-size image t))))
+          (when (and size (consp size))
+            (cons (round (car size)) (round (cdr size)))))
+      (error nil))))
+
 (defun org-astro--normalize-image-path (path)
   "Normalize PATH for reliable image comparisons."
   (cond
@@ -166,11 +211,12 @@ Accepts t/true/yes/y/on/1 (case-insensitive)."
                  (org-astro--same-image-path-p candidate hero-path))
                candidates))))
 
-(defun org-astro--format-image-component (var-name alt-text &optional credit caption)
+(defun org-astro--format-image-component (var-name alt-text &optional credit caption width height)
   "Return a standardized Image component string for VAR-NAME and ALT-TEXT.
 Includes layout prop based on `org-astro-image-default-layout' config.
 If CREDIT or CAPTION is non-nil, wraps the image in a figure with PhotoSwipe support.
-CREDIT appears on the page, CAPTION appears in lightbox."
+CREDIT appears on the page, CAPTION appears in lightbox.
+WIDTH/HEIGHT (numbers) populate PhotoSwipe data attributes when available."
   (let* ((layout-prop (when (and (boundp 'org-astro-image-default-layout)
                                  org-astro-image-default-layout
                                  (not (string= org-astro-image-default-layout "none")))
@@ -179,21 +225,24 @@ CREDIT appears on the page, CAPTION appears in lightbox."
          (image-tag (format "<Image src={%s} alt=\"%s\"%s />"
                             var-name
                             escaped-alt
-                            (or layout-prop ""))))
+                            (or layout-prop "")))
+         (width-attr (when width (format " data-pswp-width=\"%s\"" width)))
+         (height-attr (when height (format " data-pswp-height=\"%s\"" height))))
     (if (or credit caption)
         ;; Wrap in figure with PhotoSwipe-compatible link and caption
         (let* ((lightbox-parts
                 (delq nil
-                      (list (when credit (format "<strong>Image:</strong> %s" credit))
+                      (list (when credit (format "<strong>%s</strong>" credit))
                             (when caption (format "<em>%s</em>" caption)))))
                (lightbox-caption (mapconcat #'identity lightbox-parts "<br/>"))
                (escaped-lightbox (org-astro--escape-attribute lightbox-caption))
                ;; Page caption shows credit only (caption/prompt shown in lightbox)
-               (page-caption (when credit
-                               (format "<span class=\"font-medium\">Image:</span> %s" credit))))
-          (format "<figure class=\"image-figure\">\n<a href={%s.src} data-pswp-item=\"true\" data-pswp-caption=\"%s\" data-pswp-width=\"1200\" data-pswp-height=\"800\">\n%s\n</a>%s\n</figure>"
+               (page-caption credit))
+          (format "<figure class=\"image-figure\">\n<a href={%s.src} data-pswp-item=\"true\" data-pswp-caption=\"%s\"%s%s>\n%s\n</a>%s\n</figure>"
                   var-name
                   escaped-lightbox
+                  (or width-attr "")
+                  (or height-attr "")
                   image-tag
                   (if page-caption
                       (format "\n<figcaption class=\"image-caption text-xs text-gray-400 mt-2\">%s</figcaption>" page-caption)
@@ -228,14 +277,21 @@ IMG-PATH is used to look up credit/caption metadata if provided."
           ;; Use normalized key for lookup since paths get rewritten during export
           (let* ((credit-map (plist-get info :astro-image-credits))
                  (caption-map (plist-get info :astro-image-captions))
-                 (norm-key (and img-path (org-astro--normalize-image-key img-path)))
+                 (norm-key (and img-path (org-astro--normalize-image-key img-path (plist-get info :input-file))))
                  (credit (and credit-map norm-key (gethash norm-key credit-map)))
-                 (caption (and caption-map norm-key (gethash norm-key caption-map))))
+                 (caption (and caption-map norm-key (gethash norm-key caption-map)))
+                 (target-path (or (plist-get record :target-path)
+                                  (plist-get record :path)
+                                  (plist-get entry :target-path)
+                                  (plist-get entry :path)))
+                 (dimensions (and target-path (org-astro--image-dimensions target-path)))
+                 (width (car dimensions))
+                 (height (cdr dimensions)))
             (when var-name
               (let ((current (plist-get info :astro-render-used-vars)))
                 (setf (plist-get info :astro-render-used-vars)
                       (cl-adjoin var-name current :test #'equal))))
-            (org-astro--format-image-component var-name alt credit caption))))))
+            (org-astro--format-image-component var-name alt credit caption width height)))))))
 
 (defun org-astro--lookup-render-record (path info)
   "Return render metadata for PATH from INFO's render map."
