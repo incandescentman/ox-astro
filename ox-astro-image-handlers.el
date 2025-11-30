@@ -364,9 +364,11 @@ Returns a plist with keys:
         (let ((match-beg (match-beginning 1))
               (match-end (match-end 1))
               (captured (match-string 1)))
-          (message "DEBUG: Found bare link: %s" captured)
+          (when org-astro-debug-console
+            (message "DEBUG: Found bare link: %s" captured))
           (when (string-equal captured old-path)
-            (message "DEBUG: Updating bare link match")
+            (when org-astro-debug-console
+              (message "DEBUG: Updating bare link match"))
             (goto-char match-beg)
             (delete-region match-beg match-end)
             (insert new-path)
@@ -375,13 +377,16 @@ Returns a plist with keys:
       ;; 3) Update raw lines containing only the path (allowing whitespace)
       (goto-char (point-min))
       (let ((search-pattern (format "^[\t ]*%s[\t ]*$" (regexp-quote old-path))))
-        (message "DEBUG: Searching for raw pattern: %s" search-pattern)
+        (when org-astro-debug-console
+          (message "DEBUG: Searching for raw pattern: %s" search-pattern))
         (while (re-search-forward search-pattern nil t)
-          (message "DEBUG: Found raw path match at line %d" (line-number-at-pos))
+          (when org-astro-debug-console
+            (message "DEBUG: Found raw path match at line %d" (line-number-at-pos)))
           (replace-match new-path t t)
           (setq changes-made t)))
 
-      (message "DEBUG: Buffer update complete. Changes made: %s" changes-made)
+      (when org-astro-debug-console
+        (message "DEBUG: Buffer update complete. Changes made: %s" changes-made))
       changes-made)))
 
 (defun org-astro--update-image-path-in-file (file old-path new-path)
@@ -397,7 +402,8 @@ Returns a plist with keys:
 (defun org-astro--update-source-buffer-image-path (old-path new-path)
   "Update image path in the original source buffer, not the export copy.
                This function finds the source buffer and modifies it directly."
-  (message "DEBUG: Looking for source buffer to update path %s -> %s" old-path new-path)
+  (when org-astro-debug-console
+    (message "DEBUG: Looking for source buffer to update path %s -> %s" old-path new-path))
   (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
     (message "[ox-astro][img] UPDATE-BUFFER: Attempting to update %s -> %s" old-path new-path)
     (message "[ox-astro][img] UPDATE-BUFFER: Current buffer: %s, file: %s, read-only: %s"
@@ -410,15 +416,18 @@ Returns a plist with keys:
      ((and (buffer-file-name)
            (not buffer-read-only)
            (not (string-match-p "^ \\*temp\\*" (buffer-name))))
-      (message "DEBUG: Using current buffer as source: %s" (buffer-name))
+     (message "DEBUG: Using current buffer as source: %s" (buffer-name))
+      (when org-astro-debug-console
+        (message "DEBUG: Using current buffer as source: %s" (buffer-name)))
       (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
         (message "[ox-astro][img] UPDATE-BUFFER: Using current buffer as source"))
       (setq source-buffer (current-buffer)))
 
      ;; Try to find source buffer by examining all buffers
      (t
-      (message "DEBUG: Current buffer (%s) is not suitable, searching for source buffer..." (buffer-name))
-      (message "DEBUG: Current buffer file: %s, read-only: %s" (buffer-file-name) buffer-read-only)
+      (when org-astro-debug-console
+        (message "DEBUG: Current buffer (%s) is not suitable, searching for source buffer..." (buffer-name))
+        (message "DEBUG: Current buffer file: %s, read-only: %s" (buffer-file-name) buffer-read-only))
       (org-astro--debug-log-direct "UPDATE-BUFFER: Searching for source buffer containing path: %s" old-path)
       (dolist (buf (buffer-list))
         (with-current-buffer buf
