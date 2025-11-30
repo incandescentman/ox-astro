@@ -516,7 +516,7 @@ TRACKER, when non-nil, accumulates duplicate counts keyed by ID."
      ((not existing)
       (puthash id entry map)
       (when tracker
-        (puthash id (list :winner entry :count 0 :examples nil) tracker)))
+        (puthash id (list :id id :winner entry :count 0 :examples nil) tracker)))
      (t
       (let* ((winner (org-astro--id-choose-winner existing entry))
              (loser (if (eq winner existing) entry existing))
@@ -525,7 +525,8 @@ TRACKER, when non-nil, accumulates duplicate counts keyed by ID."
         (when tracker
           (let* ((count (1+ (or (plist-get info :count) 0)))
                  (examples (plist-get info :examples)))
-            (puthash id (list :winner winner
+            (puthash id (list :id id
+                              :winner winner
                               :count count
                               :examples (cons (plist-get loser :source) examples))
                      tracker))))))))
