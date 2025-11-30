@@ -437,8 +437,19 @@ This helper respects the first matching keyword encountered in TREE."
                                  slug
                                  (when (and title (not (string-blank-p title)))
                                    (org-astro--slugify title))))
-                 (destination-info (org-astro--resolve-destination-config
-                                    (or astro-folder dest-folder)))
+                 ;; Resolve destination; if the file doesn't declare one,
+                 ;; fall back to the first known posts folder so ID links
+                 ;; still map to an outfile in the ID map.
+                 (destination-info
+                  (let ((resolved (org-astro--resolve-destination-config
+                                   (or astro-folder dest-folder))))
+                    (if (plist-get resolved :path)
+                        resolved
+                      (let* ((default-pair (car org-astro-known-posts-folders))
+                             (fallback (and default-pair
+                                            (org-astro--resolve-destination-config
+                                             (car default-pair)))))
+                        (or fallback resolved)))))
                  (posts-folder (plist-get destination-info :path))
                  (preserve (plist-get destination-info :preserve))
                  (relative-subdir (and preserve
