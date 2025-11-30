@@ -88,6 +88,8 @@ indicator/value pairs.  Returns the updated plist."
 (declare-function org-astro--get-era "ox-astro-metadata")
 (declare-function org-astro--get-place "ox-astro-metadata")
 (declare-function org-astro--get-story-type "ox-astro-metadata")
+(declare-function org-astro--get-hero-credit "ox-astro-metadata")
+(declare-function org-astro--get-hero-caption "ox-astro-metadata")
 
 ;; Declare global variable for data persistence across export phases
 (defvar org-astro--current-body-images-imports nil
@@ -1369,6 +1371,8 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          (emotions (org-astro--parse-emotions tree info))
          (media (org-astro--parse-media tree info))
          (story-type (org-astro--get-story-type tree info))
+         (hero-credit (org-astro--get-hero-credit tree info))
+         (hero-caption (org-astro--get-hero-caption tree info))
          (incomplete-token (org-astro--parse-incomplete tree info))
          (incomplete (cond
                       ((eq incomplete-token :true) "true")
@@ -1397,6 +1401,8 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       (excerpt . ,excerpt)
       (image . ,image)
       (imageAlt . ,image-alt)
+      ,@(when hero-credit `((heroCredit . ,hero-credit)))
+      ,@(when hero-caption `((heroCaption . ,hero-caption)))
       ,@(when date-occurred `((dateOccurred . ,date-occurred)))
       (tags . ,tags)
       ,@(when place `((place . ,place)))

@@ -129,6 +129,14 @@ or double quotes retain internal spacing; quotes are stripped in the result."
   "Return raw value for ASTRO_INCOMPLETE or INCOMPLETE keyword from TREE."
   (org-astro--keyword-first-value tree '("ASTRO_INCOMPLETE" "INCOMPLETE")))
 
+(defun org-astro--keyword-raw-hero-credit (tree)
+  "Return raw value for HERO-CREDIT keyword from TREE."
+  (org-astro--keyword-first-value tree '("HERO-CREDIT" "HERO_CREDIT")))
+
+(defun org-astro--keyword-raw-hero-caption (tree)
+  "Return raw value for HERO-CAPTION keyword from TREE."
+  (org-astro--keyword-first-value tree '("HERO-CAPTION" "HERO_CAPTION")))
+
 (defun org-astro--keyword-raw-connection (tree base)
   "Return raw value for connection keyword BASE (e.g., \"CONNECTION_TEMPORAL\")."
   (org-astro--keyword-first-value tree (list (format "ASTRO_%s" base) base)))
@@ -303,6 +311,24 @@ or double quotes retain internal spacing; quotes are stripped in the result."
            "Invalid STORY_TYPE '%s'. Expected one of %s"
            trimmed valid)
           nil))))))
+
+(defun org-astro--get-hero-credit (tree info)
+  "Return the hero image credit string from TREE/INFO."
+  (let ((credit-raw (or (org-astro--keyword-raw-hero-credit tree)
+                        (plist-get info :hero-credit))))
+    (when credit-raw
+      (let ((trimmed (org-trim credit-raw)))
+        (unless (string-empty-p trimmed)
+          trimmed)))))
+
+(defun org-astro--get-hero-caption (tree info)
+  "Return the hero image caption string from TREE/INFO."
+  (let ((caption-raw (or (org-astro--keyword-raw-hero-caption tree)
+                         (plist-get info :hero-caption))))
+    (when caption-raw
+      (let ((trimmed (org-trim caption-raw)))
+        (unless (string-empty-p trimmed)
+          trimmed)))))
 
 (provide 'ox-astro-metadata)
 ;;; ox-astro-metadata.el ends here
