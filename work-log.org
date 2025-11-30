@@ -7,6 +7,7 @@ Audio files are now:
 - Copied to assets folder
 - Import statements generated
 - But NO <Image> JSX generated (audio imports are for manual use with custom components)
+- Audio links stripped from MDX body (only import kept)
 
 ** Usage in org files
 Add audio file path as a link:
@@ -28,11 +29,15 @@ Then manually use with AudioPlayer component in MDX.
   - Updated `org-astro--build-image-manifest` to use media matcher (images + audio)
   - Updated `org-astro--build-render-map` to skip JSX generation for audio files
   - Audio entries marked with `:audio t` for downstream identification
+- `ox-astro-helpers.el`:
+  - Added audio file clause to `org-astro-link` to return empty string
+  - Prevents audio links from appearing as `<file:///...>` in MDX body
 
 ** Impact
 - Audio files now get copied and imported automatically
 - No breaking changes to existing image handling
 - Manual component usage gives full control over audio player styling
+- Audio links cleanly removed from body (only import statement generated)
 
 * 2025-11-30 - Image credits/captions polish and reliability
 

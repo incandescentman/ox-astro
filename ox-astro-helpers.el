@@ -1660,6 +1660,12 @@ Returns cleaned alist; emits warnings when coercions occur."
                         (ignore-errors (org-md-link link desc info)))))
               (or md (or (org-element-property :raw-link link)
                          (concat (or type "file") ":" path)))))))
+     ;; Audio file links → return empty string (import handled by image manifest)
+     ((and (or (string= type "file")
+               (and (null type) path (string-prefix-p "/" path)))
+           path
+           (string-match-p "\\.\\(mp3\\|wav\\|ogg\\|m4a\\|aac\\|flac\\)$" path))
+      "")
      ;; PDF links → emit a Markdown link with URL-encoded spaces; normalize label.
      ((and path
            (or (string= type "file") (and (null type) (string-prefix-p "/" path)))
