@@ -51,3 +51,4 @@ Made duplicate org-roam ID handling deterministic and quiet during batch exports
 - Logging now defaults to a compact summary; set `OX_ASTRO_DUP_LOG_MODE=verbose` for per-ID detail.
 ** Impact
 - Export output is readable again while still warning about ID collisions; exports pick stable winners for duplicated IDs without touching source org files.
+- Strip PROPERTIES drawer output and org-roam boilerplate from MDX bodies, keeping IDs only in frontmatter (add property-drawer translator + final body cleanup of Links/Source lines). Addresses leaked `:ID:` lines like in journal/monday-february-12-2024.mdx.

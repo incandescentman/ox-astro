@@ -622,6 +622,7 @@ resolved to plain text in the temporary export buffer."
     (table . org-astro-table)
     (table-row . org-astro-table-row)
     (table-cell . org-astro-table-cell)
+    (property-drawer . org-astro-property-drawer)
     (special-block . org-astro-special-block)
     (export-block . org-astro-export-block)
     (keyword . org-astro-keyword))

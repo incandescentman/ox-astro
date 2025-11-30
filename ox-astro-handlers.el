@@ -343,6 +343,14 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     ;; Normalize self-closing tags so MDX doesn't expect separate closing tags.
     (let ((case-fold-search t))
       (setq s (replace-regexp-in-string "<br\\s*/?>" "<br />" s)))
+    ;; Strip org-roam template boilerplate (Links/Source lines)
+    (setq s (replace-regexp-in-string
+             "^[ \t]*-[ \t]+\\*\\*\\(Links\\|Source\\)\\*\\*[ \t]*::?[ \t]*\n?"
+             "" s))
+    ;; Also strip standalone "Links:" or "Source:" lines
+    (setq s (replace-regexp-in-string
+             "^[ \t]*\\(Links\\|Source\\):[ \t]*\n?"
+             "" s t))
     ;; Convert markdown image syntax with absolute paths to Image components
     (let ((pattern "!\\[\\([^]]*\\)\\](\\([~/][^)]+\\.\\(?:png\\|jpe?g\\|webp\\)\\))"))
       (setq s (replace-regexp-in-string

@@ -539,3 +539,6 @@ Also added fallback so files without `#+DESTINATION_FOLDER` use the first entry 
 
 ** Lesson Learned
 In Emacs Lisp, regex special sequences like `\'` (end of string) require double backslashes in double-quoted strings: `"\\'"`. Single backslashes are consumed by the string parser, leaving just `'`.
+
+* 2025-11-30 Strip ID drawers from body
+- Strip PROPERTIES drawer output and org-roam boilerplate from MDX bodies, keeping IDs only in frontmatter (add property-drawer translator + final body cleanup of Links/Source lines). Addresses leaked `:ID:` lines like in journal/monday-february-12-2024.mdx.
