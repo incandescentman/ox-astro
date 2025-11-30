@@ -37,11 +37,11 @@
 (when (fboundp 'org-id-locations-update)
   (advice-add 'org-id-locations-update :around
               (lambda (orig-fn &rest args)
-                (let* ((args (if (>= (length args) 2)
+                (let* ((inhibit-message t)
+                       (message-log-max nil)
+                       (args (if (>= (length args) 2)
                                  (progn (setcar (nthcdr 1 args) t) args)
-                               (append args (list t))))
-                       (inhibit-message t)
-                       (message-log-max nil))
+                               (append args (list t)))))
                   (apply orig-fn args)))))
 
 ;; Compatibility helpers for older Emacs builds.
