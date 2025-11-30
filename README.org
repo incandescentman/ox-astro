@@ -29,8 +29,8 @@ Then, add the following to your Emacs configuration (~init.el~):
 - **Advanced Image Handling**: Automatically detects, copies, and processes images from anywhere on your filesystem, converting them into optimized Astro `<Image>` components.
 - **Interactive Workflow**: Prompts for a destination folder if one isn't specified, making it easy to work with multiple Astro projects.
 - **Advanced Formatting**: Intelligently handles Org-specific syntax (like TODOs and tables) and converts it to the correct Markdown equivalent.
-- **org-roam Integration**: Respects org-roam file structure and properties blocks.
-- **ID Link Resolution**: Converts `[[id:...]]` org-roam links into relative Markdown links that work out of the box in Astro.
+- **org-roam Integration**: Fully compatible with org-roam files—property drawers are stripped from body content (IDs go to frontmatter as ~orgRoamId~), and template boilerplate (~- **Links:**~, ~- **Source:**~) is automatically removed.
+- **ID Link Resolution**: Converts ~[[id:...]]~ org-roam links into relative Markdown links that work out of the box in Astro.
 - **Subtree Export**: Export individual subtrees as standalone blog posts.
 - **Date-Only Title Guard**: If the file name or =#+TITLE= is just a date, the first heading becomes the title/slug/output filename; later non-date titles override date placeholders.
 - **Mixed Link Support**: Preserves existing Markdown links while processing Org links and converting raw URLs into custom components.

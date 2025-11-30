@@ -62,6 +62,12 @@ Set =org-astro-id-link-base-path= to apply absolute routes to all exports:
 - Add a destination nickname with =:preserve-folder-structure t= if you want exports to mirror the roam hierarchy
 - Verify your notes include =:ID:= drawers when you expect cross-note linking
 
+* org-roam Compatibility
+ox-astro handles org-roam files cleanly:
+- *Property drawers* (=:PROPERTIES:= / =:ID:= / =:END:=) are stripped from body content; IDs go to frontmatter as =orgRoamId=
+- *Template boilerplate* (=- **Links:**=, =- **Source:**=) is removed from output
+- *ID links* (=[[id:...][Title]]=) resolve to MDX paths using the ID map built from your org-roam directory
+
 * Debug and Development Options
 
 ** Clipboard Copying (macOS)

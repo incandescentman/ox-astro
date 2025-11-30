@@ -251,9 +251,16 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                 (when (and hero-pattern (string-match hero-pattern body))
                   (let ((case-fold-search nil))
                     (setq body (replace-match "" t t body)))
-                  (let* ((used-vars (plist-get info :astro-render-used-vars))
-                         (updated (cl-remove hero-var used-vars :test #'equal)))
-                    (setf (plist-get info :astro-render-used-vars) updated))))))
+                 (let* ((used-vars (plist-get info :astro-render-used-vars))
+                        (updated (cl-remove hero-var used-vars :test #'equal)))
+                   (setf (plist-get info :astro-render-used-vars) updated))))))
+         ;; Strip orphan property drawers and ID lines that Org leaves as text.
+         (_ (setq body (replace-regexp-in-string
+                        "^:PROPERTIES:\n\\(?:[^\n]*\n\\)*?:END:\n?"
+                        "" body)))
+         (_ (setq body (replace-regexp-in-string
+                        "^:ID:\\s-+.*\n?"
+                        "" body t)))
          ;; Copy frontmatter to clipboard (opt-in)
          (_ (when (and (boundp 'org-astro-copy-to-clipboard) org-astro-copy-to-clipboard)
               (let ((pbcopy (executable-find "pbcopy")))
