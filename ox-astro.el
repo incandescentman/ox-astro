@@ -59,6 +59,11 @@
   :group 'org-export-astro
   :type 'file)
 
+(defcustom org-astro-debug-console nil
+  "When non-nil, emit verbose debug logging to *Messages* during export."
+  :group 'org-export-astro
+  :type 'boolean)
+
 (defcustom org-astro-copy-to-clipboard nil
   "When non-nil, copy source/output/debug paths to the clipboard after export."
   :group 'org-export-astro
@@ -154,26 +159,28 @@ generated and added to the Org source file."
                          (when narrow-start (goto-char narrow-start))
                          (org-export-get-environment 'astro effective-subtreep)))
                  (buffer-modified-p nil))
-          ;; DEBUG: Check buffer at very start
-          (save-excursion
-            (goto-char (point-min))
-            (let ((id-link-count 0))
-              (while (re-search-forward "\\[\\[id:" nil t)
-                (setq id-link-count (1+ id-link-count)))
-              (message "[DEBUG-START] At function start: Found %d [[id: patterns in buffer" id-link-count)))
+          ;; DEBUG: Check buffer at very start (console-gated)
+          (when org-astro-debug-console
+            (save-excursion
+              (goto-char (point-min))
+              (let ((id-link-count 0))
+                (while (re-search-forward "\\[\\[id:" nil t)
+                  (setq id-link-count (1+ id-link-count)))
+                (message "[DEBUG-START] At function start: Found %d [[id: patterns in buffer" id-link-count))))
           ;; Clear any stale image import state before running export filters.
           (setq org-astro--current-body-images-imports nil)
           ;; --- AUTO-NORMALIZE: Convert org headings to markdown in user/prompt/quote blocks ---
           ;; This must run BEFORE org-mode parses the buffer, otherwise asterisks at start
           ;; of lines inside src blocks will be interpreted as org headlines and break the block.
           (org-astro--normalize-user-blocks)
-          ;; DEBUG: Check buffer after normalize
-          (save-excursion
-            (goto-char (point-min))
-            (let ((id-link-count 0))
-              (while (re-search-forward "\\[\\[id:" nil t)
-                (setq id-link-count (1+ id-link-count)))
-              (message "[DEBUG-AFTER-NORMALIZE] After normalize: Found %d [[id: patterns in buffer" id-link-count)))
+          ;; DEBUG: Check buffer after normalize (console-gated)
+          (when org-astro-debug-console
+            (save-excursion
+              (goto-char (point-min))
+              (let ((id-link-count 0))
+                (while (re-search-forward "\\[\\[id:" nil t)
+                  (setq id-link-count (1+ id-link-count)))
+                (message "[DEBUG-AFTER-NORMALIZE] After normalize: Found %d [[id: patterns in buffer" id-link-count))))
           ;; --- PREPROCESSING: Process and update all image paths BEFORE export ---
           (let* ((tree (org-element-parse-buffer))
                  (destination-keyword (org-astro--keyword-value tree '("DESTINATION_FOLDER" "DESTINATION-FOLDER")))
@@ -504,8 +511,9 @@ generated and added to the Org source file."
                         (make-directory pub-dir t)
                         ;; First export pass
                         (message "Running first export pass...")
-                        (message "[DEBUG-EXPORT] Calling org-export-to-file with backend: astro")
-                        (message "[DEBUG-EXPORT] Backend details: %S" (org-export-get-backend 'astro))
+                        (when org-astro-debug-console
+                          (message "[DEBUG-EXPORT] Calling org-export-to-file with backend: astro")
+                          (message "[DEBUG-EXPORT] Backend details: %S" (org-export-get-backend 'astro)))
                         ;; DEBUG: Check if ID links exist in buffer before export
                         (save-excursion
                           (goto-char (point-min))
@@ -581,9 +589,10 @@ resolved to plain text in the temporary export buffer."
 
 (defun org-astro-link-wrapper (link desc info)
   "Debug wrapper around org-astro-link to verify it's being called."
-  (message "[DEBUG-WRAPPER] org-astro-link-wrapper CALLED! type=%s path=%s"
-           (org-element-property :type link)
-           (org-element-property :path link))
+  (when org-astro-debug-console
+    (message "[DEBUG-WRAPPER] org-astro-link-wrapper CALLED! type=%s path=%s"
+             (org-element-property :type link)
+             (org-element-property :path link)))
   (org-astro-link link desc info))
 
 (org-export-define-derived-backend 'astro 'md
