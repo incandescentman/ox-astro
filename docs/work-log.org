@@ -2,7 +2,25 @@
 #+DATE: 2025-10-07
 
 * 2025-11-30
-** Session: Debug Output Cleanup and Export Bug Fixes
+** Session 2: Body Content Cleanup for org-roam Exports
+
+*** Bugs Fixed
+
+1. *Property drawer leaking into MDX body*
+   - ~:ID:~ lines from ~:PROPERTIES:~ drawer appeared in rendered content
+   - Added ~property-drawer~ transcoder to Astro backend (returns ~""~)
+   - ID now only appears in frontmatter (~orgRoamId~), not body
+
+2. *org-roam template boilerplate in body*
+   - ~- **Links:**~ and ~- **Source:**~ lines exported as content
+   - Added cleanup patterns to ~org-astro-final-output-filter~
+   - Strips both bold list format (~- **Links:**~) and standalone (~Links:~)
+
+*** Files Modified
+- ox-astro.el (property-drawer handler in backend definition)
+- ox-astro-handlers.el (Links/Source cleanup in final filter)
+
+** Session 1: Debug Output Cleanup and Export Bug Fixes
 
 *** Bugs Fixed
 
