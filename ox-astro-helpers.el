@@ -171,8 +171,13 @@ Accepts t/true/yes/y/on/1 (case-insensitive)."
     (member val '("t" "true" "yes" "y" "on" "1"))))
 
 (defun org-astro--escape-attribute (text)
-  "Escape double quotes in TEXT for safe use in JSX attributes."
-  (replace-regexp-in-string "\"" "\\\\\"" (or text "")))
+  "Escape TEXT for safe use inside double-quoted JSX/HTML attributes.
+Escapes &, <, >, and \" to their entity equivalents."
+  (let ((s (or text "")))
+    (setq s (replace-regexp-in-string "&" "&amp;" s))
+    (setq s (replace-regexp-in-string "<" "&lt;" s))
+    (setq s (replace-regexp-in-string ">" "&gt;" s))
+    (replace-regexp-in-string "\"" "&quot;" s)))
 
 (defun org-astro--image-dimensions (path)
   "Return (WIDTH . HEIGHT) for PATH when readable; nil otherwise."

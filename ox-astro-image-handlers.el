@@ -250,7 +250,7 @@ Returns a plist describing the outcome or nil on failure."
 
          ;; Local file – copy into assets directory with sanitized filename.
          (t
-          (let* ((source-path expanded-original)
+         (let* ((source-path expanded-original)
                  (original-filename (and source-path (file-name-nondirectory source-path)))
                  (clean-filename (and original-filename (org-astro--sanitize-filename original-filename)))
                  (target-path (and clean-filename (expand-file-name clean-filename assets-folder))))
@@ -261,6 +261,13 @@ Returns a plist describing the outcome or nil on failure."
              ((not (file-exists-p source-path))
               (message "[ox-astro][img] Source image missing: %s" source-path)
               nil)
+             ;; Source and target resolve to the same file (e.g., symlinked Dropbox paths)
+             ((and target-path (file-exists-p target-path) (file-equal-p source-path target-path))
+              (let ((astro-path (concat "~/assets/images/" sub-dir clean-filename)))
+                (list :astro-path astro-path
+                      :target-path target-path
+                      :rewrite-path nil
+                      :status 'existing)))
              (t
               (make-directory assets-folder t)
               (condition-case err

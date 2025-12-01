@@ -195,19 +195,18 @@ keeps inline theme sections aligned with remarkThemeSections without manual
 marker placement in Org."
   (let ((children (org-element-contents tree))
         (result '()))
-    (cl-labels
-        ((theme-keyword-p
-          (node theme)
-          (and (eq (org-element-type node) 'keyword)
-               (string-equal (org-element-property :key node) "THEME")
-               (string-equal (downcase (org-element-property :value node)) theme)))
-         (make-theme-node
-          (theme)
-          (org-element-create 'keyword
-                              (list :key "THEME"
-                                    :value theme
-                                    :raw-value theme
-                                    :post-blank 1)))))
+    (let* ((theme-keyword-p
+            (lambda (node theme)
+              (and (eq (org-element-type node) 'keyword)
+                   (string-equal (org-element-property :key node) "THEME")
+                   (string-equal (downcase (org-element-property :value node)) theme))))
+           (make-theme-node
+            (lambda (theme)
+              (org-element-create 'keyword
+                                  (list :key "THEME"
+                                        :value theme
+                                        :raw-value theme
+                                        :post-blank 1)))))
       (while children
         (let* ((node (car children))
                (next (cadr children)))
@@ -219,21 +218,21 @@ marker placement in Org."
                 ;; Ensure correct theme keyword immediately before headline.
                 (cond
                  ;; Already have the correct theme keyword immediately before.
-                 ((and result (theme-keyword-p (car (last result)) theme))
+                 ((and result (funcall theme-keyword-p (car (last result)) theme))
                   nil)
                  ;; If the next node is the correct theme keyword, move it before.
-                 ((theme-keyword-p next theme)
+                 ((funcall theme-keyword-p next theme)
                   (setq children (cdr children)) ; drop the keyword from its current spot
-                  (push (make-theme-node theme) result))
-                 (t
-                  (push (make-theme-node theme) result)))
+                  (push (funcall make-theme-node theme) result))
+                (t
+                  (push (funcall make-theme-node theme) result)))
                 ;; Always push the headline itself
                 (push node result))
             ;; Non-target nodes pass through unchanged
             (push node result)))
         (setq children (cdr children)))
       (org-element-set-contents tree (nreverse result)))
-  tree)
+    tree))
 
 (defun org-astro-auto-wrap-image-paths-filter (tree _backend info)
   "Pre-processing filter that automatically wraps raw image paths in [[ ]] brackets.
@@ -384,7 +383,21 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                            (format "{/* Source org: %s */}\n" source-path)))
          ;; --- Handle All Imports ---
          ;; 1. Body image imports (collected by our filter)
-         (render-imports (plist-get info :astro-render-imports))
+         ;; Fallback: if imports weren't populated earlier, rebuild from processed media
+         (render-imports (or (plist-get info :astro-render-imports)
+                             (let* ((processed (or (plist-get info :astro-body-images-imports)
+                                                   org-astro--current-body-images-imports))
+                                    (render-data (and processed
+                                                      (org-astro--build-render-map
+                                                       processed
+                                                       (plist-get info :astro-hero-image))))
+                                    (imports (and render-data (plist-get render-data :imports)))
+                                    (map (and render-data (plist-get render-data :map))))
+                               (when map
+                                 (plist-put info :astro-render-map map))
+                               (when imports
+                                 (plist-put info :astro-render-imports imports))
+                               imports)))
          (used-image-vars (plist-get info :astro-render-used-vars))
          (render-imports
           (when render-imports

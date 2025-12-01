@@ -55,6 +55,9 @@
 (require 'ox-astro-image-handlers)
 (require 'ox-astro-pdf-handlers)
 
+;; Fallback to prevent void-variable errors if config isn't loaded early enough.
+(defvar org-astro-date-format "%Y-%m-%dT%H:%M:%SZ")
+
 (defcustom org-astro-debug-log-file (expand-file-name "ox-astro-debug.log" temporary-file-directory)
   "File path for writing debug logs when `org-astro-debug-images` is non-nil."
   :group 'org-export-astro
