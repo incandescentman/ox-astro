@@ -391,6 +391,18 @@ Returns a plist with keys:
             (insert new-path)
             (setq changes-made t))))
 
+      ;; 1b) Update remote links [[https://OLD]] / [[http://OLD]] / [[//OLD]]
+      (goto-char (point-min))
+      (let ((escaped (regexp-quote old-path)))
+        (while (re-search-forward (format "\\[\\[%s\\]\\(\\[[^]]*\\]\\)?\\]" escaped) nil t)
+          (let* ((desc (match-string 1))
+                 ;; Keep the original description (desc includes surrounding brackets).
+                 (replacement (if desc
+                                  (format "[[%s]%s]" new-path desc)
+                                (format "[[%s]]" new-path))))
+            (replace-match replacement t t)
+            (setq changes-made t))))
+
       ;; 2) Update bare [[OLD]] and [[OLD][DESC]] (Org treats these as file links too)
       (goto-char (point-min))
       (while (re-search-forward "\\[\\[\\(/[^]]+\\)\\]\\(\\[[^]]*\\]\\)?\\]" nil t)

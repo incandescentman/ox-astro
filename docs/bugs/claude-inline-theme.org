@@ -1,0 +1,24 @@
+#+TITLE: Inline Theme Keywords Not Emitted
+#+DATE: 2025-12-02
+#+STATUS: Open
+
+* Problem Summary
+Inline #+THEME: keywords placed immediately before the first heading were being suppressed, so the generated MDX lacked `{/* theme: claude */}` markers and the Claude styling did not apply.
+
+* Expected Behavior
+- Body-level THEME keywords should emit inline theme markers even when placed right before the first heading, provided they differ from the page theme.
+
+* Actual Behavior
+- The export suppressed THEME keywords that appeared before the first heading, so no inline theme marker was emitted and the Claude fonts/styles did not apply.
+
+* Root Cause
+- In `org-astro-keyword`, body-level was only true after the first heading. A THEME keyword before the first heading (used as an inline theme switch) was treated as frontmatter and dropped.
+
+* Fix Implemented
+- Allow THEME keywords to emit inline markers when their value differs from the page theme, even if they appear before the first heading.
+
+* Files
+- ox-astro-handlers.el — `org-astro-keyword` logic updated.
+
+* Status
+- Exporter fix is in; re-export content to restore inline theme markers. Avoid manual MDX edits.

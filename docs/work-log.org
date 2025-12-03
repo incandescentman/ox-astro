@@ -636,3 +636,14 @@ Re-exported MDX files now have clean body content:
 - Strip PROPERTIES drawer output and org-roam boilerplate from MDX bodies
 - Keep IDs only in frontmatter (add property-drawer translator + final body cleanup)
 - Addresses leaked =:ID:= lines like in journal/monday-february-12-2024.mdx
+
+* 2025-12-01 Remote image URL rewrite
+
+** Fix: rewrite remote links to downloaded paths
+- Added remote link handling in `org-astro--update-image-path-in-buffer` so `[[https://...]]` / `[[http://...]]` / `[[//...]]` get rewritten to the downloaded local asset path, matching the behavior for local image links.
+
+** Files Modified
+- =ox-astro-image-handlers.el= — remote link replacement now supported during source rewrite.
+
+** Verification
+- Manual: export an Org file with a remote image link; confirm image downloads to `assets/images/posts/{slug}/` and the Org source link is updated to the local path.
