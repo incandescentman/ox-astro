@@ -78,6 +78,12 @@
 - *Fix:* Attribute escaping now encodes &, <, >, and \" to HTML entities before injection.
 - *Actionable insight:* If adding new caption-like attributes, escape to entities (e.g., `&quot;`) instead of backslashes.
 
+** Gotcha: Org strips scheme from remote links in parse tree
+- *Date:* 2025-12-01
+- *Problem:* Remote image URLs were downloaded but not rewritten in the source buffer because Org parses `[[https://example.com/img.jpg]]` as `type="https"` and `path="//example.com/img.jpg"` (scheme removed).
+- *Fix:* When rewriting, reconstruct the full URL using link type + path before searching/replacing; see `org-astro--process-image-manifest` and `org-astro--update-image-path-in-buffer`.
+- *Actionable insight:* Whenever matching against remote links parsed from Org, prefer `:raw-link` or rebuild `type + path` instead of relying on `:path` alone.
+
 ** Gotcha: Export block indentation was converted to blockquotes
 - *Date:* 2025-10-05
 - *Trigger:* MDX export blocks with indented HTML (like `<button>`) were being converted to blockquote syntax (`> `)
