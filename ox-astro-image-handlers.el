@@ -355,9 +355,22 @@ Returns a plist with keys:
                  (astro-path (plist-get result :astro-path))
                  (target-path (plist-get result :target-path))
                  (occurrences (plist-get entry :occurrences))
-                 (var-name (when astro-path (org-astro--path-to-var-name astro-path))))
+                 (var-name (when astro-path (org-astro--path-to-var-name astro-path)))
+                 ;; For remote URLs parsed by org-mode (type + path), reconstruct the full URL
+                 ;; Org parses [[https://example.com/img.jpg]] as type="https" path="//example.com/img.jpg"
+                 (search-path (if (and (plist-get entry :remote)
+                                       (cl-some (lambda (occ) (plist-get occ :link-type)) occurrences))
+                                  (let ((link-type (cl-loop for occ in occurrences
+                                                            for lt = (plist-get occ :link-type)
+                                                            when lt return lt)))
+                                    (if (and link-type (string-prefix-p "//" original))
+                                        (concat link-type ":" original)
+                                        original))
+                                  original)))
+            (org-astro--dbg-log nil "[PROCESS] original=%s search-path=%s rewrite=%s update-buffer=%s"
+                                original search-path rewrite update-buffer)
             (when (and update-buffer rewrite
-                       (org-astro--rewrite-org-image-path original rewrite))
+                       (org-astro--rewrite-org-image-path search-path rewrite))
               (setq buffer-modified t))
             (push (list :path final-path
                         :original-path original
