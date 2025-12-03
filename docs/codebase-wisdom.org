@@ -72,6 +72,12 @@
   ```
 - *Actionable insight:* For one-off component usage, export blocks are cleaner than creating special transcoding logic
 
+** Gotcha: Caption attributes must use HTML entities, not backslashes
+- *Date:* 2025-12-02
+- *Problem:* Backslash-escaped quotes inside `data-pswp-*` captions produced MDX parse errors (“Unexpected character \ in attribute name”).
+- *Fix:* Attribute escaping now encodes &, <, >, and \" to HTML entities before injection.
+- *Actionable insight:* If adding new caption-like attributes, escape to entities (e.g., `&quot;`) instead of backslashes.
+
 ** Gotcha: Export block indentation was converted to blockquotes
 - *Date:* 2025-10-05
 - *Trigger:* MDX export blocks with indented HTML (like `<button>`) were being converted to blockquote syntax (`> `)

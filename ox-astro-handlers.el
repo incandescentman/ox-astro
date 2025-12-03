@@ -107,6 +107,11 @@ org-roam metadata that belongs in frontmatter, not the body."
 Other keywords defer to the markdown backend."
   (let* ((key (org-element-property :key keyword))
          (value (string-trim (org-element-property :value keyword)))
+         (page-theme (plist-get _info :theme))
+         (allow-inline-theme (and (string-equal key "THEME")
+                                  value
+                                  page-theme
+                                  (not (string-equal (downcase value) (downcase page-theme)))))
          ;; Determine if this keyword is in the body (after the first heading)
          (tree (plist-get _info :parse-tree))
          (first-headline-pos (when tree
@@ -119,7 +124,7 @@ Other keywords defer to the markdown backend."
     (cond
      ;; #+THEME: → JSX comment marker
      ((string-equal key "THEME")
-      (if body-level
+      (if (or body-level allow-inline-theme)
           (format "{/* theme: %s */}\n\n" (downcase value))
         ""))
      ;; #+MODEL: → visible banner div

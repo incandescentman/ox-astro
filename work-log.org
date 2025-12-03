@@ -39,6 +39,25 @@ Then manually use with AudioPlayer component in MDX.
 - Manual component usage gives full control over audio player styling
 - Audio links cleanly removed from body (only import statement generated)
 
+* 2025-12-02 - MDX caption escaping & media import hardening
+
+** Summary
+- Escape caption attributes with HTML entities to prevent MDX parse errors from backslash escapes in data-pswp-* attributes.
+- Handle same-file media paths (assets already in destination) without failing copies; still generate imports for audio/images.
+- Removed image prompts from `20251130134152-richard_ii.org` per request.
+
+** Files
+- `ox-astro-helpers.el`: attribute escaping now encodes &, <, >, and ".
+- `ox-astro-image-handlers.el`: treat source/target-equal media as existing and still emit imports.
+- `ox-astro-handlers.el`: rebuild render imports if missing to keep audio imports.
+- `ox-astro.el`: defensive `org-astro-date-format` default.
+- `20251130134152-richard_ii.org`: cleared `#+IMAGE-PROMPT` lines; kept credits.
+
+** Impact
+- MDX exports no longer error on backslash-escaped captions.
+- Audio imports persist even when assets already live in destination.
+- Prompts removed from the referenced org file.
+
 * 2025-11-30 - Image credits/captions polish and reliability
 
 ** Summary
