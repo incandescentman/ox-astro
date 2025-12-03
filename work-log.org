@@ -1,3 +1,36 @@
+* 2025-12-03 - Remote image URL replacement in source files
+
+** Summary
+Fixed remote image URLs not being replaced in org source files after download. Remote images are now downloaded to assets AND the source .org file is automatically updated to point to the local path, matching the behavior for local images.
+
+** Problem
+Remote URLs like ~[[https://example.com/image.jpg]]~ were:
+- Successfully downloaded to assets folder
+- Generated correct imports in MDX
+- BUT remained as remote URLs in the source .org file
+
+Root cause: Org-mode parses ~[[https://example.com/img.jpg]]~ as type="https" and path="//example.com/img.jpg" (stripping the protocol prefix), so buffer search for the URL failed.
+
+** Solution
+1. Added remote URL link pattern matching in ~org-astro--update-image-path-in-buffer~ to handle ~[[https://...]]~, ~[[http://...]]~, and ~[[//...]]~ patterns
+2. Reconstruct full URL from org link type + path when searching buffer:
+   - Manifest stores path as parsed by org: ~"//example.com/..."~
+   - Extract link-type from occurrences: ~"https"~
+   - Reconstruct for search: ~"https:" + "//example.com/..."~ = ~"https://example.com/..."~
+3. Use reconstructed URL to find and replace in source buffer
+
+** Files Modified
+- ~ox-astro-image-handlers.el~:
+  - Added remote URL pattern matching in ~org-astro--update-image-path-in-buffer~ (lines 394-404)
+  - Added URL reconstruction logic in ~org-astro--process-image-manifest~ (lines 367-377)
+  - Extracts link-type from manifest occurrences to rebuild full URL for buffer search
+
+** Verification
+Tested with ~https://img.youtube.com/vi/.../maxresdefault.jpg~ - successfully downloaded and source file updated to local path.
+
+** Impact
+Remote images now have identical behavior to local images - automatic download and source file rewriting.
+
 * 2025-11-30 - Audio file support for media imports
 
 ** Summary
