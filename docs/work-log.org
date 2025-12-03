@@ -1,6 +1,18 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-12-03
+** Session: YouTube embed + hide hero flag
+
+*** Summary
+- Added responsive YouTube embedding via =#+YOUTUBE:= keyword (also catches bare YouTube URLs) emitting 16:9 iframe markup
+- Plumbed =HIDE_HERO_IMAGE= frontmatter keyword through options/frontmatter to hide hero on detail pages while keeping list thumbnails
+
+*** Files Modified
+- ox-astro-helpers.el
+- ox-astro-handlers.el
+- ox-astro.el
+
 * 2025-11-30
 ** Session 3: Image Credit and Caption Support
 

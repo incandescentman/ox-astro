@@ -31,6 +31,8 @@
 (declare-function org-astro--hero-image-entry-p "ox-astro-helpers")
 (declare-function org-astro--normalize-image-path "ox-astro-helpers")
 (declare-function org-astro--resolve-destination-config "ox-astro-helpers")
+(declare-function org-astro--youtube-id-from-url "ox-astro-helpers")
+(declare-function org-astro--youtube-embed "ox-astro-helpers")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Filter Functions
@@ -100,20 +102,20 @@ Property drawers are suppressed in Astro MDX output - they contain
 org-roam metadata that belongs in frontmatter, not the body."
   "")
 
-(defun org-astro-keyword (keyword _contents _info)
+(defun org-astro-keyword (keyword _contents info)
   "Transcode THEME and MODEL keywords into inline markers.
 #+THEME: emits a JSX comment marker for remarkThemeSections.
 #+MODEL: emits a visible model banner div.
 Other keywords defer to the markdown backend."
   (let* ((key (org-element-property :key keyword))
          (value (string-trim (org-element-property :value keyword)))
-         (page-theme (plist-get _info :theme))
+         (page-theme (plist-get info :theme))
          (allow-inline-theme (and (string-equal key "THEME")
                                   value
                                   page-theme
                                   (not (string-equal (downcase value) (downcase page-theme)))))
          ;; Determine if this keyword is in the body (after the first heading)
-         (tree (plist-get _info :parse-tree))
+         (tree (plist-get info :parse-tree))
          (first-headline-pos (when tree
                                (org-element-map tree 'headline
                                  (lambda (h) (org-element-property :begin h))
@@ -122,6 +124,14 @@ Other keywords defer to the markdown backend."
          (body-level (or (null first-headline-pos)
                          (and pos first-headline-pos (>= pos first-headline-pos)))))
     (cond
+     ;; #+YOUTUBE: → responsive embed iframe
+     ((member key '("YOUTUBE" "ASTRO_YOUTUBE"))
+      (let ((video-id (org-astro--youtube-id-from-url value)))
+        (if video-id
+            (progn
+              (plist-put info :astro-uses-youtube-embed t)
+              (org-astro--youtube-embed video-id))
+          (org-md-keyword keyword _contents info))))
      ;; #+THEME: → JSX comment marker
      ((string-equal key "THEME")
       (if (or body-level allow-inline-theme)
@@ -137,7 +147,7 @@ Other keywords defer to the markdown backend."
                     "IMAGE-CAPTION" "IMAGE_CAPTION"
                     "IMAGE-PROMPT" "IMAGE_PROMPT"))
       "")
-     (t (org-md-keyword keyword _contents _info)))))
+     (t (org-md-keyword keyword _contents info)))))
 
 (defun org-astro--collect-image-metadata-filter (tree _backend info)
   "Collect IMAGE-CREDIT/CAPTION/PROMPT keywords associated with images.

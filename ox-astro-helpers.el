@@ -170,6 +170,35 @@ Accepts t/true/yes/y/on/1 (case-insensitive)."
   (let* ((val (downcase (string-trim (or value "")))))
     (member val '("t" "true" "yes" "y" "on" "1"))))
 
+(defun org-astro--youtube-id-from-url (url)
+  "Extract a YouTube video ID from URL or return nil.
+Supports youtu.be short links, watch URLs, embed URLs, or bare 11-character IDs."
+  (let ((s (string-trim (or url ""))))
+    (cond
+     ((string-match "youtu\.be/\\([^?&#/]+\\)" s)
+      (match-string 1 s))
+     ((string-match "youtube\.com/watch[^?]*[?&]v=\\([^&?#/]+\\)" s)
+      (match-string 1 s))
+     ((string-match "youtube\.com/embed/\\([^?&#/]+\\)" s)
+      (match-string 1 s))
+     ((string-match "^[A-Za-z0-9_-]\{11\}$" s)
+      s)
+     (t nil))))
+
+(defun org-astro--youtube-embed (video-id)
+  "Return responsive iframe markup for VIDEO-ID."
+  (let ((escaped-id (org-astro--escape-attribute video-id)))
+    (format (concat
+             "<div class=\"astro-youtube-embed\" style=\"position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; max-width: 100%%; margin: 2rem 0;\">\n"
+             "  <iframe style=\"position: absolute; top: 0; left: 0; width: 100%%; height: 100%%;\"\n"
+             "          src=\"https://www.youtube.com/embed/%s\"\n"
+             "          title=\"YouTube video\"\n"
+             "          frameborder=\"0\"\n"
+             "          allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\"\n"
+             "          allowfullscreen></iframe>\n"
+             "</div>\n")
+            escaped-id)))
+
 (defun org-astro--escape-attribute (text)
   "Escape TEXT for safe use inside double-quoted JSX/HTML attributes.
 Escapes &, <, >, and \" to their entity equivalents."
@@ -1476,6 +1505,11 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          (story-type (org-astro--get-story-type tree info))
          (hero-credit (org-astro--get-hero-credit tree info))
          (hero-caption (org-astro--get-hero-caption tree info))
+         (hide-hero-image
+          (let* ((raw (or (plist-get info :hide-hero-image)
+                          (plist-get info :astro-hide-hero-image)))
+                 (truthy (when raw (org-astro--string-truthy-p raw))))
+            (when truthy "true")))
          (incomplete-token (org-astro--parse-incomplete tree info))
          (incomplete (cond
                       ((eq incomplete-token :true) "true")
@@ -1506,6 +1540,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       (imageAlt . ,image-alt)
       ,@(when hero-credit `((heroCredit . ,hero-credit)))
       ,@(when hero-caption `((heroCaption . ,hero-caption)))
+      ,@(when hide-hero-image `((hideHeroImage . ,hide-hero-image)))
       ,@(when date-occurred `((dateOccurred . ,date-occurred)))
       (tags . ,tags)
       ,@(when place `((place . ,place)))
@@ -1726,6 +1761,19 @@ Returns cleaned alist; emits warnings when coercions occur."
              (text (or desc resolved-title path))
              (slug (org-astro--slugify text)))
         (format "[%s](#%s)" text slug)))
+
+     ;; Bare YouTube URLs with no description → responsive embed
+     ((and (null desc)
+           (member type '("http" "https"))
+           (org-astro--youtube-id-from-url
+            (or (org-element-property :raw-link link)
+                (and type path (concat type ":" path)))))
+      (let* ((raw (or (org-element-property :raw-link link)
+                      (and type path (concat type ":" path))))
+             (video-id (org-astro--youtube-id-from-url raw)))
+        (when video-id
+          (setf (plist-get info :astro-uses-youtube-embed) t)
+          (org-astro--youtube-embed video-id))))
 
      ;; Bare URLs with no description → LinkPeek + set import flag
      ((and (null desc) (member type '("http" "https" "ftp" "mailto")))
