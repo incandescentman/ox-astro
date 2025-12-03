@@ -13,6 +13,17 @@
 - ox-astro-handlers.el
 - ox-astro.el
 
+* 2025-12-03
+** Session: Poetry/verse block support
+
+*** Summary
+- Added poetry/verse handling to src blocks so headings/links are normalized like quote/user blocks
+- Introduced shared styling for poetry via language-poetry/verse and .poetry-block with serif, left border, preserved line breaks
+
+*** Files Modified
+- ox-astro-helpers.el
+- packages/astro-utils/src/styles/blocks.css
+
 * 2025-11-30
 ** Session 3: Image Credit and Caption Support
 

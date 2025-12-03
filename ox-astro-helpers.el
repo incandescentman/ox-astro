@@ -1035,7 +1035,7 @@ these special blocks, which would break the block structure."
   (save-excursion
     (goto-char (point-min))
     (let ((modified nil))
-      (while (re-search-forward "^#\\+begin_src \\(user\\|prompt\\|quote\\)" nil t)
+      (while (re-search-forward "^#\\+begin_src \\(user\\|prompt\\|quote\\|poetry\\|verse\\)" nil t)
         (let ((block-start (point))
               (block-end (save-excursion
                            (when (re-search-forward "^#\\+end_src" nil t)
@@ -1805,8 +1805,8 @@ Returns cleaned alist; emits warnings when coercions occur."
 
 (defun org-astro-src-block (src-block contents info)
   "Transcode a SRC-BLOCK element into fenced Markdown format.
-For 'user', 'prompt', 'quote', and 'pullquote' blocks, preserve org-mode syntax
-literally - convert org headings to markdown equivalents."
+For 'user', 'prompt', 'quote', 'poetry', 'verse', and 'pullquote' blocks,
+preserve org-mode syntax literally - convert org headings to markdown equivalents."
   (if (not (org-export-read-attribute :attr_md src-block :textarea))
       (let* ((lang (org-element-property :language src-block))
              ;; Use :value to get raw content, preserving internal newlines.
@@ -1818,7 +1818,7 @@ literally - convert org headings to markdown equivalents."
                     "\n\n</div>\n")
             (progn
               ;; For user/prompt/quote blocks, convert org-mode syntax to markdown
-              (when (member lang '("user" "prompt" "quote"))
+              (when (member lang '("user" "prompt" "quote" "poetry" "verse"))
                 ;; Convert em dashes
                 (when (string-match-p "---" code)
                   (setq code (replace-regexp-in-string "---" "—" code)))
