@@ -45,6 +45,26 @@ Implemented Variant 1 UI for foldable blocks:
 - Both hide when expanded, showing only full content
 - Fixed duplicate triangle by hiding summary ::marker and ::before
 
+*** Follow-up: Add fixed collapse button with animations
+Added a "Collapse Code Block" button that appears when foldable blocks are expanded:
+- Fixed position at bottom-left of viewport (stays visible while scrolling)
+- Animated entry: slides up + fades in
+- Pulse animation on first appearance (2 pulses)
+- Shrinks to icon-only after 3 seconds (smooth animation)
+- Hover expands back to full text smoothly
+- Custom SVG collapse icon (rotated 90°)
+- Progress indicator ring showing scroll position through the code block
+- Matches code block theme colors (#1e293b background, slate text)
+- Hover glow effect
+
+*** Follow-up: Replace triangle with expand icon
+- Replaced the simple triangle on "Show more" label with a custom expand SVG icon (four arrows pointing outward from center circle)
+- Kept the triangle on the line count indicator ("▶ 789 more lines")
+- Button text changed from "Collapse" to "Collapse Code Block"
+
+*** CSS Animation Insights
+Key learning: When using CSS animations with `animation-fill-mode: forwards`, hover states that use `animation: none` cause "blipping" when hovering off (the animation restarts from where it was paused). The fix is to use `!important` to override the animation's fill-mode values while letting the animation continue running in the background.
+
 ** Session: Fix folded meta syntax for coding-agent blocks
 
 *** Summary

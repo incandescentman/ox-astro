@@ -128,3 +128,25 @@
   - Store in local variables, not just the info plist
   - Reattach to info plist after any environment refresh if needed downstream
 - *Fix strategy:* Cache folder resolution results in `let`-bound locals before any `org-export-get-environment` calls
+
+* CSS Animation Patterns (astro-utils)
+
+** Gotcha: animation: none on hover causes blipping when hovering off
+- *Date:* 2025-12-04
+- *Trigger:* Trying to smoothly expand a button on hover that had shrunk via CSS animation
+- *Mechanism:* When using `animation-fill-mode: forwards`, the animation holds at its final state. Setting `animation: none` on hover stops the animation, but when you hover off, the animation restarts from where it was paused, causing a "blip"
+- *Failed approaches:*
+  - `animation-play-state: paused` - just freezes at current state, doesn't expand
+  - `animation: reverse` - starts from wrong point, element disappears
+  - Separate expand keyframes - animations fight each other, causes double-blipping
+- *The Fix:* Use `!important` to override the animation's fill-mode values while letting the animation continue running in the background:
+  ```css
+  .element:hover {
+    padding: 0.5rem 0.85rem !important;  /* Override animation value */
+  }
+  .element:hover .text {
+    max-width: 10rem !important;
+    opacity: 1 !important;
+  }
+  ```
+- *Prevention:* For hover states that need to override animation end states, use `!important` on the specific properties rather than trying to stop/reverse the animation
