@@ -1510,6 +1510,11 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                           (plist-get info :astro-hide-hero-image)))
                  (truthy (when raw (org-astro--string-truthy-p raw))))
             (when truthy "true")))
+         (hide-toc
+          (let* ((raw (or (plist-get info :hide-toc)
+                          (plist-get info :astro-hide-toc)))
+                 (truthy (when raw (org-astro--string-truthy-p raw))))
+            (when truthy "true")))
          (incomplete-token (org-astro--parse-incomplete tree info))
          (incomplete (cond
                       ((eq incomplete-token :true) "true")
@@ -1555,6 +1560,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       ,@(when hero-credit `((heroCredit . ,hero-credit)))
       ,@(when hero-caption `((heroCaption . ,hero-caption)))
       ,@(when hide-hero-image `((hideHeroImage . ,hide-hero-image)))
+      ,@(when hide-toc `((hideTOC . ,hide-toc)))
       ,@(when date-occurred `((dateOccurred . ,date-occurred)))
       (tags . ,tags)
       ,@(when place `((place . ,place)))

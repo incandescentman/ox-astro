@@ -56,6 +56,16 @@ This works in conjunction with the =rehypeMarkdownLinksInHtml= plugin in Astro (
 *** Files Modified
 - ox-astro-helpers.el
 
+* 2025-12-04
+** Session: TOC hide flag support
+
+*** Summary
+- Added `HIDE_TOC`/`ASTRO_HIDE_TOC` keywords to export `hideTOC` frontmatter so Astro can suppress TOC per-page
+
+*** Files Modified
+- ox-astro.el
+- ox-astro-helpers.el
+
 * 2025-11-30
 ** Session 3: Image Credit and Caption Support
 
