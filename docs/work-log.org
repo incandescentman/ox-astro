@@ -2,6 +2,31 @@
 #+DATE: 2025-10-07
 
 * 2025-12-04
+** Session: Fix missing parenthesis causing void-function error
+
+*** Summary
+Fixed a critical bug where =org-astro--get-title= and ~25 other functions were not being defined due to unbalanced parentheses in =ox-astro-helpers.el=.
+
+*** Problem
+Exporting org files failed with =void-function org-astro--get-title= error even after reloading the file. The function was defined in the source file but Emacs wasn't loading it.
+
+*** Root Cause
+The =org-astro--contains-markdown-link-p= function (line 1104) was missing its closing parenthesis. It ended with =text)))= (3 parens) but needed =text))))= (4 parens). This caused the Emacs reader to interpret everything from line 1104 through line 1889 as a single giant s-expression, "swallowing" ~25 function definitions including =org-astro--get-title=.
+
+Compensating for this, =org-astro-src-block= (line 1889) had an extra closing parenthesis (5 instead of 4).
+
+*** Solution
+1. Added the missing =)= at line 1110 (=text)))= → =text))))=)
+2. Removed the extra =)= at line 1889 (5 → 4 close parens)
+
+*** Debugging Approach
+- Used =load-history= to see which defuns were actually loaded (53 of 78)
+- Binary searched to find that Form 89 spanned lines 1099-1889 (should have been ~7 lines)
+- Traced through sexp boundaries to locate the missing paren
+
+*** Files Modified
+- ox-astro-helpers.el (lines 1110 and 1889)
+
 ** Session: Pullquote link conversion
 
 *** Summary
@@ -64,6 +89,15 @@ This works in conjunction with the =rehypeMarkdownLinksInHtml= plugin in Astro (
 
 *** Files Modified
 - ox-astro.el
+- ox-astro-helpers.el
+
+* 2025-12-04
+** Session: Foldable coding-agent blocks
+
+*** Summary
+- Pass through `:folded` meta on coding-agent src blocks to emit ```coding-agent :folded``` fences for the folding plugin
+
+*** Files Modified
 - ox-astro-helpers.el
 
 * 2025-11-30

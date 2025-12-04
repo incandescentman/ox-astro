@@ -1107,7 +1107,7 @@ Matches inline links like [label](https://example.com) and
 reference-style links like [label][ref]."
   (when (and text (stringp text))
     (or (string-match-p "\\[[^]]+\\]([^)]+)" text)          ; inline [..](..)
-        (string-match-p "\\[[^]]+\\]\\[[^]]+\\]" text))))   ; reference [..][..]
+        (string-match-p "\\[[^]]+\\]\\[[^]]+\\]" text))))  ; reference [..][..]
 
 ;; Detect Markdown reference-style link definitions lines like:
 ;;   [1]: https://example.com "Title"
@@ -1829,6 +1829,11 @@ For 'user', 'prompt', 'quote', 'poetry', 'verse', and 'pullquote' blocks,
 preserve org-mode syntax literally - convert org headings to markdown equivalents."
   (if (not (org-export-read-attribute :attr_md src-block :textarea))
       (let* ((lang (org-element-property :language src-block))
+             (params (org-element-property :parameters src-block))
+             (folded-meta (and (string= lang "coding-agent")
+                               params
+                               (string-match "\\bfolded\\b" params)
+                               " :folded"))
              ;; Use :value to get raw content, preserving internal newlines.
              (code (org-element-property :value src-block)))
         ;; Handle pullquote blocks specially - wrap in div with blank lines
@@ -1872,11 +1877,16 @@ preserve org-mode syntax literally - convert org headings to markdown equivalent
                             code)))
               ;; Trim trailing newlines/whitespace to prevent extra space at the end.
               (setq code (string-trim-right code))
-              (format "```%s\n%s\n```" (or lang "") code))))
+              (format "```%s%s\n%s\n```" (or lang "") (or folded-meta "") code))))
       ;; Fallback to simple fenced code block
       (let* ((lang (org-element-property :language src-block))
+             (params (org-element-property :parameters src-block))
+             (folded-meta (and (string= lang "coding-agent")
+                               params
+                               (string-match "\\bfolded\\b" params)
+                               " :folded"))
              (code (org-element-property :value src-block)))
-        (format "```%s\n%s\n```" (or lang "") (org-trim code)))))
+        (format "```%s%s\n%s\n```" (or lang "") (or folded-meta "") (org-trim code)))))
 
 (defun org-astro-heading (heading contents info)
   (let ((todo-keyword (org-element-property :todo-keyword heading)))
