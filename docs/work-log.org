@@ -1,6 +1,29 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-12-04
+** Session: Pullquote link conversion
+
+*** Summary
+Fixed org-mode links inside pullquote blocks not being converted to markdown format, causing them to appear as raw org syntax in the exported MDX.
+
+*** Problem
+Org-mode links =[[url][text]]= inside =#+BEGIN_SRC pullquote= blocks were being output literally in MDX instead of being converted to markdown link syntax =[text](url)=. This prevented the links from rendering as clickable anchors.
+
+*** Solution
+Applied the same link conversion logic already used for =user=, =prompt=, =quote=, =poetry=, and =verse= blocks to =pullquote= blocks:
+- Convert =[[path][description]]= → =[description](path)=
+- Convert =[[path]]= → =[path](path)=
+
+*** Implementation
+Modified =org-astro-src-block= function in =ox-astro-helpers.el= to process links before wrapping pullquote content in the div. Uses =replace-regexp-in-string= to transform org-mode link syntax to markdown.
+
+*** Integration with Astro
+This works in conjunction with the =rehypeMarkdownLinksInHtml= plugin in Astro (astro-monorepo), which then converts markdown links inside HTML blocks to proper =<a>= tags.
+
+*** Files Modified
+- ox-astro-helpers.el (org-astro-src-block function, lines 1814-1830)
+
 * 2025-12-03
 ** Session: YouTube embed + hide hero flag
 
