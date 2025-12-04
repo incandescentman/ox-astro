@@ -62,6 +62,14 @@ Added a "Collapse Code Block" button that appears when foldable blocks are expan
 - Kept the triangle on the line count indicator ("▶ 789 more lines")
 - Button text changed from "Collapse" to "Collapse Code Block"
 
+*** Follow-up: Remove shrink animation
+- Removed the shrink-to-icon animation - button now stays full "Collapse Code Block" text permanently
+
+*** Follow-up: Scroll to collapsed block on close
+- When clicking "Collapse Code Block", page now scrolls so the bottom of the collapsed block is visible
+- Prevents user from being stranded far down the page after collapsing a long code block
+- Uses `scrollIntoView({block:'end', behavior:'instant'})`
+
 *** CSS Animation Insights
 Key learning: When using CSS animations with `animation-fill-mode: forwards`, hover states that use `animation: none` cause "blipping" when hovering off (the animation restarts from where it was paused). The fix is to use `!important` to override the animation's fill-mode values while letting the animation continue running in the background.
 
