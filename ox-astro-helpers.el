@@ -1524,9 +1524,23 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          (visibility (let ((v (plist-get info :visibility)))
                        (when (and v (not (string-empty-p (org-trim v))))
                          (org-trim v))))
-         (theme (let ((th (plist-get info :theme)))
-                  (when (and th (not (string-empty-p (org-trim th))))
-                    (org-trim th))))
+         (theme
+          (let* ((th (plist-get info :theme))
+                 (theme-clean (and th (not (string-empty-p (org-trim th))) (org-trim th)))
+                 (first-headline-pos (org-element-map tree 'headline
+                                         (lambda (h) (org-element-property :begin h))
+                                         nil 'first-match))
+                 (first-theme-pos (org-element-map tree 'keyword
+                                      (lambda (k)
+                                        (when (string-equal (org-element-property :key k) "THEME")
+                                          (org-element-property :begin k)))
+                                      nil 'first-match)))
+            ;; If the first THEME keyword appears after the first heading, treat it as inline
+            ;; only and avoid promoting it to page/frontmatter theme.
+            (if (and theme-clean first-theme-pos first-headline-pos
+                     (>= first-theme-pos first-headline-pos))
+                nil
+              theme-clean)))
          (status (plist-get info :status))
          (draft (when (and status (string= (downcase (org-trim status)) "draft")) "true")))
     ;; Return the alist of final data - include visibility as a string when provided

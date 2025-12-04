@@ -47,6 +47,15 @@ This works in conjunction with the =rehypeMarkdownLinksInHtml= plugin in Astro (
 - ox-astro-helpers.el
 - packages/astro-utils/src/styles/blocks.css
 
+* 2025-12-04
+** Session: Prevent inline THEME from setting page theme
+
+*** Summary
+- Only promote THEME to frontmatter when it appears before the first heading; inline theme markers now stay inline and no longer set page-wide theme
+
+*** Files Modified
+- ox-astro-helpers.el
+
 * 2025-11-30
 ** Session 3: Image Credit and Caption Support
 
