@@ -2,6 +2,39 @@
 #+DATE: 2025-10-07
 
 * 2025-12-04
+** Session: Implement foldable code block styling in astro-utils
+
+*** Summary
+Updated the remarkFoldableBlocks remark plugin and blocks.css to implement proper collapsible code block behavior with preview, summary text, and toggle triangle.
+
+*** Changes Made
+1. *foldableBlocks.ts* - Complete rewrite of collapsible logic:
+   - Blocks now start **closed by default** (only open if `open` flag is present)
+   - Summary shows first 6 lines in a styled `<pre class="foldable-preview">` code block
+   - Adds "This went on for a while..." text when there's more content
+   - Full content in `<pre class="foldable-content">` that shows when expanded
+
+2. *blocks.css* - Added styling for foldable blocks:
+   - Preview code block has dark theme styling (#1e293b background)
+   - "This went on for a while..." bar has slightly lighter background (#334155)
+   - Triangle (▶) rotates 90° when expanded
+   - Preview hides when open, full content hides when closed
+
+*** Syntax
+#+begin_src markdown
+```coding-agent collapsible
+...code here...
+```
+
+```coding-agent collapsible open
+...starts expanded...
+```
+#+end_src
+
+*** Files Modified (astro-monorepo)
+- packages/astro-utils/src/remark/foldableBlocks.ts
+- packages/astro-utils/src/styles/blocks.css
+
 ** Session: Fix folded meta syntax for coding-agent blocks
 
 *** Summary

@@ -1830,10 +1830,18 @@ preserve org-mode syntax literally - convert org headings to markdown equivalent
   (if (not (org-export-read-attribute :attr_md src-block :textarea))
       (let* ((lang (org-element-property :language src-block))
              (params (org-element-property :parameters src-block))
-             (folded-meta (and (string= lang "coding-agent")
-                               params
-                               (string-match "\\bfolded\\b" params)
-                               " folded"))
+             (param-tokens (when params
+                             (mapcar (lambda (tok) (string-trim-left tok ":"))
+                                     (split-string params "[[:space:]]+" t))))
+             (has-collapsible (and (string= lang "coding-agent")
+                                   (seq-some (lambda (tok)
+                                               (member tok '("collapsible" "foldable" "folded")))
+                                             param-tokens)))
+             (explicit-open (and (string= lang "coding-agent")
+                                 (member "open" param-tokens)))
+             (folded-meta (when has-collapsible
+                            (concat " collapsible"
+                                    (if explicit-open " open" " folded"))))
              ;; Use :value to get raw content, preserving internal newlines.
              (code (org-element-property :value src-block)))
         ;; Handle pullquote blocks specially - wrap in div with blank lines
@@ -1881,10 +1889,18 @@ preserve org-mode syntax literally - convert org headings to markdown equivalent
       ;; Fallback to simple fenced code block
       (let* ((lang (org-element-property :language src-block))
              (params (org-element-property :parameters src-block))
-             (folded-meta (and (string= lang "coding-agent")
-                               params
-                               (string-match "\\bfolded\\b" params)
-                               " folded"))
+             (param-tokens (when params
+                             (mapcar (lambda (tok) (string-trim-left tok ":"))
+                                     (split-string params "[[:space:]]+" t))))
+             (has-collapsible (and (string= lang "coding-agent")
+                                   (seq-some (lambda (tok)
+                                               (member tok '("collapsible" "foldable" "folded")))
+                                             param-tokens)))
+             (explicit-open (and (string= lang "coding-agent")
+                                 (member "open" param-tokens)))
+             (folded-meta (when has-collapsible
+                            (concat " collapsible"
+                                    (if explicit-open " open" " folded"))))
              (code (org-element-property :value src-block)))
         (format "```%s%s\n%s\n```" (or lang "") (or folded-meta "") (org-trim code)))))
 
