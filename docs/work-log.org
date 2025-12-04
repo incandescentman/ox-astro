@@ -35,6 +35,9 @@ Updated the remarkFoldableBlocks remark plugin and blocks.css to implement prope
 - packages/astro-utils/src/remark/foldableBlocks.ts
 - packages/astro-utils/src/styles/blocks.css
 
+*** Follow-up: Remove "This went on for a while..." text
+Removed the summary text below the preview - looked cluttered. Preview now has full rounded corners.
+
 ** Session: Fix folded meta syntax for coding-agent blocks
 
 *** Summary
