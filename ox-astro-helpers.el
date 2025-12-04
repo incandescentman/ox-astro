@@ -1833,7 +1833,7 @@ preserve org-mode syntax literally - convert org headings to markdown equivalent
              (folded-meta (and (string= lang "coding-agent")
                                params
                                (string-match "\\bfolded\\b" params)
-                               " :folded"))
+                               " folded"))
              ;; Use :value to get raw content, preserving internal newlines.
              (code (org-element-property :value src-block)))
         ;; Handle pullquote blocks specially - wrap in div with blank lines
@@ -1884,7 +1884,7 @@ preserve org-mode syntax literally - convert org headings to markdown equivalent
              (folded-meta (and (string= lang "coding-agent")
                                params
                                (string-match "\\bfolded\\b" params)
-                               " :folded"))
+                               " folded"))
              (code (org-element-property :value src-block)))
         (format "```%s%s\n%s\n```" (or lang "") (or folded-meta "") (org-trim code)))))
 

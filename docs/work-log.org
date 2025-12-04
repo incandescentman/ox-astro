@@ -2,6 +2,20 @@
 #+DATE: 2025-10-07
 
 * 2025-12-04
+** Session: Fix folded meta syntax for coding-agent blocks
+
+*** Summary
+Fixed the folded meta flag syntax to match what the Astro remarkFoldableBlocks plugin expects.
+
+*** Problem
+ox-astro was outputting =```coding-agent :folded= but the remark plugin expects =```coding-agent folded= (without the colon).
+
+*** Solution
+Changed =" :folded"= to =" folded"= in the src-block handler.
+
+*** Files Modified
+- ox-astro-helpers.el (lines 1836 and 1887)
+
 ** Session: Fix missing parenthesis causing void-function error
 
 *** Summary
