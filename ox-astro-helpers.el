@@ -1813,9 +1813,21 @@ preserve org-mode syntax literally - convert org headings to markdown equivalent
              (code (org-element-property :value src-block)))
         ;; Handle pullquote blocks specially - wrap in div with blank lines
         (if (string-equal lang "pullquote")
-            (concat "<div class=\"pullquote\">\n\n"
-                    (org-trim code)
-                    "\n\n</div>\n")
+            (let ((processed-code code))
+              ;; Convert org-mode links to Markdown links inside pullquotes
+              ;; [[path][description]] → [description](path)
+              (setq processed-code (replace-regexp-in-string
+                                    "\\[\\[\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]"
+                                    "[\\2](\\1)"
+                                    processed-code))
+              ;; [[path]] → [path](path)
+              (setq processed-code (replace-regexp-in-string
+                                    "\\[\\[\\([^]]+\\)\\]\\]"
+                                    "[\\1](\\1)"
+                                    processed-code))
+              (concat "<div class=\"pullquote\">\n\n"
+                      (org-trim processed-code)
+                      "\n\n</div>\n"))
             (progn
               ;; For user/prompt/quote blocks, convert org-mode syntax to markdown
               (when (member lang '("user" "prompt" "quote" "poetry" "verse"))
