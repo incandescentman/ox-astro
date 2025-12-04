@@ -38,6 +38,13 @@ Updated the remarkFoldableBlocks remark plugin and blocks.css to implement prope
 *** Follow-up: Remove "This went on for a while..." text
 Removed the summary text below the preview - looked cluttered. Preview now has full rounded corners.
 
+*** Follow-up: Add triangle label and line count
+Implemented Variant 1 UI for foldable blocks:
+- "▶ Show more" label with rotating triangle (via CSS ::before)
+- "X more lines" count below the preview
+- Both hide when expanded, showing only full content
+- Fixed duplicate triangle by hiding summary ::marker and ::before
+
 ** Session: Fix folded meta syntax for coding-agent blocks
 
 *** Summary
