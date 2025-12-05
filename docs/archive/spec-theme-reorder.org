@@ -1,0 +1,146 @@
+:PROPERTIES:
+:ID:       20251204T143000.000000
+:END:
+#+TITLE: Implementation Spec: Auto-Reorder THEME Markers Before Headings
+#+CREATED: [2025-12-04 Thu]
+
+* Problem Statement
+
+When authoring org-mode files with inline theme sections, users sometimes accidentally place the =#+THEME:= keyword *after* the heading it should apply to:
+
+#+begin_src org
+,* Claude                    ← Heading comes first (WRONG)
+,#+THEME: claude             ← Theme marker comes after
+,#+MODEL: Claude Sonnet 4.5
+#+end_src
+
+This causes ox-astro to emit the MDX in source order:
+
+#+begin_src mdx
+# Claude
+
+{/* theme: claude */}
+
+<div class="model-banner">Claude Sonnet 4.5</div>
+#+end_src
+
+The =remarkThemeSections= plugin then wraps content starting /after/ the ={/* theme: claude */}= marker, which means the =# Claude= heading appears *outside* the themed wrapper, creating a visible gap in the themed background.
+
+* Correct Order
+
+The theme marker should come *before* the heading:
+
+#+begin_src org
+,#+THEME: claude             ← Theme marker first (CORRECT)
+
+,* Claude
+,#+MODEL: Claude Sonnet 4.5
+#+end_src
+
+This exports to:
+
+#+begin_src mdx
+{/* theme: claude */}
+
+# Claude
+
+<div class="model-banner">Claude Sonnet 4.5</div>
+#+end_src
+
+Now =remarkThemeSections= correctly wraps everything including the heading.
+
+* Proposed Solution: Option A - Fix Output Order During Export
+
+Rather than modifying the org source file, ox-astro should detect when a =#+THEME:= keyword immediately follows a heading and emit the theme marker *before* the heading in the MDX output.
+
+* Implementation Location
+
+- *File:* =ox-astro-helpers.el=
+- *Function:* =org-astro-heading= (lines 1907-1937)
+
+* Algorithm
+
+In =org-astro-heading=, before emitting the markdown heading:
+
+1. *Look ahead* in the section's contents for a =#+THEME:= keyword that immediately follows this heading
+2. If found, *prepend* the theme marker to the heading output
+3. Mark that keyword as "already emitted" so =org-astro-keyword= skips it
+
+* Detailed Implementation
+
+** Update org-astro-heading
+
+#+begin_src elisp
+(defun org-astro-heading (heading contents info)
+  "Transcode HEADING to markdown, hoisting any following #+THEME: marker."
+  (let ((todo-keyword (org-element-property :todo-keyword heading)))
+    (if todo-keyword
+        ;; ... existing task handling ...
+
+      ;; Regular heading
+      (let* ((info-copy (copy-sequence info))
+             (_ (plist-put info-copy :with-smart-quotes nil))
+             (title (org-astro--safe-export (org-element-property :title heading) info-copy))
+             (level (+ (org-element-property :level heading)
+                       (or (plist-get info :headline-offset) 0)))
+             (level (min (max level 1) 6))
+             (header (concat (make-string level ?#) " " title))
+             ;; NEW: Check for theme keyword immediately following this heading
+             (theme-prefix (org-astro--extract-theme-for-heading heading info)))
+        (concat theme-prefix header "\n\n" (or contents ""))))))
+#+end_src
+
+** Add theme extraction helper
+
+#+begin_src elisp
+(defun org-astro--extract-theme-for-heading (heading info)
+  "Check if HEADING is immediately followed by a #+THEME: keyword.
+If so, return the theme marker string and mark the keyword as consumed.
+Otherwise return empty string."
+  (let* ((section (car (org-element-contents heading)))
+         (first-child (and section
+                           (eq 'section (org-element-type section))
+                           (car (org-element-contents section)))))
+    (when (and first-child
+               (eq 'keyword (org-element-type first-child))
+               (string-equal "THEME" (org-element-property :key first-child)))
+      (let ((value (string-trim (org-element-property :value first-child))))
+        ;; Mark this keyword as consumed so org-astro-keyword skips it
+        (org-element-put-property first-child :astro-consumed t)
+        (format "{/* theme: %s */}\n\n" (downcase value))))))
+#+end_src
+
+** Update org-astro-keyword to check consumed flag
+
+#+begin_src elisp
+(defun org-astro-keyword (keyword _contents info)
+  ;; ... existing code ...
+  (cond
+   ;; Skip if already consumed by heading handler
+   ((org-element-property :astro-consumed keyword)
+    "")
+   ;; ... rest of existing cond clauses ...
+   ))
+#+end_src
+
+* Alternative: Parse Tree Filter
+
+A cleaner approach might be to use a =:filter-parse-tree= function that reorders the tree elements before transcoding. This would:
+
+1. Walk the tree looking for headline → keyword(THEME) sequences
+2. Move the keyword node to be a sibling /before/ the headline
+3. Let normal transcoding emit them in the corrected order
+
+This is more elegant as it fixes the data structure rather than hacking the output.
+
+* Files to Modify
+
+1. =ox-astro-helpers.el= - Add theme extraction logic to =org-astro-heading=
+2. =ox-astro-handlers.el= - Update =org-astro-keyword= to check consumed flag
+
+* Testing
+
+1. Create test org file with theme after heading
+2. Export and verify theme marker appears before heading in MDX
+3. Verify no duplicate theme markers
+4. Verify normal (correct order) files still work
