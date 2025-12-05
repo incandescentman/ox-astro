@@ -1,3 +1,23 @@
+* 2025-12-04 - Inline THEME hoist + regression tests
+
+** Summary
+- Hoist inline `#+THEME:` markers that appear immediately after a heading so the theme marker is emitted before the heading in MDX.
+- Skip consumed THEME keywords to avoid duplicate markers when hoisted.
+- Added regression coverage for misordered inline themes and adjusted existing title expectation tests for quoted frontmatter values.
+
+** Changes
+- `ox-astro-helpers.el`: `org-astro-heading` hoists following THEME keyword via `org-astro--theme-prefix-for-heading`, strips the original from contents to prevent duplication.
+- `ox-astro-handlers.el`: `org-astro-keyword` ignores keywords marked `:astro-consumed`.
+- `test/theme-reorder-test.el`: new tests for misordered inline THEME and document-level theme behavior.
+- `test/date-title-and-subtree-test.el`: updated assertions to match quoted frontmatter titles.
+
+** Impact
+- Inline theme sections render correctly even when authors place `#+THEME:` after the heading; headings stay inside themed wrappers without double markers.
+- Tests lock the behavior to prevent regressions in marker ordering and title formatting.
+
+** Tests
+- `emacs -Q --batch -L . -l test/theme-reorder-test.el -f ert-run-tests-batch-and-exit`
+
 * 2025-12-03 - Remote image URL replacement in source files
 
 ** Summary
