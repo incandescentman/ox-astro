@@ -1933,8 +1933,24 @@ preserve org-mode syntax literally - convert org headings to markdown equivalent
                (level (+ (org-element-property :level heading)
                          (or (plist-get info :headline-offset) 0)))
                (level (min (max level 1) 6))
-               (header (concat (make-string level ?#) " " title)))
-          (concat header "\n\n" (or contents ""))))))
+               (header (concat (make-string level ?#) " " title))
+               (theme-prefix (org-astro--theme-prefix-for-heading heading info)))
+          (concat (or theme-prefix "") header "\n\n" (or contents ""))))))
+
+(defun org-astro--theme-prefix-for-heading (heading _info)
+  "Emit a theme marker if HEADING is immediately followed by a THEME keyword.
+Marks the keyword as consumed so it won't render twice."
+  (let* ((section (car (org-element-contents heading)))
+         (first-child (when (and section (eq 'section (org-element-type section)))
+                        (car (org-element-contents section)))))
+    (when (and first-child
+               (eq (org-element-type first-child) 'keyword)
+               (string-equal (org-element-property :key first-child) "THEME"))
+      (let* ((raw (org-element-property :value first-child))
+             (value (and raw (string-trim raw))))
+        (when (and value (not (string-empty-p value)))
+          (org-element-put-property first-child :astro-consumed t)
+          (format "{/* theme: %s */}\n\n" (downcase value)))))))
 
 (defun org-astro--handle-broken-image-paragraph (paragraph info)
   "Handle a paragraph containing a broken image path with subscripts."

@@ -124,6 +124,9 @@ Other keywords defer to the markdown backend."
          (body-level (or (null first-headline-pos)
                          (and pos first-headline-pos (>= pos first-headline-pos)))))
     (cond
+     ;; Skip keywords already emitted by the heading handler
+     ((org-element-property :astro-consumed keyword)
+      "")
      ;; #+YOUTUBE: → responsive embed iframe
      ((member key '("YOUTUBE" "ASTRO_YOUTUBE"))
       (let ((video-id (org-astro--youtube-id-from-url value)))
