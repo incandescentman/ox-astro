@@ -1935,6 +1935,9 @@ preserve org-mode syntax literally - convert org headings to markdown equivalent
                (level (min (max level 1) 6))
                (header (concat (make-string level ?#) " " title))
                (theme-prefix (org-astro--theme-prefix-for-heading heading info)))
+          ;; If we hoisted a theme marker, drop the original from contents to avoid duplication.
+          (when (and theme-prefix contents (string-prefix-p theme-prefix contents))
+            (setq contents (substring contents (length theme-prefix))))
           (concat (or theme-prefix "") header "\n\n" (or contents ""))))))
 
 (defun org-astro--theme-prefix-for-heading (heading _info)

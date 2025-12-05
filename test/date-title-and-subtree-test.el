@@ -56,19 +56,19 @@ When POINT-ADJUST-FN is provided, call it after narrowing to reposition point."
   (let* ((content "#+TITLE: 2025-11-23\n#+DESTINATION_FOLDER: test\n\n* First Real Title\nBody text.\n")
          (mdx (ox-astro-test--with-temp-export content "date-title.org" "first-real-title")))
     (should (string-match-p "^---" mdx))
-    (should (string-match-p "title: First Real Title" mdx))))
+    (should (string-match-p "title: \"First Real Title\"" mdx))))
 
 (ert-deftest org-astro-uses-heading-when-filename-is-date ()
   "When filename is a numeric date and no title keyword, use first heading."
   (let* ((content "#+DESTINATION_FOLDER: test\n\n* Solstice Notes\nContent here.\n")
          (mdx (ox-astro-test--with-temp-export content "2025-12-31.org" "solstice-notes")))
-    (should (string-match-p "title: Solstice Notes" mdx))))
+    (should (string-match-p "title: \"Solstice Notes\"" mdx))))
 
 (ert-deftest org-astro-export-respects-subtree-narrowing ()
   "Narrowed subtree export should only include that subtree and derive slug from it."
   (let* ((content "#+DESTINATION_FOLDER: test\n\n* Keep This\nBody A.\n** Nested\nDetails.\n* Ignore This\nBody B.\n")
          (mdx (ox-astro-test--with-temp-export content "subtree.org" "keep-this" "Keep This")))
-    (should (string-match-p "title: Keep This" mdx))
+    (should (string-match-p "title: \"Keep This\"" mdx))
     (should (string-match-p "Body A" mdx))
     (should (not (string-match-p "Ignore This" mdx)))
     (should (not (string-match-p "Body B" mdx)))))
@@ -79,7 +79,7 @@ When POINT-ADJUST-FN is provided, call it after narrowing to reposition point."
          (mdx (ox-astro-test--with-temp-export
                content "subtree-point.org" "keep-this" "Keep This"
                (lambda () (goto-char (point-max))))))
-    (should (string-match-p "title: Keep This" mdx))
+    (should (string-match-p "title: \"Keep This\"" mdx))
     (should (string-match-p "Body A" mdx))
     (should (string-match-p "Details." mdx))
     (should (not (string-match-p "title: Deep" mdx)))))
