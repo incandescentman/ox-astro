@@ -119,6 +119,14 @@ Then manually use with AudioPlayer component in MDX.
 - Avoid credit/caption collisions by keying metadata on normalized relative paths (source root/source file), not just filenames.
 - More reliable IMAGE-* association: scan forward from each image paragraph, skipping blanks, to pick up following IMAGE-CREDIT/CAPTION/PROMPT keywords.
 
+* 2025-12-06 - Default TOC off for Astro exports
+
+** Summary
+- Disabled auto Table of Contents during Astro exports so MDX bodies no longer get an injected TOC unless explicitly requested in the Org source.
+
+** Change
+- `ox-astro.el`: bind `org-export-with-toc` to nil inside `org-astro-export-as-mdx` and `org-astro-export-to-mdx`. Authors can still enable a TOC via Org keywords if desired.
+
 ** Files
 - `ox-astro-helpers.el`: normalize-image-key, image-dimensions helper, format-image-component, image-component-for-record.
 - `ox-astro-handlers.el`: collect-image-metadata-filter (forward scan, normalized keys).
