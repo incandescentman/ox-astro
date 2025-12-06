@@ -1826,22 +1826,41 @@ Returns cleaned alist; emits warnings when coercions occur."
 (defun org-astro-src-block (src-block contents info)
   "Transcode a SRC-BLOCK element into fenced Markdown format.
 For 'user', 'prompt', 'quote', 'poetry', 'verse', and 'pullquote' blocks,
-preserve org-mode syntax literally - convert org headings to markdown equivalents."
+preserve org-mode syntax literally - convert org headings to markdown equivalents.
+
+For coding-agent blocks, supports :collapsible header arg:
+  :collapsible open  → collapsible open (starts expanded)
+  :collapsible t     → collapsible (starts collapsed)
+  :collapsible       → collapsible (starts collapsed)"
   (if (not (org-export-read-attribute :attr_md src-block :textarea))
       (let* ((lang (org-element-property :language src-block))
              (params (org-element-property :parameters src-block))
              (param-tokens (when params
-                             (mapcar (lambda (tok) (string-trim-left tok ":"))
-                                     (split-string params "[[:space:]]+" t))))
-             (has-collapsible (and (string= lang "coding-agent")
-                                   (seq-some (lambda (tok)
-                                               (member tok '("collapsible" "foldable" "folded")))
-                                             param-tokens)))
-             (explicit-open (and (string= lang "coding-agent")
-                                 (member "open" param-tokens)))
-             (folded-meta (when has-collapsible
-                            (concat " collapsible"
-                                    (if explicit-open " open" " folded"))))
+                             (split-string params "[[:space:]]+" t)))
+             ;; Check for :collapsible with optional value
+             (collapsible-idx (cl-position ":collapsible" param-tokens :test #'string=))
+             (collapsible-value (when collapsible-idx
+                                  (let ((next (nth (1+ collapsible-idx) param-tokens)))
+                                    (cond
+                                     ((null next) t)
+                                     ((string= next "open") 'open)
+                                     ((string= next "t") t)
+                                     ((string-prefix-p ":" next) t)  ; next param, not a value
+                                     (t t)))))
+             ;; Also check legacy tokens without colon prefix
+             (legacy-tokens (mapcar (lambda (tok) (string-trim-left tok ":")) param-tokens))
+             (has-legacy-collapsible (and (string= lang "coding-agent")
+                                          (not collapsible-value)
+                                          (seq-some (lambda (tok)
+                                                      (member tok '("collapsible" "foldable" "folded")))
+                                                    legacy-tokens)))
+             (legacy-open (and has-legacy-collapsible
+                               (member "open" legacy-tokens)))
+             ;; Build the fence metadata
+             (has-collapsible (or collapsible-value has-legacy-collapsible))
+             (explicit-open (or (eq collapsible-value 'open) legacy-open))
+             (folded-meta (when (and (string= lang "coding-agent") has-collapsible)
+                            (if explicit-open " collapsible open" " collapsible")))
              ;; Use :value to get raw content, preserving internal newlines.
              (code (org-element-property :value src-block)))
         ;; Handle pullquote blocks specially - wrap in div with blank lines
@@ -1890,17 +1909,30 @@ preserve org-mode syntax literally - convert org headings to markdown equivalent
       (let* ((lang (org-element-property :language src-block))
              (params (org-element-property :parameters src-block))
              (param-tokens (when params
-                             (mapcar (lambda (tok) (string-trim-left tok ":"))
-                                     (split-string params "[[:space:]]+" t))))
-             (has-collapsible (and (string= lang "coding-agent")
-                                   (seq-some (lambda (tok)
-                                               (member tok '("collapsible" "foldable" "folded")))
-                                             param-tokens)))
-             (explicit-open (and (string= lang "coding-agent")
-                                 (member "open" param-tokens)))
-             (folded-meta (when has-collapsible
-                            (concat " collapsible"
-                                    (if explicit-open " open" " folded"))))
+                             (split-string params "[[:space:]]+" t)))
+             ;; Check for :collapsible with optional value
+             (collapsible-idx (cl-position ":collapsible" param-tokens :test #'string=))
+             (collapsible-value (when collapsible-idx
+                                  (let ((next (nth (1+ collapsible-idx) param-tokens)))
+                                    (cond
+                                     ((null next) t)
+                                     ((string= next "open") 'open)
+                                     ((string= next "t") t)
+                                     ((string-prefix-p ":" next) t)
+                                     (t t)))))
+             ;; Also check legacy tokens
+             (legacy-tokens (mapcar (lambda (tok) (string-trim-left tok ":")) param-tokens))
+             (has-legacy-collapsible (and (string= lang "coding-agent")
+                                          (not collapsible-value)
+                                          (seq-some (lambda (tok)
+                                                      (member tok '("collapsible" "foldable" "folded")))
+                                                    legacy-tokens)))
+             (legacy-open (and has-legacy-collapsible
+                               (member "open" legacy-tokens)))
+             (has-collapsible (or collapsible-value has-legacy-collapsible))
+             (explicit-open (or (eq collapsible-value 'open) legacy-open))
+             (folded-meta (when (and (string= lang "coding-agent") has-collapsible)
+                            (if explicit-open " collapsible open" " collapsible")))
              (code (org-element-property :value src-block)))
         (format "```%s%s\n%s\n```" (or lang "") (or folded-meta "") (org-trim code)))))
 
