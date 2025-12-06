@@ -136,7 +136,9 @@ functions filtered out."
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
       (org-astro--with-export-sanitization
-        (let ((org-astro--export-in-progress t))
+        (let ((org-astro--export-in-progress t)
+              ;; Default: no auto-TOC unless explicitly requested in the Org file
+              (org-export-with-toc nil))
           (org-export-to-buffer 'astro "*Astro MDX Export*"
             async subtreep visible-only body-only)))))
 
@@ -150,7 +152,9 @@ generated and added to the Org source file."
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
       (if org-astro--mdx-export-active
           org-astro--current-outfile
-        (let ((org-astro--mdx-export-active t))
+        (let ((org-astro--mdx-export-active t)
+              ;; Default: suppress Org auto-TOC unless explicitly enabled in file
+              (org-export-with-toc nil))
           (org-astro--with-export-sanitization
         (save-restriction
           (let* ((was-narrowed (buffer-narrowed-p))
