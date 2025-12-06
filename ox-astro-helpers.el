@@ -1856,9 +1856,9 @@ For coding-agent blocks, supports :collapsible header arg:
                                                     legacy-tokens)))
              (legacy-open (and has-legacy-collapsible
                                (member "open" legacy-tokens)))
-             ;; Build the fence metadata
-             (has-collapsible (or collapsible-value has-legacy-collapsible))
-             (explicit-open (or (eq collapsible-value 'open) legacy-open))
+             ;; Build the fence metadata (default coding-agent to collapsible/open if nothing is specified)
+             (has-collapsible (or collapsible-value has-legacy-collapsible (string= lang "coding-agent")))
+             (explicit-open (or (eq collapsible-value 'open) legacy-open (string= lang "coding-agent")))
              (folded-meta (when (and (string= lang "coding-agent") has-collapsible)
                             (if explicit-open " collapsible open" " collapsible")))
              ;; Use :value to get raw content, preserving internal newlines.
@@ -1929,8 +1929,8 @@ For coding-agent blocks, supports :collapsible header arg:
                                                     legacy-tokens)))
              (legacy-open (and has-legacy-collapsible
                                (member "open" legacy-tokens)))
-             (has-collapsible (or collapsible-value has-legacy-collapsible))
-             (explicit-open (or (eq collapsible-value 'open) legacy-open))
+             (has-collapsible (or collapsible-value has-legacy-collapsible (string= lang "coding-agent")))
+             (explicit-open (or (eq collapsible-value 'open) legacy-open (string= lang "coding-agent")))
              (folded-meta (when (and (string= lang "coding-agent") has-collapsible)
                             (if explicit-open " collapsible open" " collapsible")))
              (code (org-element-property :value src-block)))

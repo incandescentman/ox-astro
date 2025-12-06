@@ -127,6 +127,15 @@ Then manually use with AudioPlayer component in MDX.
 ** Change
 - `ox-astro.el`: bind `org-export-with-toc` to nil inside `org-astro-export-as-mdx` and `org-astro-export-to-mdx`. Authors can still enable a TOC via Org keywords if desired.
 
+* 2025-12-06 - Preserve collapsible metadata on coding-agent blocks
+
+** Summary
+- Ensured coding-agent fences stay collapsible/open in MDX even when Org header args are missing from the parse tree.
+- Default coding-agent fences to `collapsible open` so transcript blocks remain foldable in the site UI.
+
+** Change
+- `ox-astro-helpers.el`: when emitting coding-agent fences, treat them as collapsible/open by default (still honors explicit `collapsible`/`open` flags when present).
+
 ** Files
 - `ox-astro-helpers.el`: normalize-image-key, image-dimensions helper, format-image-component, image-component-for-record.
 - `ox-astro-handlers.el`: collect-image-metadata-filter (forward scan, normalized keys).
