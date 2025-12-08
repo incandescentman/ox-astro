@@ -580,10 +580,11 @@ generated and added to the Org source file."
 (defvar org-astro--export-in-progress nil
   "Flag to track when astro export is in progress.")
 
-(defun org-astro--preserve-id-links (orig-fun link info &optional search)
+(defun org-astro--preserve-id-links (orig-fun link info &rest _args)
   "Advice for `org-export-resolve-id-link' to preserve cross-file ID links during astro export.
 When astro export is active, return nil for cross-file ID links so they aren't
-resolved to plain text in the temporary export buffer."
+resolved to plain text in the temporary export buffer.
+Note: Uses &rest _args for compatibility with both old (3-arg) and new (2-arg) Org versions."
   (if org-astro--export-in-progress
       ;; During astro export, only resolve internal links (within same file)
       (let ((id (org-element-property :path link)))
@@ -593,9 +594,9 @@ resolved to plain text in the temporary export buffer."
               (let ((file (car match)))
                 ;; Only resolve if it's in the current file
                 (when (and file (string= file (buffer-file-name (buffer-base-buffer))))
-                  (funcall orig-fun link info search)))))))
+                  (funcall orig-fun link info)))))))
       ;; Not during astro export, use original behavior
-      (funcall orig-fun link info search)))
+      (funcall orig-fun link info)))
 
 (advice-add 'org-export-resolve-id-link :around #'org-astro--preserve-id-links)
 
