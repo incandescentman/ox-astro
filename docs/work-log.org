@@ -1,6 +1,38 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-12-07
+** Session: Convert org links to HTML in image credits
+
+*** Summary
+Added support for org-mode links in =#+IMAGE-CREDIT= fields. Links like =[[url][text]]= are now converted to HTML =<a href="url">text</a>= tags in the figcaption output.
+
+*** Problem
+Image credits containing org-mode links were being output literally as =[[url][text]]= instead of being converted to clickable HTML links.
+
+*** Solution
+1. Created =org-astro--convert-org-links-to-html= helper function that converts:
+   - =[[url][description]]= → =<a href="url">description</a>=
+   - =[[url]]= → =<a href="url">url</a>=
+
+2. Updated =org-astro--format-image-component= to apply this conversion to both credit and caption text before inserting into figcaption/lightbox.
+
+*** Files Modified
+- ox-astro-helpers.el — added helper function and updated format-image-component
+
+*** Usage
+#+begin_src org
+[[/path/to/image.jpg]]
+#+IMAGE-CREDIT: [[https://example.com][Artist Name]] / [[https://instagram.com/artist][@artist]]
+#+end_src
+
+Now renders as:
+#+begin_src html
+<figcaption class="image-caption">
+  <a href="https://example.com">Artist Name</a> / <a href="https://instagram.com/artist">@artist</a>
+</figcaption>
+#+end_src
+
 * 2025-12-04
 ** Session: Implement foldable code block styling in astro-utils
 

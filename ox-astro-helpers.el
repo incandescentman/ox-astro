@@ -63,6 +63,23 @@ avoid filename collisions. Fall back to the normalized filename."
 (defvar org-astro-known-posts-folders nil
   "List of destination folders for exports, each entry a (NICKNAME . PLIST).")
 
+(defun org-astro--convert-org-links-to-html (text)
+  "Convert org-mode links in TEXT to HTML anchor tags.
+Handles both [[url][description]] and [[url]] formats."
+  (when text
+    (let ((result text))
+      ;; [[url][description]] → <a href=\"url\">description</a>
+      (setq result (replace-regexp-in-string
+                    "\\[\\[\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]"
+                    "<a href=\"\\1\">\\2</a>"
+                    result))
+      ;; [[url]] → <a href=\"url\">url</a>
+      (setq result (replace-regexp-in-string
+                    "\\[\\[\\([^]]+\\)\\]\\]"
+                    "<a href=\"\\1\">\\1</a>"
+                    result))
+      result)))
+
 ;; Silence org-id scan chatter during batch exports.
 (when (fboundp 'org-id-locations--scan)
   (advice-add 'org-id-locations--scan :around
@@ -261,17 +278,20 @@ WIDTH/HEIGHT (numbers) populate PhotoSwipe data attributes when available."
                             escaped-alt
                             (or layout-prop "")))
          (width-attr (when width (format " data-pswp-width=\"%s\"" width)))
-         (height-attr (when height (format " data-pswp-height=\"%s\"" height))))
-    (if (or credit caption)
+         (height-attr (when height (format " data-pswp-height=\"%s\"" height)))
+         ;; Convert org links in credit/caption to HTML
+         (credit-html (org-astro--convert-org-links-to-html credit))
+         (caption-html (org-astro--convert-org-links-to-html caption)))
+    (if (or credit-html caption-html)
         ;; Wrap in figure with PhotoSwipe-compatible link and caption
         (let* ((lightbox-parts
                 (delq nil
-                      (list (when credit (format "<strong>%s</strong>" credit))
-                            (when caption (format "<em>%s</em>" caption)))))
+                      (list (when credit-html (format "<strong>%s</strong>" credit-html))
+                            (when caption-html (format "<em>%s</em>" caption-html)))))
                (lightbox-caption (mapconcat #'identity lightbox-parts "<br/>"))
                (escaped-lightbox (org-astro--escape-attribute lightbox-caption))
                ;; Page caption shows credit only (caption/prompt shown in lightbox)
-               (page-caption credit))
+               (page-caption credit-html))
           (format "<figure class=\"image-figure\">\n<a href={%s.src} data-pswp-item=\"true\" data-pswp-caption=\"%s\"%s%s>\n%s\n</a>%s\n</figure>"
                   var-name
                   escaped-lightbox
