@@ -863,3 +863,34 @@ Re-exported MDX files now have clean body content:
 
 ** Verification
 - Manual: export an Org file with a remote image link; confirm image downloads to `assets/images/posts/{slug}/` and the Org source link is updated to the local path.
+
+* 2025-12-12 Add :repeat attribute for hero images
+
+** Feature: Allow hero images to also render inline
+When an image is used as the hero/frontmatter image, ox-astro normally removes it from the body to avoid duplication. The new =:repeat t= attribute allows intentional repetition.
+
+** Usage
+#+begin_src org
+#+ATTR_ORG: :width 300 :repeat t
+[[/path/to/image.jpg]]
+#+end_src
+
+When =:repeat t= is set, the image appears both:
+1. As the hero image in frontmatter
+2. Inline in the content body
+
+** Implementation
+1. Added =org-astro--get-link-repeat-attr= function to parse =:repeat t= from =#+ATTR_ORG=
+2. Modified link processing in =org-astro--build-image-manifest= to capture the =:repeat= attribute
+3. Propagated =:repeat= through =org-astro--process-image-manifest= to processed entries
+4. Added =:repeat= to render records in =org-astro--build-render-map=
+5. Modified hero removal logic in =ox-astro-handlers.el= to skip removal when =:repeat t=
+
+** Files Modified
+- =ox-astro-image-handlers.el= — attribute parsing and propagation
+- =ox-astro-handlers.el= — conditional hero removal (line 370)
+
+** Verification
+- Exported org file with =:repeat t= on first image
+- Confirmed MDX contains both frontmatter =image:= reference AND inline =<Image>= component
+- Built Astro site and verified HTML output shows image inline

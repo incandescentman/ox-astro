@@ -366,7 +366,8 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                      (setq found record)))
                  map))
               found)))
-         (_ (when hero-record
+         ;; Remove hero image from body UNLESS it has :repeat t attribute
+         (_ (when (and hero-record (not (plist-get hero-record :repeat)))
               (let* ((hero-var (plist-get hero-record :var-name))
                      (hero-pattern (and hero-var
                                         (format "<Image\\(?:.\\|\\n\\)*?src={%s}\\(?:.\\|\\n\\)*?\\(?:/>\\|>\\(?:.\\|\\n\\)*?</Image>\\)"

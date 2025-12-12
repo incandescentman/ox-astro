@@ -108,6 +108,16 @@ Return the manifest entry plist."
           (setq result (plist-put result key value)))))
     result))
 
+(defun org-astro--get-link-repeat-attr (link)
+  "Check if LINK has :repeat t in its parent's #+ATTR_ORG.
+Returns non-nil if the image should be repeated inline even when used as hero."
+  (let* ((parent (org-element-property :parent link))
+         (attr-org (and parent (org-element-property :attr_org parent))))
+    (when attr-org
+      ;; attr_org is a list of strings like (":width 300 :repeat t")
+      (let ((attr-string (mapconcat #'identity attr-org " ")))
+        (and (string-match-p ":repeat\\s-+t\\b" attr-string) t)))))
+
 (defun org-astro--build-image-manifest (tree info)
   "Collect all image references for TREE/INFO into a manifest.
 Each manifest entry is a plist with keys:
@@ -142,7 +152,8 @@ Each manifest entry is a plist with keys:
            (lambda (link)
              (let* ((type (or (org-element-property :type link) "file"))
                     (path (or (org-element-property :path link)
-                              (org-element-property :raw-link link))))
+                              (org-element-property :raw-link link)))
+                    (repeat-attr (org-astro--get-link-repeat-attr link)))
                ;; Use media matcher to include both images and audio files
                (when (org-astro--media-path-matches-p path)
                  (funcall register-entry-fn path
@@ -151,7 +162,8 @@ Each manifest entry is a plist with keys:
                           :description (org-astro--image-manifest--link-description link)
                           :begin (org-element-property :begin link)
                           :end (org-element-property :end link)
-                          :line (org-astro--image-manifest--line-number (org-element-property :begin link)))))))
+                          :line (org-astro--image-manifest--line-number (org-element-property :begin link))
+                          :repeat repeat-attr)))))
          ;; Raw plain-text occurrences (absolute paths, assets paths, remote URLs)
          ;; Now uses media-extension-regexp to also find audio files
          (org-element-map tree 'plain-text
@@ -308,12 +320,14 @@ The result is a plist with keys:
                  (jsx (unless is-audio
                         (format "<Image src={%s} alt=\"%s\"%s />" var-name escaped-alt (or layout-prop ""))))
                  (import-line (format "import %s from '%s';" var-name astro-path))
+                 (repeat-inline (plist-get entry :repeat))
                  (record (list :entry entry
                                :var-name var-name
                                :astro-path astro-path
                                :alt alt
                                :jsx jsx
-                               :audio is-audio))
+                               :audio is-audio
+                               :repeat repeat-inline))
                  (is-hero (and (not is-audio) hero-path (org-astro--hero-image-entry-p entry hero-path))))
             (when is-hero
               (setf (plist-get entry :hero) t)
@@ -372,14 +386,17 @@ Returns a plist with keys:
             (when (and update-buffer rewrite
                        (org-astro--rewrite-org-image-path search-path rewrite))
               (setq buffer-modified t))
-            (push (list :path final-path
-                        :original-path original
-                        :astro-path astro-path
-                        :target-path target-path
-                        :var-name var-name
-                        :occurrences occurrences
-                        :source-file (plist-get entry :source-file))
-                  processed)))))
+            ;; Check if any occurrence has :repeat t
+            (let ((has-repeat (cl-some (lambda (occ) (plist-get occ :repeat)) occurrences)))
+              (push (list :path final-path
+                          :original-path original
+                          :astro-path astro-path
+                          :target-path target-path
+                          :var-name var-name
+                          :occurrences occurrences
+                          :repeat has-repeat
+                          :source-file (plist-get entry :source-file))
+                    processed))))))
     (list :entries (nreverse processed)
           :buffer-modified buffer-modified)))
 
