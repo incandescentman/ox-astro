@@ -1,6 +1,37 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-12-23
+** Session: Auto-delete stale MDX files on slug change
+
+*** Summary
+Added automatic cleanup of old MDX files when a slug is changed and the file is re-exported. The system uses the =orgPath= field already present in MDX frontmatter to identify files from the same source.
+
+*** Problem
+When changing a slug (e.g., from =dad-s-healthy-recipes= to =dad-healthy-recipes=), re-exporting would create a new MDX file but leave the old one behind, creating duplicates.
+
+*** Solution
+1. Created =org-astro--extract-orgpath-from-mdx= helper that reads the =orgPath= field from MDX frontmatter
+2. Created =org-astro--cleanup-stale-mdx-files= that:
+   - Scans the output directory for all =.mdx= files
+   - Skips the just-written current output file
+   - Checks each file's =orgPath= against the source file
+   - Deletes any that match the source but have a different filename
+3. Called cleanup after export completes in =ox-astro.el=
+
+*** Key Insight
+The =orgPath= field was already being written to MDX frontmatter (line 1598 of helpers), so no changes were needed to add source tracking—only the cleanup logic.
+
+*** Files Modified
+- =ox-astro-helpers.el= — added cleanup functions (lines 2150-2192)
+- =ox-astro.el= — added forward declaration and cleanup call after export
+
+*** Usage
+Automatic. When exporting, any stale MDX files from the same source are deleted:
+#+begin_example
+[ox-astro] Deleted stale MDX: dad-s-healthy-recipes.mdx
+#+end_example
+
 * 2025-12-07
 ** Session: Convert org links to HTML in image credits
 

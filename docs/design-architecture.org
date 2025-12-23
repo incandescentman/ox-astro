@@ -12,7 +12,9 @@
   - Image data can be lost between export phases (uses dual storage)
   - Config lookups need whitespace tolerance
   - Keyword insertion must respect org-roam properties
-- *Last major update*: 2025-10-05 (Whitespace-tolerant config lookups)
+- *Key features*:
+  - Stale MDX cleanup: Auto-deletes old files when slug changes (uses =orgPath= in frontmatter)
+- *Last major update*: 2025-12-23 (Stale MDX cleanup on slug change)
 
 * For LLM Context
 
@@ -148,6 +150,23 @@ Production MDX with Imports
 - URL encoding: Spaces become =%20=
 
 *Files*: =ox-astro-pdf-handlers.el=
+
+*** Stale MDX Cleanup
+*Goal*: Automatically delete old MDX files when slug changes
+
+*Flow*:
+1. After export completes → 2. Scan output directory for =.mdx= files → 3. Read =orgPath= from each file's frontmatter → 4. Delete files matching source but with different filename
+
+*How it works*:
+- Each exported MDX contains =orgPath: /path/to/source.org= in frontmatter
+- On export, =org-astro--cleanup-stale-mdx-files= compares this against the source file
+- Files from the same source with different slugs are deleted
+
+*Key functions*:
+- =org-astro--extract-orgpath-from-mdx= — Reads orgPath from MDX frontmatter
+- =org-astro--cleanup-stale-mdx-files= — Scans directory and deletes stale files
+
+*Files*: =ox-astro-helpers.el= (lines 2150-2192), =ox-astro.el= (cleanup call after export)
 
 ** 2. Front Matter System
 

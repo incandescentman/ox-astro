@@ -80,6 +80,7 @@
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
 (declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
 (declare-function org-astro--process-pdf-path "ox-astro-pdf-handlers")
+(declare-function org-astro--cleanup-stale-mdx-files "ox-astro-helpers")
 
 ;; Placement helper: insert keywords after org-roam preamble (- Links :: / - Source ::)
 ;; (Placement helper removed for now — using existing insertion helper.)
@@ -542,6 +543,10 @@ generated and added to the Org source file."
                         (save-excursion
                           (when narrow-start (goto-char narrow-start))
                           (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only))
+                        ;; Clean up stale MDX files from slug changes
+                        (let ((source-file (buffer-file-name)))
+                          (when source-file
+                            (org-astro--cleanup-stale-mdx-files out-dir source-file outfile)))
                         ;; Persist any broken ID links detected during export
                         (when org-astro--broken-link-accumulator
                           (org-astro--write-broken-link-report org-astro--broken-link-accumulator

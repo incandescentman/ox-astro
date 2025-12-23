@@ -2147,6 +2147,50 @@ can share a single discovery pass."
           potential-path)))))
 
 
+;;;; Stale MDX Cleanup
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun org-astro--extract-orgpath-from-mdx (file)
+  "Extract orgPath value from MDX FILE's frontmatter.
+Returns the path string or nil if not found."
+  (condition-case nil
+      (with-temp-buffer
+        (insert-file-contents file nil 0 2000)  ; Read first 2KB
+        (goto-char (point-min))
+        (when (looking-at "---")
+          (forward-line 1)
+          (let ((end (save-excursion
+                       (when (re-search-forward "^---$" nil t)
+                         (point)))))
+            (when end
+              (when (re-search-forward "^orgPath:\\s-*\\(.+\\)$" end t)
+                (string-trim (match-string 1)))))))
+    (error nil)))
+
+(defun org-astro--cleanup-stale-mdx-files (output-dir source-file current-outfile)
+  "Delete MDX files in OUTPUT-DIR from SOURCE-FILE but different from CURRENT-OUTFILE.
+Scans all .mdx files in OUTPUT-DIR, checks their orgPath frontmatter field,
+and deletes any that match SOURCE-FILE but have a different filename.
+Returns a list of deleted file paths."
+  (when (and output-dir source-file current-outfile
+             (file-directory-p output-dir))
+    (let ((deleted-files nil)
+          (source-file-expanded (expand-file-name source-file))
+          (current-outfile-expanded (expand-file-name current-outfile)))
+      (dolist (mdx-file (directory-files output-dir t "\\.mdx$"))
+        (unless (string= (expand-file-name mdx-file) current-outfile-expanded)
+          (let ((orgpath (org-astro--extract-orgpath-from-mdx mdx-file)))
+            (when (and orgpath
+                       (string= (expand-file-name orgpath) source-file-expanded))
+              (condition-case err
+                  (progn
+                    (delete-file mdx-file)
+                    (push mdx-file deleted-files)
+                    (message "[ox-astro] Deleted stale MDX: %s" (file-name-nondirectory mdx-file)))
+                (error
+                 (message "[ox-astro] Failed to delete %s: %s" mdx-file err)))))))
+      (nreverse deleted-files))))
+
 
 ;;;; Export Block Handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
