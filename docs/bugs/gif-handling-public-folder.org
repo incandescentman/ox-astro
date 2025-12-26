@@ -1,0 +1,137 @@
+#+TITLE: GIFs Should Go to Public Folder (Not Assets)
+#+DATE: 2025-12-26
+#+STATUS: Open
+#+TYPE: Feature
+
+* Problem Summary
+
+Animated GIFs cause Vercel build failures when processed through Astro's image
+optimization pipeline (Sharp). The error is:
+
+#+begin_example
+VipsJpeg: Maximum supported image dimension is 65500 pixels
+#+end_example
+
+This happens because Sharp tries to process all frames of an animated GIF,
+which can exceed dimension limits.
+
+* Current Behavior
+
+ox-astro treats all images the same:
+1. Copies image to ~src/assets/images/posts/<slug>/~
+2. Generates import statement: ~import varName from '~/assets/...'~
+3. Renders as ~<Image src={varName} ... />~ component
+
+This triggers Astro's Sharp optimization, which fails on animated GIFs.
+
+* Desired Behavior
+
+GIFs should be handled differently:
+1. Copy to ~public/images/posts/<slug>/~ instead of ~src/assets/~
+2. No import statement generated
+3. Render as regular markdown: ~![alt](/images/posts/<slug>/file.gif)~
+
+This serves the GIF as a static asset without optimization.
+
+* Implementation
+
+** 1. Detect GIF files
+
+In ~ox-astro-image-handlers.el~, add a predicate:
+
+#+begin_src elisp
+(defun org-astro--gif-p (path)
+  "Return non-nil if PATH is a GIF file."
+  (string-suffix-p ".gif" (downcase path)))
+#+end_src
+
+** 2. Modify image manifest processing
+
+In ~org-astro--process-image-manifest~, branch based on file type:
+
+#+begin_src elisp
+(if (org-astro--gif-p src-path)
+    ;; GIFs: copy to public/, record for markdown rendering
+    (org-astro--process-public-image entry posts-folder sub-dir)
+  ;; Other images: copy to assets/, record for <Image> component
+  (org-astro--process-asset-image entry posts-folder sub-dir))
+#+end_src
+
+** 3. Add public folder image handler
+
+#+begin_src elisp
+(defun org-astro--process-public-image (entry posts-folder sub-dir)
+  "Process image ENTRY for public folder serving.
+Copies file to public/images/posts/<slug>/ and returns entry
+with :public-path set for markdown rendering."
+  (let* ((src-path (plist-get entry :src))
+         (filename (file-name-nondirectory src-path))
+         (dest-dir (expand-file-name
+                    (concat "public/images/" sub-dir)
+                    posts-folder))
+         (dest-path (expand-file-name filename dest-dir))
+         (web-path (concat "/images/" sub-dir filename)))
+    ;; Create destination directory
+    (make-directory dest-dir t)
+    ;; Copy file
+    (copy-file src-path dest-path t)
+    ;; Return entry with public path
+    (plist-put entry :public-path web-path)))
+#+end_src
+
+** 4. Modify render map building
+
+In ~org-astro--build-render-map~, handle public images:
+
+#+begin_src elisp
+(if (plist-get entry :public-path)
+    ;; Public image: generate markdown syntax
+    (let ((alt (or (plist-get entry :alt) "Image"))
+          (path (plist-get entry :public-path)))
+      (plist-put record :jsx (format "![%s](%s)" alt path))
+      (plist-put record :is-public t))
+  ;; Asset image: generate <Image> component as before
+  ...)
+#+end_src
+
+** 5. Skip imports for public images
+
+In ~org-astro-body-filter~, filter out public images from import list:
+
+#+begin_src elisp
+(setq render-imports
+      (cl-remove-if
+       (lambda (entry)
+         (plist-get entry :is-public))
+       render-imports))
+#+end_src
+
+* Hero Image Handling
+
+If a GIF is used as the hero image (frontmatter ~image:~):
+- Copy to ~public/images/posts/<slug>/~
+- Frontmatter should use ~/images/...~ path (not ~~/assets/...~)
+- The blog template must handle public path hero images
+
+* Test Cases
+
+1. Post with animated GIF in body → GIF in public/, markdown syntax
+2. Post with GIF as hero image → GIF in public/, frontmatter path updated
+3. Post with mixed GIF and JPG → GIF in public/, JPG in assets/
+4. Post with static GIF (single frame) → Still goes to public/ (simpler rule)
+
+* Files to Modify
+
+- ~ox-astro-image-handlers.el~
+  - ~org-astro--gif-p~ (new)
+  - ~org-astro--process-public-image~ (new)
+  - ~org-astro--process-image-manifest~ (modify)
+  - ~org-astro--build-render-map~ (modify)
+- ~ox-astro-handlers.el~
+  - ~org-astro-body-filter~ (modify import filtering)
+- ~ox-astro-helpers.el~
+  - ~org-astro--get-front-matter-data~ (handle public hero images)
+
+* Status
+
+Open
