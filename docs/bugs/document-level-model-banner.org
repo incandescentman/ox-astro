@@ -1,0 +1,188 @@
+#+TITLE: Theme and Model Banner Issues for Multi-AI Posts
+#+DATE: 2025-12-26
+#+STATUS: Open
+
+* Problem Summary
+
+Three related issues affect multi-AI blog posts (posts with Claude, ChatGPT, Gemini sections):
+
+1. Document-level ~#+MODEL:~ doesn't emit a banner
+2. Duplicate theme markers appear in output
+3. First section lacks inline theme marker
+
+* Test Case
+
+- Org file: ~/Users/jay/Dropbox/roam/notes/20251226144427-consciousness_as_an_emergent_phenomenon.org~
+
+Org structure:
+#+begin_example
+#+THEME: chatgpt           <- document-level (line 16)
+#+MODEL: ChatGPT 5.2       <- document-level (line 17)
+* Consciousness as an emergent phenomenon   <- first heading (line 18)
+
+[ChatGPT content...]
+
+#+THEME: claude            <- inline, before heading (line 644)
+* Claude                   <- heading (line 646)
+#+MODEL: Claude Sonnet 4.5 <- inline, after heading (line 647)
+
+[Claude content...]
+
+#+THEME: chatgpt           <- inline (line 812)
+#+MODEL: ChatGPT 5.2       <- inline (line 813)
+* ChatGPT                  <- heading (line 814)
+#+end_example
+
+* Issue 1: Document-Level MODEL Ignored
+
+** Expected Behavior
+Document-level ~#+MODEL:~ should emit a model banner for the first section.
+The banner should appear after imports, before the first heading content.
+
+** Actual Behavior
+Document-level ~#+MODEL:~ is ignored and produces no output.
+The first ChatGPT section has no model banner.
+
+** Root Cause
+~org-astro-keyword~ only emits ~#+MODEL:~ when ~body-level~ is true:
+
+#+begin_src elisp
+(body-level (or (null first-headline-pos)
+                (and pos first-headline-pos (>= pos first-headline-pos))))
+...
+((string-equal key "MODEL")
+ (if body-level
+     (format "<div class=\"model-banner\">%s</div>\n\n" value)
+   ""))
+#+end_src
+
+Since document-level ~#+MODEL:~ appears BEFORE the first heading, ~body-level~ is nil.
+
+** Proposed Fix
+1. Detect ~#+MODEL:~ before the first heading and store in ~:astro-page-model~
+2. Emit the banner once at the top of body in ~org-astro-body-filter~
+3. Mark the keyword as consumed to avoid duplicate output
+
+* Issue 2: Duplicate Theme Markers
+
+** Expected Behavior
+Each section should have exactly one ~{/* theme: X */}~ marker.
+
+** Actual Behavior
+MDX output shows duplicate markers:
+
+#+begin_example
+{/* theme: claude */}    <- line 653
+
+{/* theme: claude */}    <- line 655 (DUPLICATE!)
+
+# Claude
+#+end_example
+
+** Root Cause
+~org-astro--ensure-inline-theme-markers~ auto-inserts theme markers before
+Claude/ChatGPT headings. The check for existing markers isn't working:
+
+#+begin_src elisp
+(cond
+ ;; Already have the correct theme keyword immediately before.
+ ((and result (funcall theme-keyword-p (car (last result)) theme))
+  nil)  ;; <- Should skip inserting, but existing marker not detected
+ ...
+ (t
+  (push (funcall make-theme-node theme) result)))
+#+end_src
+
+The existing THEME keyword from the source file is present but ~theme-keyword-p~
+isn't recognizing it correctly.
+
+** Proposed Fix
+Add debug logging to understand why existing markers aren't detected. Likely
+issues:
+- The keyword value comparison is case-sensitive when it shouldn't be
+- The keyword position/structure differs from synthesized nodes
+- The ~result~ list traversal is missing the existing keyword
+
+* Issue 3: First Section Lacks Inline Theme Marker
+
+** Expected Behavior
+For multi-AI posts, the first section should have a ~{/* theme: X */}~ marker
+at the start of body content (after imports).
+
+** Actual Behavior
+Document-level ~#+THEME: chatgpt~ goes to frontmatter only. No inline
+~{/* theme: chatgpt */}~ appears before the first section content.
+
+** Root Cause
+~org-astro-keyword~ treats document-level THEME as frontmatter-only:
+
+#+begin_src elisp
+((string-equal key "THEME")
+ (if (or body-level allow-inline-theme)
+     (format "{/* theme: %s */}\n\n" (downcase value))
+   ""))  ;; <- Document-level emits nothing
+#+end_src
+
+** Proposed Fix
+When document-level ~#+THEME:~ is set AND the post has multiple theme sections
+(detected by inline theme markers or Claude/ChatGPT headings), emit the theme
+marker at start of body content.
+
+#+begin_src elisp
+;; In body-filter or a new filter:
+(when (and page-theme
+           (org-astro--has-multiple-theme-sections tree))
+  ;; Prepend {/* theme: <page-theme> */} to body
+  )
+#+end_src
+
+* Expected Final Output
+
+After all fixes, the test file should produce:
+
+#+begin_example
+---
+title: "For Dad: Consciousness as an emergent phenomenon"
+theme: chatgpt
+...
+---
+{/* Source org: ... */}
+import { Image } from 'astro:assets';
+...
+
+{/* theme: chatgpt */}
+<div class="model-banner">ChatGPT 5.2</div>
+
+# Consciousness as an emergent phenomenon
+
+[content...]
+
+{/* theme: claude */}
+<div class="model-banner">Claude Sonnet 4.5</div>
+
+# Claude
+
+[content...]
+
+{/* theme: chatgpt */}
+<div class="model-banner">ChatGPT 5.2</div>
+
+# ChatGPT
+
+[content...]
+#+end_example
+
+* Files to Modify
+
+- ~ox-astro-handlers.el~
+  - ~org-astro-keyword~ (keyword handling)
+  - ~org-astro--ensure-inline-theme-markers~ (duplicate prevention)
+  - ~org-astro-body-filter~ (emit page-level model/theme)
+- ~ox-astro-metadata.el~ or ~ox-astro-helpers.el~ (store page-level model)
+- ~README.org~ (update placement rules)
+- ~docs/instructions.org~ (update documentation)
+- Tests: add regression tests for all three scenarios
+
+* Status
+
+Open
