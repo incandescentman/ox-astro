@@ -620,7 +620,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
              "^:ID:\\s-+.*\n?"
              "" s t))
     ;; Convert markdown image syntax with absolute paths to Image components
-    (let ((pattern "!\\[\\([^]]*\\)\\](\\([~/][^)]+\\.\\(?:png\\|jpe?g\\|webp\\)\\))"))
+    (let ((pattern "!\\[\\([^]]*\\)\\](\\([~/][^)]+\\.\\(?:png\\|jpe?g\\|webp\\|gif\\)\\))"))
       (setq s (replace-regexp-in-string
                pattern
                (lambda (match)

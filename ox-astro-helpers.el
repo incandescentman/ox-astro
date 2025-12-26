@@ -1726,8 +1726,8 @@ Returns cleaned alist; emits warnings when coercions occur."
      ((and (or (string= type "file")
                (and (null type) path (string-prefix-p "/" path)))
            path
-           (or (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path)
-               (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp)$" path)))
+           (or (string-match-p "\\.\\(png\\|jpe?g\\|webp\\|gif\\)$" path)
+               (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp\\|gif)$" path)))
       (let* ((record (org-astro--lookup-render-record path info))
              (_ (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
                   (message "[ox-astro][img] LINK path=%s record=%s"

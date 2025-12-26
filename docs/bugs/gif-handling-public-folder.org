@@ -1,6 +1,6 @@
 #+TITLE: GIFs Should Go to Public Folder (Not Assets)
 #+DATE: 2025-12-26
-#+STATUS: Implemented
+#+STATUS: Implemented (2025-12-26)
 #+TYPE: Feature
 
 * Problem Summary
@@ -134,4 +134,13 @@ If a GIF is used as the hero image (frontmatter ~image:~):
 
 * Status
 
-Open
+Implemented (2025-12-26)
+
+** Implementation Notes
+- ~org-astro--gif-p~ added to detect GIF files
+- ~org-astro--get-public-folder~ added to compute public folder path
+- ~org-astro--materialize-image~ modified to copy GIFs to public/ with ~:is-public t~
+- ~org-astro--build-render-map~ modified to generate markdown syntax for public images
+- ~org-astro--process-image-path~ modified to handle GIF cover images
+- ~org-astro--get-cover-image~ modified to prefer ~:public-path~ for fallback
+- ~org-astro-link~ modified to include ~gif~ in image extension patterns (2025-12-26 fix)

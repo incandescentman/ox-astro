@@ -1,3 +1,51 @@
+* 2025-12-26 - GIF handling: copy to public folder, bypass Sharp optimization
+
+** Summary
+GIFs now bypass Astro's Sharp image optimization by copying to ~public/~ folder
+instead of ~src/assets/~. This fixes Vercel build failures caused by Sharp's
+65500 pixel dimension limit on animated GIFs.
+
+** Problem
+Animated GIFs caused Vercel build failures:
+#+begin_example
+VipsJpeg: Maximum supported image dimension is 65500 pixels
+#+end_example
+Sharp tries to process all frames of animated GIFs, exceeding dimension limits.
+
+** Solution
+1. Detect GIF files via ~org-astro--gif-p~
+2. Copy GIFs to ~public/images/posts/<slug>/~ instead of ~src/assets/~
+3. Generate markdown syntax ~![alt](/images/...)~ instead of ~<Image>~ component
+4. Set ~:rewrite-path nil~ to prevent org file path rewriting
+5. Add ~gif~ to image extension patterns throughout
+
+** Files Modified
+- ~ox-astro-image-handlers.el~:
+  - Added ~org-astro--gif-p~ predicate (line 48)
+  - Added ~org-astro--get-public-folder~ helper (line 596)
+  - Modified ~org-astro--materialize-image~ for GIF handling (lines 251-270)
+  - Set ~:rewrite-path nil~ for local GIFs (line 268)
+  - Set ~:rewrite-path nil~ for downloaded remote GIFs (line 300)
+  - Modified ~org-astro--build-render-map~ to generate markdown for public images
+  - Modified ~org-astro--process-image-path~ to handle GIF cover images
+
+- ~ox-astro-helpers.el~:
+  - Added ~gif~ to image detection regex in ~org-astro-link~ (lines 1729-1730)
+  - Modified ~org-astro--get-cover-image~ to prefer ~:public-path~ for fallback
+
+- ~ox-astro-handlers.el~:
+  - Added ~gif~ to markdown image pattern in ~org-astro-final-output-filter~ (line 623)
+
+** Also Fixed: Theme/Model Banner Issues
+- Document-level ~#+MODEL:~ now emits banner for first section
+- Duplicate theme markers eliminated
+- First section gets inline theme marker for multi-AI posts
+
+** Impact
+- GIFs served as static assets without optimization
+- No more Vercel build failures from animated GIFs
+- Hero image selection works with GIF fallback
+
 * 2025-12-04 - Inline THEME hoist + regression tests
 
 ** Summary
