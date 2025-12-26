@@ -1900,6 +1900,21 @@ For coding-agent blocks, supports :collapsible header arg:
                                     "\\[\\[\\([^]]+\\)\\]\\]"
                                     "[\\1](\\1)"
                                     processed-code))
+              ;; Convert org-style *bold* to Markdown **bold**.
+              (setq processed-code (replace-regexp-in-string
+                                    "\\(^\\|[[:space:][:punct:]]\\)\\*\\([^*\n]+\\)\\*\\([[:space:][:punct:]]\\|$\\)"
+                                    "\\1**\\2**\\3"
+                                    processed-code))
+              ;; Convert org-style /italics/ to Markdown *italics*.
+              (setq processed-code (replace-regexp-in-string
+                                    "\\(^\\|[[:space:][:punct:]]\\)/\\([^/\n]+\\)/\\([[:space:][:punct:]]\\|$\\)"
+                                    "\\1*\\2*\\3"
+                                    processed-code))
+              ;; Convert org-style _underline_ to HTML <u>underline</u>.
+              (setq processed-code (replace-regexp-in-string
+                                    "\\(^\\|[[:space:][:punct:]]\\)_\\([^_\n]+\\)_\\([[:space:][:punct:]]\\|$\\)"
+                                    "\\1<u>\\2</u>\\3"
+                                    processed-code))
               (concat "<div class=\"pullquote\">\n\n"
                       (org-trim processed-code)
                       "\n\n</div>\n"))

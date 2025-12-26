@@ -218,6 +218,24 @@ marker placement in Org."
               (and (eq (org-element-type node) 'keyword)
                    (string-equal (org-element-property :key node) "THEME")
                    (string-equal (downcase (org-element-property :value node)) theme))))
+           (blank-paragraph-p
+            (lambda (node)
+              (and (eq (org-element-type node) 'paragraph)
+                   (string-blank-p (org-element-interpret-data node)))))
+           (last-nonblank
+            (lambda (nodes)
+              (cl-loop for node in (reverse nodes)
+                       unless (funcall blank-paragraph-p node)
+                       return node)))
+           (heading-has-theme-p
+            (lambda (heading theme)
+              (let* ((section (car (org-element-contents heading)))
+                     (first-child (when (and section (eq 'section (org-element-type section)))
+                                    (car (org-element-contents section)))))
+                (and first-child
+                     (eq (org-element-type first-child) 'keyword)
+                     (string-equal (org-element-property :key first-child) "THEME")
+                     (string-equal (downcase (org-element-property :value first-child)) theme)))))
            (make-theme-node
             (lambda (theme)
               (org-element-create 'keyword
@@ -232,11 +250,15 @@ marker placement in Org."
                    (= 1 (org-element-property :level node))
                    (member (downcase (org-element-property :raw-value node))
                            '("claude" "chatgpt")))
-              (let* ((theme (downcase (org-element-property :raw-value node))))
+              (let* ((theme (downcase (org-element-property :raw-value node)))
+                     (prev (funcall last-nonblank result)))
                 ;; Ensure correct theme keyword immediately before headline.
                 (cond
                  ;; Already have the correct theme keyword immediately before.
-                 ((and result (funcall theme-keyword-p (car (last result)) theme))
+                 ((funcall theme-keyword-p prev theme)
+                  nil)
+                 ;; Theme keyword already present inside the heading section.
+                 ((funcall heading-has-theme-p node theme)
                   nil)
                  ;; If the next node is the correct theme keyword, move it before.
                  ((funcall theme-keyword-p next theme)
@@ -330,6 +352,58 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
 
 
 
+(defun org-astro--doc-level-keyword-value (tree key)
+  "Return value for KEY keyword before the first headline in TREE."
+  (let ((children (org-element-contents tree))
+        (value nil))
+    (catch 'found
+      (dolist (node children)
+        (cond
+         ((eq (org-element-type node) 'headline)
+          (throw 'found value))
+         ((and (eq (org-element-type node) 'keyword)
+               (string-equal (org-element-property :key node) key))
+          (let ((raw (string-trim (or (org-element-property :value node) ""))))
+            (unless (string-empty-p raw)
+              (setq value raw)
+              (throw 'found value)))))))
+    value))
+
+(defun org-astro--theme-keyword-before-first-heading-p (tree page-theme)
+  "Return non-nil if a THEME keyword appears before the first headline with a different value than PAGE-THEME."
+  (when page-theme
+    (let ((children (org-element-contents tree))
+          (page-theme (downcase (string-trim page-theme)))
+          (found nil))
+      (catch 'done
+        (dolist (node children)
+          (cond
+           ((eq (org-element-type node) 'headline)
+            (throw 'done found))
+           ((and (eq (org-element-type node) 'keyword)
+                 (string-equal (org-element-property :key node) "THEME"))
+            (let* ((raw (string-trim (or (org-element-property :value node) "")))
+                   (value (downcase raw)))
+              (when (and (not (string-empty-p raw))
+                         (not (string-equal value page-theme)))
+                (setq found t)
+                (throw 'done t)))))))
+      found)))
+
+(defun org-astro--has-inline-theme-sections-p (tree)
+  "Return non-nil when TREE includes inline THEME keywords after the first headline."
+  (let* ((first-headline-pos (org-element-map tree 'headline
+                                 (lambda (h) (org-element-property :begin h))
+                                 nil 'first-match)))
+    (org-element-map tree 'keyword
+      (lambda (k)
+        (when (string-equal (org-element-property :key k) "THEME")
+          (let ((pos (org-element-property :begin k)))
+            (when (or (null pos)
+                      (and first-headline-pos (>= pos first-headline-pos)))
+              t))))
+      nil 'first-match)))
+
 (defun org-astro-body-filter (body _backend info)
   "Add front-matter, source comment, and imports to BODY."
   (let* ((tree (plist-get info :parse-tree))  ; Use the already-parsed tree from export
@@ -400,6 +474,20 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                           (and (buffer-file-name) (expand-file-name (buffer-file-name)))))
          (source-comment (when source-path
                            (format "{/* Source org: %s */}\n" source-path)))
+         (page-theme (let ((raw (plist-get info :theme)))
+                       (let ((clean (and raw (string-trim raw))))
+                         (and clean (not (string-empty-p clean)) clean))))
+         (page-model (let ((raw (org-astro--doc-level-keyword-value tree "MODEL")))
+                       (let ((clean (and raw (string-trim raw))))
+                         (and clean (not (string-empty-p clean)) clean))))
+         (has-inline-themes (org-astro--has-inline-theme-sections-p tree))
+         (explicit-first-theme (org-astro--theme-keyword-before-first-heading-p tree page-theme))
+         (theme-model-prefix
+          (let* ((theme-marker (when (and page-theme has-inline-themes (not explicit-first-theme))
+                                 (format "{/* theme: %s */}\n\n" (downcase page-theme))))
+                 (model-banner (when page-model
+                                 (format "<div class=\"model-banner\">%s</div>\n\n" page-model))))
+            (concat (or theme-marker "") (or model-banner ""))))
          ;; --- Handle All Imports ---
          ;; 1. Body image imports (collected by our filter)
          ;; Fallback: if imports weren't populated earlier, rebuild from processed media
@@ -468,6 +556,9 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
             (or source-comment "")
             (if (and all-imports (not (string-blank-p all-imports)))
                 (concat all-imports "\n\n")
+                "")
+            (if (and theme-model-prefix (not (string-blank-p theme-model-prefix)))
+                theme-model-prefix
                 "")
             body)))
 

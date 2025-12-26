@@ -1,6 +1,23 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2025-12-26
+** Session: Theme/model banners + pullquote formatting
+
+*** Summary
+- Document-level =#+MODEL:= now emits a model banner once near the top of the body.
+- Page-level theme markers are injected for multi-AI posts when inline theme sections exist.
+- Inline theme marker insertion no longer duplicates existing THEME keywords.
+- Pullquote blocks now convert org =/italics/=, =*bold*=, and =_underline_=.
+- Updated docs and added a regression test for doc-level model banners + duplicate prevention.
+
+*** Files Modified
+- =ox-astro-handlers.el=
+- =ox-astro-helpers.el=
+- =README.org=
+- =docs/instructions.org=
+- =test/theme-reorder-test.el=
+
 * 2025-12-23
 ** Session: Auto-delete stale MDX files on slug change
 

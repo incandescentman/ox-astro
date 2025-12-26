@@ -234,7 +234,7 @@ These fields are custom extensions for narrative/memoir content. They require a 
 For multi-AI blog posts, use ~#+THEME:~ and ~#+MODEL:~ keywords to create visually distinct sections.
 
 ** Placement Rules
-- *Document level* (before any heading): ~#+THEME:~ goes to frontmatter only
+- *Document level* (before any heading): ~#+THEME:~ goes to frontmatter only; ~#+MODEL:~ emits a banner once near the top
 - *Body level* (after a heading): ~#+THEME:~ and ~#+MODEL:~ emit inline markers
 
 ** Quick Reference

@@ -1,6 +1,6 @@
 #+TITLE: Theme and Model Banner Issues for Multi-AI Posts
 #+DATE: 2025-12-26
-#+STATUS: Open
+#+STATUS: Resolved
 
 * Problem Summary
 

@@ -32,4 +32,18 @@
     (should (string-match-p "theme: claude" mdx))
     (should-not (string-match-p "{/* theme: claude */}" mdx))))
 
+(ert-deftest org-astro-doc-level-model-banner-and-no-dup-theme ()
+  "Document-level MODEL emits a banner and theme markers are not duplicated."
+  (let* ((content "#+TITLE: Multi AI\n#+DESTINATION_FOLDER: test\n\n#+THEME: chatgpt\n#+MODEL: ChatGPT 5.2\n\n* Intro\nBody text.\n\n#+THEME: claude\n\n* Claude\n#+MODEL: Claude Sonnet 4.5\nBody.\n")
+         (mdx (ox-astro-test--with-temp-export content "doc-model.org" "multi-ai")))
+    (should (string-match-p
+             (regexp-quote "{/* theme: chatgpt */}\n\n<div class=\"model-banner\">ChatGPT 5.2</div>\n\n# Intro")
+             mdx))
+    (let ((count 0) (start 0)
+          (marker (regexp-quote "{/* theme: claude */}")))
+      (while (string-match marker mdx start)
+        (setq count (1+ count))
+        (setq start (match-end 0)))
+      (should (= 1 count)))))
+
 (provide 'theme-reorder-test)

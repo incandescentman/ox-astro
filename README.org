@@ -307,7 +307,7 @@ The behavior of ~#+THEME:~ and ~#+MODEL:~ depends on where they appear in your O
 
 *** Document Level (before any heading)
 - ~#+THEME:~ → Goes into YAML frontmatter only (~theme: claude~)
-- ~#+MODEL:~ → Ignored (no output)
+- ~#+MODEL:~ → Emits a model banner once near the top of the body
 - Use this for single-AI posts where the entire page uses one theme
 
 *** Body Level (after a heading)
