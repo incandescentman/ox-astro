@@ -43,11 +43,20 @@ Sharp tries to process all frames of animated GIFs, exceeding dimension limits.
 - Duplicate theme markers eliminated
 - First section gets inline theme marker for multi-AI posts
 
+** Also Fixed: Double ! in Markdown Images
+Org inline image syntax ~![[path][desc]]~ was producing ~!![alt](path)~ in MDX:
+- The ~!~ from org's inline image prefix was preserved as text
+- Combined with ~![alt](path)~ from the ~:jsx~ value = double ~!!~
+
+Fixed by adding cleanup in ~org-astro-final-output-filter~ to normalize ~!![~ to ~![~
+before processing images (ox-astro-handlers.el line 623).
+
 ** Impact
 - GIFs served as static assets without optimization
 - No more Vercel build failures from animated GIFs
 - GIFs already in public/ detected and web path extracted
 - Hero image selection works with GIF fallback
+- Markdown images render correctly without double ~!~
 
 * 2025-12-04 - Inline THEME hoist + regression tests
 
