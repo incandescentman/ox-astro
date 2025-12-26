@@ -100,6 +100,24 @@ Then in your Org files, use: #+DESTINATION_FOLDER: blog (or #+DESTINATION-FOLDER
                 :value-type (plist :options ((:path directory)
                                              (:preserve-folder-structure boolean)))))
 
+;; Extend org-emphasis-regexp-components to recognize em-dashes as valid
+;; boundaries for emphasis markers like /italics/ and *bold*.
+;; This allows: "text—/italics/—more" to render correctly.
+(with-eval-after-load 'org
+  (when (boundp 'org-emphasis-regexp-components)
+    (let ((pre  (nth 0 org-emphasis-regexp-components))
+          (post (nth 1 org-emphasis-regexp-components)))
+      ;; Add em-dash (—) and en-dash (–) to pre and post match characters
+      (unless (string-match-p "—" pre)
+        (setcar (nthcdr 0 org-emphasis-regexp-components)
+                (concat "—–" pre)))
+      (unless (string-match-p "—" post)
+        (setcar (nthcdr 1 org-emphasis-regexp-components)
+                (concat "—–" post)))
+      ;; Rebuild the emphasis regex
+      (org-set-emph-re 'org-emphasis-regexp-components
+                       org-emphasis-regexp-components))))
+
 (provide 'ox-astro-config)
 
 ;;; ------------------------------------------------------------------
