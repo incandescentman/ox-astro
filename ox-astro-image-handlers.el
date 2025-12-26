@@ -45,6 +45,13 @@
            (string-prefix-p "https://" path)
            (string-prefix-p "//" path))))
 
+(defun org-astro--gif-p (path)
+  "Return non-nil if PATH is a GIF file.
+GIFs are handled specially because Astro's Sharp image optimization
+fails on animated GIFs with dimension limit errors."
+  (and (stringp path)
+       (string-suffix-p ".gif" (downcase path))))
+
 (defun org-astro--image-query-stripped-path (path)
   "Return PATH without trailing query or fragment components."
   (if (and (stringp path)
@@ -227,15 +234,41 @@ Returns non-nil when the buffer was modified."
 
 (defun org-astro--materialize-image (entry posts-folder sub-dir)
   "Copy or download the image for ENTRY into Astro assets.
-Returns a plist describing the outcome or nil on failure."
+Returns a plist describing the outcome or nil on failure.
+GIFs are copied to public/ folder instead of assets/ to bypass
+Astro's Sharp image optimization which fails on animated GIFs."
   (let* ((original (plist-get entry :original-path))
+         (is-gif (org-astro--gif-p original))
          (assets-folder (and posts-folder
-                             (org-astro--get-assets-folder posts-folder sub-dir))))
-    (when (and original (not (string-empty-p original)) assets-folder)
+                             (org-astro--get-assets-folder posts-folder sub-dir)))
+         (public-folder (and posts-folder is-gif
+                             (org-astro--get-public-folder posts-folder sub-dir))))
+    (when (and original (not (string-empty-p original)) (or assets-folder public-folder))
       (let* ((expanded-original (when (and original (not (org-astro--image-remote-p original)))
                                   (expand-file-name (substring-no-properties original))))
-             (assets-root (file-name-as-directory (expand-file-name assets-folder))))
+             (assets-root (and assets-folder (file-name-as-directory (expand-file-name assets-folder)))))
         (cond
+         ;; GIF files go to public/ folder for static serving (no optimization)
+         ((and is-gif expanded-original (file-exists-p expanded-original))
+          (let* ((source-path expanded-original)
+                 (original-filename (file-name-nondirectory source-path))
+                 (clean-filename (org-astro--sanitize-filename original-filename))
+                 (target-path (expand-file-name clean-filename public-folder))
+                 (web-path (concat "/images/" sub-dir clean-filename)))
+            (make-directory public-folder t)
+            (condition-case err
+                (copy-file source-path target-path t)
+              (error
+               (message "[ox-astro][img] Failed to copy GIF %s → %s (%s)" source-path target-path err)
+               (setq target-path nil)))
+            (when target-path
+              (message "[ox-astro][img] GIF copied to public: %s" web-path)
+              (list :public-path web-path
+                    :target-path target-path
+                    :rewrite-path target-path
+                    :is-public t
+                    :status 'public-gif))))
+
          ;; Already inside the assets directory – reuse as-is.
          ((and expanded-original
                (string-prefix-p assets-root (file-name-directory (expand-file-name expanded-original))))
@@ -246,7 +279,7 @@ Returns a plist describing the outcome or nil on failure."
                   :rewrite-path nil
                   :status 'existing)))
 
-         ;; Remote URL – download to assets directory.
+         ;; Remote URL – download to assets directory (or public for GIFs).
          ((org-astro--image-remote-p original)
           (let* ((full-url (if (string-prefix-p "//" original)
                                (concat "https:" original)
@@ -255,10 +288,22 @@ Returns a plist describing the outcome or nil on failure."
             (when downloaded
               (let* ((filename (file-name-nondirectory downloaded))
                      (astro-path (concat "~/assets/images/" sub-dir filename)))
-                (list :astro-path astro-path
-                      :target-path downloaded
-                      :rewrite-path downloaded
-                      :status 'remote)))))
+                ;; If the downloaded file is a GIF, move it to public
+                (if (org-astro--gif-p filename)
+                    (let* ((clean-filename (org-astro--sanitize-filename filename))
+                           (public-target (expand-file-name clean-filename public-folder))
+                           (web-path (concat "/images/" sub-dir clean-filename)))
+                      (make-directory public-folder t)
+                      (rename-file downloaded public-target t)
+                      (list :public-path web-path
+                            :target-path public-target
+                            :rewrite-path public-target
+                            :is-public t
+                            :status 'public-gif))
+                  (list :astro-path astro-path
+                        :target-path downloaded
+                        :rewrite-path downloaded
+                        :status 'remote))))))
 
          ;; Local file – copy into assets directory with sanitized filename.
          (t
@@ -298,17 +343,49 @@ Returns a plist describing the outcome or nil on failure."
   "Return render metadata for PROCESSED media entries (images and audio).
 The result is a plist with keys:
 - :map — hash table mapping lookup keys to render records
-- :imports — list of import lines to include in the MDX prolog."
+- :imports — list of import lines to include in the MDX prolog.
+Public images (GIFs) get markdown syntax instead of <Image> components."
   (let ((render-map (make-hash-table :test #'equal))
         (imports nil)
         (include-image-component nil))
     (dolist (entry processed)
       (let* ((astro-path (plist-get entry :astro-path))
+             (public-path (plist-get entry :public-path))
+             (is-public (plist-get entry :is-public))
              (var-name (plist-get entry :var-name))
              (path (plist-get entry :path))
              (original (plist-get entry :original-path))
-             (is-audio (org-astro--audio-path-matches-p (or astro-path path original))))
-        (when (and astro-path var-name)
+             (is-audio (org-astro--audio-path-matches-p (or astro-path public-path path original))))
+        (cond
+         ;; Public images (GIFs) - use markdown syntax, no import needed
+         (is-public
+          (let* ((alt (org-astro--image-entry-alt entry))
+                 (escaped-alt (when alt (replace-regexp-in-string "\"" "\\\\\"" alt)))
+                 (jsx (format "![%s](%s)" escaped-alt public-path))
+                 (repeat-inline (plist-get entry :repeat))
+                 (record (list :entry entry
+                               :public-path public-path
+                               :alt alt
+                               :jsx jsx
+                               :is-public t
+                               :repeat repeat-inline))
+                 (is-hero (and hero-path (org-astro--hero-image-entry-p entry hero-path))))
+            (when is-hero
+              (setf (plist-get entry :hero) t)
+              (setf (plist-get record :hero) t))
+            ;; No import for public images
+            (dolist (key (list path
+                               original
+                               public-path
+                               (and public-path
+                                    (org-astro--sanitize-filename
+                                     (file-name-sans-extension
+                                      (file-name-nondirectory public-path))))))
+              (when (and key (stringp key) (not (string-empty-p key)))
+                (puthash key record render-map)))))
+
+         ;; Regular assets images - use <Image> component with import
+         ((and astro-path var-name)
           (let* ((alt (unless is-audio (org-astro--image-entry-alt entry)))
                  (escaped-alt (when alt (replace-regexp-in-string "\"" "\\\\\"" alt)))
                  (layout-prop (when (and (not is-audio)
@@ -344,7 +421,7 @@ The result is a plist with keys:
                                      (file-name-sans-extension
                                       (file-name-nondirectory astro-path))))))
               (when (and key (stringp key) (not (string-empty-p key)))
-                (puthash key record render-map)))))))
+                (puthash key record render-map))))))))
     (when include-image-component
       (cl-pushnew "import { Image } from 'astro:assets';" imports :test #'equal))
     (list :map render-map
@@ -387,10 +464,14 @@ Returns a plist with keys:
                        (org-astro--rewrite-org-image-path search-path rewrite))
               (setq buffer-modified t))
             ;; Check if any occurrence has :repeat t
-            (let ((has-repeat (cl-some (lambda (occ) (plist-get occ :repeat)) occurrences)))
+            (let ((has-repeat (cl-some (lambda (occ) (plist-get occ :repeat)) occurrences))
+                  (is-public (plist-get result :is-public))
+                  (public-path (plist-get result :public-path)))
               (push (list :path final-path
                           :original-path original
                           :astro-path astro-path
+                          :public-path public-path
+                          :is-public is-public
                           :target-path target-path
                           :var-name var-name
                           :occurrences occurrences
@@ -511,6 +592,19 @@ Returns a plist with keys:
                       (file-name-directory
                        (directory-file-name posts-dir))))))
       (expand-file-name (concat "assets/images/" sub-dir) src-dir))))
+
+(defun org-astro--get-public-folder (posts-folder sub-dir)
+  "Get the public folder for static assets based on POSTS-FOLDER and SUB-DIR.
+GIFs and other files that should bypass Astro's image optimization go here."
+  (when posts-folder
+    (let* ((posts-dir (file-name-as-directory (expand-file-name posts-folder)))
+           ;; Go up from content/blog to app root (past src)
+           (src-dir (file-name-directory
+                     (directory-file-name
+                      (file-name-directory
+                       (directory-file-name posts-dir)))))
+           (app-root (file-name-directory (directory-file-name src-dir))))
+      (expand-file-name (concat "public/images/" sub-dir) app-root))))
 
 ;; ------------------------------------------------------------------
 ;; Image path suggestions block (for manual replacement workflow)
@@ -775,10 +869,29 @@ Returns the local file path if successful, nil otherwise."
 (defun org-astro--process-image-path (image-path posts-folder sub-dir &optional update-buffer)
   "Process IMAGE-PATH for POSTS-FOLDER, copying local files or downloading remote URLs to SUB-DIR.
 Returns the processed path suitable for Astro imports.
+GIFs are copied to public/ folder and return a web path (e.g., /images/...).
 If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path."
   (when (and image-path posts-folder)
-    (let ((image-path (substring-no-properties image-path)))
+    (let* ((image-path (substring-no-properties image-path))
+           (is-gif (org-astro--gif-p image-path)))
       (cond
+       ;; GIF files go to public/ folder for static serving
+       ((and is-gif (file-exists-p image-path))
+        (let* ((public-folder (org-astro--get-public-folder posts-folder sub-dir))
+               (original-filename (file-name-nondirectory image-path))
+               (clean-filename (org-astro--sanitize-filename original-filename))
+               (target-path (expand-file-name clean-filename public-folder))
+               (web-path (concat "/images/" sub-dir clean-filename)))
+          (make-directory public-folder t)
+          (condition-case err
+              (copy-file image-path target-path t)
+            (error (message "[ox-astro][img] Failed to copy GIF %s: %s" image-path err)))
+          (when update-buffer
+            (org-astro--update-source-buffer-image-path image-path target-path))
+          (when (file-exists-p target-path)
+            (message "[ox-astro][img] GIF cover image copied to public: %s" web-path)
+            web-path)))
+
        ;; Handle images already in the assets folder - just return the alias path
        ((let ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir)))
           (and assets-folder
@@ -797,15 +910,24 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
                              image-path))
                (downloaded-path (org-astro--download-remote-image full-url posts-folder sub-dir)))
           (when downloaded-path
-            (let* ((clean-filename (file-name-nondirectory downloaded-path))
-                   (result (concat "~/assets/images/" sub-dir clean-filename)))
-              ;; Update the buffer to replace remote URL with local path
-              (when update-buffer
-                (let ((original-url (if (string-match-p "^//" image-path)
-                                        full-url
-                                        image-path)))
-                  (org-astro--update-source-buffer-image-path original-url downloaded-path)))
-              result))))
+            (let* ((clean-filename (file-name-nondirectory downloaded-path)))
+              ;; If downloaded file is a GIF, move to public
+              (if (org-astro--gif-p clean-filename)
+                  (let* ((public-folder (org-astro--get-public-folder posts-folder sub-dir))
+                         (public-target (expand-file-name clean-filename public-folder))
+                         (web-path (concat "/images/" sub-dir clean-filename)))
+                    (make-directory public-folder t)
+                    (rename-file downloaded-path public-target t)
+                    (when update-buffer
+                      (let ((original-url (if (string-match-p "^//" image-path) full-url image-path)))
+                        (org-astro--update-source-buffer-image-path original-url public-target)))
+                    web-path)
+                ;; Non-GIF: keep in assets
+                (let ((result (concat "~/assets/images/" sub-dir clean-filename)))
+                  (when update-buffer
+                    (let ((original-url (if (string-match-p "^//" image-path) full-url image-path)))
+                      (org-astro--update-source-buffer-image-path original-url downloaded-path)))
+                  result))))))
 
        ;; Handle local files
        (t

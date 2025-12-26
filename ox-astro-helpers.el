@@ -1419,8 +1419,11 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          ;; If no explicit image, try to use first body image as hero
          (body-images (or (plist-get info :astro-body-images-imports)
                           org-astro--current-body-images-imports))
+         ;; For fallback, prefer :public-path (GIFs) over :astro-path (regular images)
          (fallback-image (when (and (not image) body-images)
-                           (plist-get (car body-images) :astro-path)))
+                           (let ((first-img (car body-images)))
+                             (or (plist-get first-img :public-path)
+                                 (plist-get first-img :astro-path)))))
          (final-image (or image fallback-image))
          (image-alt (or (plist-get info :astro-image-alt)
                         (plist-get info :cover-image-alt)

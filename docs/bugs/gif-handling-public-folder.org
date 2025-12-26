@@ -1,6 +1,6 @@
 #+TITLE: GIFs Should Go to Public Folder (Not Assets)
 #+DATE: 2025-12-26
-#+STATUS: Open
+#+STATUS: Implemented
 #+TYPE: Feature
 
 * Problem Summary
