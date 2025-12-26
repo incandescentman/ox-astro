@@ -236,6 +236,29 @@ marker placement in Org."
                      (eq (org-element-type first-child) 'keyword)
                      (string-equal (org-element-property :key first-child) "THEME")
                      (string-equal (downcase (org-element-property :value first-child)) theme)))))
+           (theme-keywords (org-element-map tree 'keyword
+                             (lambda (k)
+                               (when (string-equal (org-element-property :key k) "THEME")
+                                 k))))
+           (preceding-theme-keyword-p
+            (lambda (heading theme)
+              (let* ((heading-begin (org-element-property :begin heading))
+                     (candidate nil)
+                     (candidate-pos nil))
+                (when heading-begin
+                  (dolist (k theme-keywords)
+                    (let ((pos (org-element-property :begin k)))
+                      (when (and pos (< pos heading-begin)
+                                 (or (null candidate-pos) (> pos candidate-pos)))
+                        (setq candidate k)
+                        (setq candidate-pos pos))))
+                  (when candidate
+                    (let* ((value (downcase (string-trim (or (org-element-property :value candidate) ""))))
+                           (end (org-element-property :end candidate))
+                           (between (and end (buffer-substring-no-properties end heading-begin))))
+                      (and (string-equal value theme)
+                           between
+                           (string-blank-p between))))))))
            (make-theme-node
             (lambda (theme)
               (org-element-create 'keyword
@@ -259,6 +282,9 @@ marker placement in Org."
                   nil)
                  ;; Theme keyword already present inside the heading section.
                  ((funcall heading-has-theme-p node theme)
+                  nil)
+                 ;; Theme keyword already appears immediately before this heading in the source.
+                 ((funcall preceding-theme-keyword-p node theme)
                   nil)
                  ;; If the next node is the correct theme keyword, move it before.
                  ((funcall theme-keyword-p next theme)
@@ -354,41 +380,39 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
 
 (defun org-astro--doc-level-keyword-value (tree key)
   "Return value for KEY keyword before the first headline in TREE."
-  (let ((children (org-element-contents tree))
-        (value nil))
-    (catch 'found
-      (dolist (node children)
-        (cond
-         ((eq (org-element-type node) 'headline)
-          (throw 'found value))
-         ((and (eq (org-element-type node) 'keyword)
-               (string-equal (org-element-property :key node) key))
-          (let ((raw (string-trim (or (org-element-property :value node) ""))))
-            (unless (string-empty-p raw)
-              (setq value raw)
-              (throw 'found value)))))))
-    value))
+  (let ((first-headline-pos (org-element-map tree 'headline
+                                (lambda (h) (org-element-property :begin h))
+                                nil 'first-match)))
+    (org-element-map tree 'keyword
+      (lambda (k)
+        (when (string-equal (org-element-property :key k) key)
+          (let* ((pos (org-element-property :begin k))
+                 (raw (string-trim (or (org-element-property :value k) ""))))
+            (when (and (not (string-empty-p raw))
+                       (or (null first-headline-pos)
+                           (and pos (< pos first-headline-pos))))
+              raw))))
+      nil 'first-match)))
 
 (defun org-astro--theme-keyword-before-first-heading-p (tree page-theme)
   "Return non-nil if a THEME keyword appears before the first headline with a different value than PAGE-THEME."
   (when page-theme
-    (let ((children (org-element-contents tree))
-          (page-theme (downcase (string-trim page-theme)))
-          (found nil))
-      (catch 'done
-        (dolist (node children)
-          (cond
-           ((eq (org-element-type node) 'headline)
-            (throw 'done found))
-           ((and (eq (org-element-type node) 'keyword)
-                 (string-equal (org-element-property :key node) "THEME"))
-            (let* ((raw (string-trim (or (org-element-property :value node) "")))
+    (let ((page-theme (downcase (string-trim page-theme)))
+          (first-headline-pos (org-element-map tree 'headline
+                                  (lambda (h) (org-element-property :begin h))
+                                  nil 'first-match)))
+      (org-element-map tree 'keyword
+        (lambda (k)
+          (when (string-equal (org-element-property :key k) "THEME")
+            (let* ((pos (org-element-property :begin k))
+                   (raw (string-trim (or (org-element-property :value k) "")))
                    (value (downcase raw)))
               (when (and (not (string-empty-p raw))
+                         (or (null first-headline-pos)
+                             (and pos (< pos first-headline-pos)))
                          (not (string-equal value page-theme)))
-                (setq found t)
-                (throw 'done t)))))))
-      found)))
+                t))))
+        nil 'first-match))))
 
 (defun org-astro--has-inline-theme-sections-p (tree)
   "Return non-nil when TREE includes inline THEME keywords after the first headline."

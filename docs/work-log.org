@@ -18,6 +18,10 @@
 - =docs/instructions.org=
 - =test/theme-reorder-test.el=
 
+*** Follow-up
+- Fixed doc-level keyword detection to work when keywords live in the top-level section.
+- Prevented duplicate theme markers when a THEME keyword appears immediately before a heading but is still inside the previous section.
+
 * 2025-12-23
 ** Session: Auto-delete stale MDX files on slug change
 
