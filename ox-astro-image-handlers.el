@@ -248,6 +248,20 @@ Astro's Sharp image optimization which fails on animated GIFs."
                                   (expand-file-name (substring-no-properties original))))
              (assets-root (and assets-folder (file-name-as-directory (expand-file-name assets-folder)))))
         (cond
+         ;; GIF already in public/images/ folder - extract web path, skip copy
+         ((and is-gif expanded-original
+               (file-exists-p expanded-original)
+               (string-match "/public/images/\\(.+\\)$" expanded-original))
+          (let* ((relative-path (match-string 1 expanded-original))
+                 (web-path (concat "/images/" relative-path)))
+            (message "[ox-astro][img] GIF already in public: %s" web-path)
+            (list :public-path web-path
+                  :target-path expanded-original
+                  :rewrite-path nil
+                  :is-public t
+                  :original-path original  ;; Store original for render map lookup
+                  :status 'existing-public-gif)))
+
          ;; GIF files go to public/ folder for static serving (no optimization)
          ((and is-gif expanded-original (file-exists-p expanded-original))
           (let* ((source-path expanded-original)
