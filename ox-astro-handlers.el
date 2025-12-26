@@ -619,6 +619,8 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     (setq s (replace-regexp-in-string
              "^:ID:\\s-+.*\n?"
              "" s t))
+    ;; Fix double ! from org inline image syntax (![[...]]) + markdown image (![...])
+    (setq s (replace-regexp-in-string "!!\\[" "![" s t t))
     ;; Convert markdown image syntax with absolute paths to Image components
     (let ((pattern "!\\[\\([^]]*\\)\\](\\([~/][^)]+\\.\\(?:png\\|jpe?g\\|webp\\|gif\\)\\))"))
       (setq s (replace-regexp-in-string
