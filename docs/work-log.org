@@ -2,6 +2,44 @@
 #+DATE: 2025-10-07
 
 * 2025-12-26
+** Session: Em-dash support for emphasis boundaries
+
+*** Summary
+Extended =org-emphasis-regexp-components= to recognize em-dashes (—) and en-dashes (–) as valid boundaries for emphasis markers like =/italics/= and =*bold*=.
+
+*** Problem
+Org-mode emphasis markers require valid "pre" and "post" boundary characters. By default, em-dashes aren't recognized, so text like:
+#+begin_example
+consciousness—/what it feels like/—is emergent
+#+end_example
+Would output the =/italics/= literally instead of converting to =*italics*= in MDX.
+
+*** Solution
+Added configuration to =ox-astro-config.el= that extends the emphasis regex:
+#+begin_src elisp
+(with-eval-after-load 'org
+  (when (boundp 'org-emphasis-regexp-components)
+    (let ((pre  (nth 0 org-emphasis-regexp-components))
+          (post (nth 1 org-emphasis-regexp-components)))
+      (unless (string-match-p "—" pre)
+        (setcar (nthcdr 0 org-emphasis-regexp-components)
+                (concat "—–" pre)))
+      (unless (string-match-p "—" post)
+        (setcar (nthcdr 1 org-emphasis-regexp-components)
+                (concat "—–" post)))
+      (org-set-emph-re 'org-emphasis-regexp-components
+                       org-emphasis-regexp-components))))
+#+end_src
+
+*** Files Modified
+- =ox-astro-config.el= — added em-dash/en-dash to emphasis boundaries
+
+*** Workaround (if config not loaded)
+Add spaces around emphasis markers in org source:
+#+begin_example
+consciousness — /what it feels like/ — is emergent
+#+end_example
+
 ** Session: Theme/model banners + pullquote formatting
 
 *** Summary
