@@ -2,6 +2,28 @@
 #+AUTHOR: Jay Dixit & Claude
 #+DATE: 2025-08-25
 
+* Add #+TOC_DEPTH Keyword, Consolidate HIDE_TOC (2025-12-27)
+
+** Summary
+Added ~#+TOC_DEPTH:~ keyword to control table of contents depth in exported MDX. Consolidated with existing ~#+HIDE_TOC:~ — both now export as a single ~tocDepth~ frontmatter field.
+
+** Usage
+#+begin_src org
+#+TOC_DEPTH: 0   # Hide TOC entirely
+#+TOC_DEPTH: 2   # H1 + H2 (default if omitted)
+#+TOC_DEPTH: 3   # H1 + H2 + H3
+#+TOC_DEPTH: 4   # H1 + H2 + H3 + H4
+#+end_src
+
+** Key Behavior
+- ~#+TOC_DEPTH: N~ exports as ~tocDepth: N~ in frontmatter
+- ~#+HIDE_TOC: true~ now converts to ~tocDepth: 0~ (backwards compatible)
+- No more separate ~hideTOC~ frontmatter field
+
+** Files Changed
+- ~ox-astro-metadata.el~ — Added ~org-astro--get-toc-depth~ function
+- ~ox-astro-helpers.el~ — Consolidated hide-toc into toc-depth, removed hideTOC output
+
 * Make Clipboard Copying Opt-In (2025-11-29)
 
 ** Summary
