@@ -153,6 +153,7 @@ indicator/value pairs.  Returns the updated plist."
 (declare-function org-astro--get-story-type "ox-astro-metadata")
 (declare-function org-astro--get-hero-credit "ox-astro-metadata")
 (declare-function org-astro--get-hero-caption "ox-astro-metadata")
+(declare-function org-astro--get-toc-depth "ox-astro-metadata")
 
 ;; Declare global variable for data persistence across export phases
 (defvar org-astro--current-body-images-imports nil
@@ -1533,11 +1534,13 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                           (plist-get info :astro-hide-hero-image)))
                  (truthy (when raw (org-astro--string-truthy-p raw))))
             (when truthy "true")))
-         (hide-toc
+         (hide-toc-p
           (let* ((raw (or (plist-get info :hide-toc)
                           (plist-get info :astro-hide-toc)))
                  (truthy (when raw (org-astro--string-truthy-p raw))))
-            (when truthy "true")))
+            truthy))
+         ;; If hide-toc is set, use 0; otherwise use explicit toc-depth or nil for default
+         (toc-depth (if hide-toc-p 0 (org-astro--get-toc-depth tree info)))
          (incomplete-token (org-astro--parse-incomplete tree info))
          (incomplete (cond
                       ((eq incomplete-token :true) "true")
@@ -1583,7 +1586,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       ,@(when hero-credit `((heroCredit . ,hero-credit)))
       ,@(when hero-caption `((heroCaption . ,hero-caption)))
       ,@(when hide-hero-image `((hideHeroImage . ,hide-hero-image)))
-      ,@(when hide-toc `((hideTOC . ,hide-toc)))
+      ,@(when toc-depth `((tocDepth . ,toc-depth)))
       ,@(when date-occurred `((dateOccurred . ,date-occurred)))
       (tags . ,tags)
       ,@(when place `((place . ,place)))

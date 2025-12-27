@@ -137,6 +137,20 @@ or double quotes retain internal spacing; quotes are stripped in the result."
   "Return raw value for HERO-CAPTION keyword from TREE."
   (org-astro--keyword-first-value tree '("HERO-CAPTION" "HERO_CAPTION")))
 
+(defun org-astro--keyword-raw-toc-depth (tree)
+  "Return raw value for TOC_DEPTH or TOC-DEPTH keyword from TREE."
+  (org-astro--keyword-first-value tree '("TOC_DEPTH" "TOC-DEPTH")))
+
+(defun org-astro--get-toc-depth (tree info)
+  "Return the TOC depth as a number from TREE/INFO, or nil if not set."
+  (let ((raw (or (org-astro--keyword-raw-toc-depth tree)
+                 (plist-get info :astro-toc-depth)
+                 (plist-get info :toc-depth))))
+    (when raw
+      (let ((trimmed (org-trim (format "%s" raw))))
+        (when (string-match-p "^[0-9]+$" trimmed)
+          (string-to-number trimmed))))))
+
 (defun org-astro--keyword-raw-connection (tree base)
   "Return raw value for connection keyword BASE (e.g., \"CONNECTION_TEMPORAL\")."
   (org-astro--keyword-first-value tree (list (format "ASTRO_%s" base) base)))
