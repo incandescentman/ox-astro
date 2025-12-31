@@ -1,16 +1,28 @@
 #+TITLE: Theme and Model Banner Issues for Multi-AI Posts
 #+DATE: 2025-12-26
+#+UPDATED: 2025-12-31
 #+STATUS: Open
 
 * Problem Summary
 
-Three related issues affect multi-AI blog posts (posts with Claude, ChatGPT, Gemini sections):
+Multiple related issues affect the theming system for AI blog posts:
 
-1. Document-level ~#+MODEL:~ doesn't emit a banner
+1. Document-level ~#+MODEL:~ behavior is inconsistent (ignored OR duplicated)
 2. Duplicate theme markers appear in output
 3. First section lacks inline theme marker
+4. Orphan theme markers (empty sections)
 
-* Test Case
+* Test Cases
+
+| Post | Frontmatter Theme | Issues Found |
+|------|-------------------|--------------|
+| equipment-for-living | =theme: chatgpt= | *Clean* ✓ |
+| tip-of-the-tongue | =theme: claude= | Duplicate Claude banner |
+| shakespeare | /none/ | Duplicate chatgpt marker |
+| sinners | /none/ | Orphan chatgpt marker |
+| consciousness | /none/ | Duplicate chatgpt marker |
+
+** Primary Test Case: consciousness-as-an-emergent-phenomenon
 
 - Org file: ~/Users/jay/Dropbox/roam/notes/20251226144427-consciousness_as_an_emergent_phenomenon.org~
 
@@ -33,17 +45,40 @@ Org structure:
 * ChatGPT                  <- heading (line 814)
 #+end_example
 
-* Issue 1: Document-Level MODEL Ignored
+** Secondary Test Case: tip-of-the-tongue
 
-** Expected Behavior
+- Org file: ~/Users/jay/Dropbox/roam/chatgpt-outputs/20251103133432-tip_of_the_tongue.org~
+
+Org structure (NO Org headlines — flat content):
+#+begin_example
+#+THEME: claude            <- document-level
+#+MODEL: Claude Sonnet 4.5 <- document-level
+
+#+begin_src user
+[content...]
+#+end_src
+
+[Claude content...]
+
+#+THEME: chatgpt           <- inline
+#+MODEL: ChatGPT 5.1       <- inline
+
+[ChatGPT content...]
+#+end_example
+
+* Issue 1: Document-Level MODEL Inconsistent Behavior
+
+** Case A: Posts WITH Org Headlines (MODEL Ignored)
+
+*** Expected Behavior
 Document-level ~#+MODEL:~ should emit a model banner for the first section.
 The banner should appear after imports, before the first heading content.
 
-** Actual Behavior
+*** Actual Behavior
 Document-level ~#+MODEL:~ is ignored and produces no output.
-The first ChatGPT section has no model banner.
+The first section has no model banner.
 
-** Root Cause
+*** Root Cause
 ~org-astro-keyword~ only emits ~#+MODEL:~ when ~body-level~ is true:
 
 #+begin_src elisp
@@ -58,10 +93,44 @@ The first ChatGPT section has no model banner.
 
 Since document-level ~#+MODEL:~ appears BEFORE the first heading, ~body-level~ is nil.
 
-** Proposed Fix
-1. Detect ~#+MODEL:~ before the first heading and store in ~:astro-page-model~
-2. Emit the banner once at the top of body in ~org-astro-body-filter~
-3. Mark the keyword as consumed to avoid duplicate output
+** Case B: Posts WITHOUT Org Headlines (MODEL Duplicated)
+
+*** Expected Behavior
+Document-level ~#+MODEL:~ should emit exactly ONE banner.
+
+*** Actual Behavior
+In ~tip-of-the-tongue.mdx~, the Claude banner appears twice:
+
+#+begin_example
+23: <div class="model-banner">Claude Sonnet 4.5</div>   <- FIRST
+...
+27: {/* theme: claude */}
+...
+29: <div class="model-banner">Claude Sonnet 4.5</div>   <- DUPLICATE
+#+end_example
+
+*** Root Cause
+When there are NO Org headlines, ~first-headline-pos~ is nil, so ~body-level~
+becomes true via ~(or (null first-headline-pos) ...)~.
+
+This causes BOTH emitters to fire:
+1. ~org-astro-keyword~ emits banner (because ~body-level~ is true)
+2. ~org-astro-body-filter~ ALSO emits banner via ~theme-model-prefix~
+
+** Proposed Fix for Issue 1
+
+Option A: Have ~org-astro-body-filter~ be the SOLE emitter of document-level
+MODEL banners. Modify ~org-astro-keyword~ to skip MODEL when at document level:
+
+#+begin_src elisp
+((string-equal key "MODEL")
+ (if (and body-level (not (org-astro--is-document-level-p keyword)))
+     (format "<div class=\"model-banner\">%s</div>\n\n" value)
+   ""))
+#+end_src
+
+Option B: Detect document-level ~#+MODEL:~ and store in ~:astro-page-model~,
+then emit once in ~org-astro-body-filter~. Mark as consumed to prevent duplicate.
 
 * Issue 2: Duplicate Theme Markers
 
@@ -69,14 +138,19 @@ Since document-level ~#+MODEL:~ appears BEFORE the first heading, ~body-level~ i
 Each section should have exactly one ~{/* theme: X */}~ marker.
 
 ** Actual Behavior
-MDX output shows duplicate markers:
+MDX output shows duplicate markers in multiple posts:
 
+consciousness-as-an-emergent-phenomenon.mdx:
 #+begin_example
-{/* theme: claude */}    <- line 653
+23: {/* theme: chatgpt */}   <- FIRST
+...
+26: {/* theme: chatgpt */}   <- DUPLICATE
+#+end_example
 
-{/* theme: claude */}    <- line 655 (DUPLICATE!)
-
-# Claude
+how-to-use-ai-to-understand-shakespeare.mdx:
+#+begin_example
+308: {/* theme: chatgpt */}   <- FIRST
+310: {/* theme: chatgpt */}   <- DUPLICATE
 #+end_example
 
 ** Root Cause
@@ -136,9 +210,151 @@ marker at start of body content.
   )
 #+end_src
 
+* Issue 4: Orphan Theme Markers
+
+** Expected Behavior
+Theme markers should only appear when followed by actual content.
+
+** Actual Behavior
+In ~sinners.mdx~:
+
+#+begin_example
+30: {/* theme: chatgpt */}   <- ORPHAN (no content before next theme)
+...
+34: {/* theme: claude */}    <- Immediately overrides
+#+end_example
+
+** Root Cause
+The org source likely has a ~#+THEME: chatgpt~ that gets immediately
+overwritten by ~#+THEME: claude~ before any content appears between them.
+
+** Proposed Fix
+In post-processing, remove theme markers that are immediately followed by
+another theme marker with no content between them. Or prevent emission
+of consecutive identical/overridden theme markers.
+
+* Proposed Logical Theming System
+
+** Rule 1: Single-AI Posts
+
+Posts with content from only one AI model.
+
+*** Org Source Pattern
+#+begin_src org
+#+TITLE: My Post
+#+THEME: claude
+#+MODEL: Claude Sonnet 4.5
+
+#+begin_src user
+Hello
+#+end_src
+
+Response content...
+#+end_src
+
+*** Expected MDX Output
+#+begin_src markdown
+---
+theme: claude
+---
+
+<div class="model-banner">Claude Sonnet 4.5</div>
+
+```user
+Hello
+```
+
+Response content...
+#+end_src
+
+*** Key Points
+- =#+THEME:= at document level → frontmatter only (page wrapper)
+- =#+MODEL:= at document level → one banner near top
+- *No inline theme markers needed*
+
+** Rule 2: Multi-AI Posts
+
+Posts with content from multiple AI models.
+
+*** Org Source Pattern
+#+begin_src org
+#+TITLE: AI Comparison
+
+* Claude's Take
+#+THEME: claude
+#+MODEL: Claude Sonnet 4.5
+
+#+begin_src user
+Question
+#+end_src
+
+Claude's response...
+
+* ChatGPT's Take
+#+THEME: chatgpt
+#+MODEL: ChatGPT 5.2
+
+#+begin_src user
+Same question
+#+end_src
+
+ChatGPT's response...
+#+end_src
+
+*** Expected MDX Output
+#+begin_src markdown
+---
+title: AI Comparison
+---
+
+{/* theme: claude */}
+
+<div class="model-banner">Claude Sonnet 4.5</div>
+
+```user
+Question
+```
+
+Claude's response...
+
+{/* theme: chatgpt */}
+
+<div class="model-banner">ChatGPT 5.2</div>
+
+```user
+Same question
+```
+
+ChatGPT's response...
+#+end_src
+
+*** Key Points
+- *No theme in frontmatter* (page uses default/neutral wrapper)
+- Each section gets inline =#+THEME:= + =#+MODEL:=
+- Sections are wrapped by =remarkThemeSections= plugin
+
+** Rule 3: Never Mix Document-Level and First-Section Inline
+
+This is *wrong*:
+#+begin_src org
+#+THEME: claude           <- Document level
+#+MODEL: Claude Sonnet 4.5
+
+#+THEME: claude           <- Redundant! Same as document level
+#+MODEL: Claude Sonnet 4.5  <- Will emit duplicate banner
+#+end_src
+
+If you have document-level theme/model, do NOT also put inline markers
+before the first content.
+
+** Rule 4: Theme Markers Only on Transitions
+
+In multi-AI posts, the first section needs a theme marker. Subsequent
+sections only need markers when *switching* themes.
+
 * Expected Final Output
 
-After all fixes, the test file should produce:
+After all fixes, the consciousness test file should produce:
 
 #+begin_example
 ---
@@ -181,7 +397,24 @@ import { Image } from 'astro:assets';
 - ~ox-astro-metadata.el~ or ~ox-astro-helpers.el~ (store page-level model)
 - ~README.org~ (update placement rules)
 - ~docs/instructions.org~ (update documentation)
-- Tests: add regression tests for all three scenarios
+- Tests: add regression tests for all scenarios
+
+* Testing Checklist
+
+After implementing fixes, verify these posts render correctly:
+
+- [ ] =tip-of-the-tongue= — Claude banner appears once (not duplicated)
+- [ ] =consciousness-as-an-emergent-phenomenon= — ChatGPT marker appears once
+- [ ] =shakespeare= — ChatGPT marker appears once
+- [ ] =sinners= — No orphan theme markers
+- [ ] =equipment-for-living= — Still works (regression test)
+
+* References
+
+- ~ox-astro-handlers.el~ — Main handler code
+- ~packages/astro-utils/src/remark/themeSections.ts~ — Remark plugin
+- ~apps/socratic/src/styles/claude-theme.css~ — Theme CSS files
+- ~apps/socratic/src/pages/[...blog]/index.astro~ — Page template
 
 * Status
 
