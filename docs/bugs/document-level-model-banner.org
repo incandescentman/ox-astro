@@ -12,6 +12,11 @@ Multiple related issues affect the theming system for AI blog posts:
 3. First section lacks inline theme marker
 4. Orphan theme markers (empty sections)
 
+Underlying cause: doc-level detection is currently based on "before the first
+headline" rather than "before any body content." This misclassifies no-headline
+files and early inline markers as document-level, which cascades into duplicate
+markers and banners.
+
 * Test Cases
 
 | Post | Frontmatter Theme | Issues Found |
@@ -119,12 +124,14 @@ This causes BOTH emitters to fire:
 
 ** Proposed Fix for Issue 1
 
-Option A: Have ~org-astro-body-filter~ be the SOLE emitter of document-level
-MODEL banners. Modify ~org-astro-keyword~ to skip MODEL when at document level:
+Option A (preferred): Have ~org-astro-body-filter~ be the SOLE emitter of
+document-level MODEL banners. Define document-level as "before any body
+content" (headline, paragraph, block, etc), not merely "before first headline."
+Modify ~org-astro-keyword~ to skip MODEL when the keyword is document-level:
 
 #+begin_src elisp
 ((string-equal key "MODEL")
- (if (and body-level (not (org-astro--is-document-level-p keyword)))
+ (if (and body-level (not (org-astro--keyword-before-body-p keyword tree)))
      (format "<div class=\"model-banner\">%s</div>\n\n" value)
    ""))
 #+end_src
@@ -154,28 +161,20 @@ how-to-use-ai-to-understand-shakespeare.mdx:
 #+end_example
 
 ** Root Cause
-~org-astro--ensure-inline-theme-markers~ auto-inserts theme markers before
-Claude/ChatGPT headings. The check for existing markers isn't working:
-
-#+begin_src elisp
-(cond
- ;; Already have the correct theme keyword immediately before.
- ((and result (funcall theme-keyword-p (car (last result)) theme))
-  nil)  ;; <- Should skip inserting, but existing marker not detected
- ...
- (t
-  (push (funcall make-theme-node theme) result)))
-#+end_src
-
-The existing THEME keyword from the source file is present but ~theme-keyword-p~
-isn't recognizing it correctly.
+Duplicates occur when THEME is placed immediately before or after a heading.
+~org-astro--ensure-inline-theme-markers~ may insert a marker before model
+headings while ~org-astro-keyword~ also emits the inline marker, or the page
+theme is set from a non-doc-level THEME and ~org-astro-body-filter~ adds a
+second marker. This produces back-to-back identical markers.
 
 ** Proposed Fix
-Add debug logging to understand why existing markers aren't detected. Likely
-issues:
-- The keyword value comparison is case-sensitive when it shouldn't be
-- The keyword position/structure differs from synthesized nodes
-- The ~result~ list traversal is missing the existing keyword
+Normalize THEME placement around headings so there is exactly one canonical
+marker:
+- Treat THEME immediately before *or* as the first child of a section as the
+  same thing; move/mark it so only one marker is emitted.
+- Ensure ~org-astro--ensure-inline-theme-markers~ recognizes existing keywords
+  in either position and does not insert duplicates.
+- Tighten doc-level detection so inline THEME does not set page theme.
 
 * Issue 3: First Section Lacks Inline Theme Marker
 
@@ -198,9 +197,9 @@ Document-level ~#+THEME: chatgpt~ goes to frontmatter only. No inline
 #+end_src
 
 ** Proposed Fix
-When document-level ~#+THEME:~ is set AND the post has multiple theme sections
-(detected by inline theme markers or Claude/ChatGPT headings), emit the theme
-marker at start of body content.
+Use document-level THEME *only* for single-AI posts. If multiple THEME keywords
+exist, treat the doc-level THEME as the first section marker and do NOT set
+frontmatter theme.
 
 #+begin_src elisp
 ;; In body-filter or a new filter:
@@ -229,11 +228,16 @@ The org source likely has a ~#+THEME: chatgpt~ that gets immediately
 overwritten by ~#+THEME: claude~ before any content appears between them.
 
 ** Proposed Fix
-In post-processing, remove theme markers that are immediately followed by
-another theme marker with no content between them. Or prevent emission
-of consecutive identical/overridden theme markers.
+Prevent emission of consecutive markers by normalizing theme placement and
+skipping markers when no content exists between them. As a fallback, collapse
+adjacent markers during export.
 
 * Proposed Logical Theming System
+
+** Rule 0: Define "document level"
+A keyword is document-level only if it appears before *any* body content
+(headline, paragraph, block, etc). If there are multiple THEME keywords, the
+post is multi-AI and page-level theming should be disabled.
 
 ** Rule 1: Single-AI Posts
 
@@ -346,11 +350,17 @@ This is *wrong*:
 
 If you have document-level theme/model, do NOT also put inline markers
 before the first content.
+If multiple THEME keywords exist, treat the document-level THEME as the
+*first section* marker and skip frontmatter theme.
 
 ** Rule 4: Theme Markers Only on Transitions
 
 In multi-AI posts, the first section needs a theme marker. Subsequent
 sections only need markers when *switching* themes.
+
+** Rule 5: MODEL Banner Placement
+- Document-level MODEL emits *once* at top of body.
+- Inline MODEL emits only *after* a heading (never when no headings exist).
 
 * Expected Final Output
 
@@ -359,7 +369,6 @@ After all fixes, the consciousness test file should produce:
 #+begin_example
 ---
 title: "For Dad: Consciousness as an emergent phenomenon"
-theme: chatgpt
 ...
 ---
 {/* Source org: ... */}
@@ -394,7 +403,8 @@ import { Image } from 'astro:assets';
   - ~org-astro-keyword~ (keyword handling)
   - ~org-astro--ensure-inline-theme-markers~ (duplicate prevention)
   - ~org-astro-body-filter~ (emit page-level model/theme)
-- ~ox-astro-metadata.el~ or ~ox-astro-helpers.el~ (store page-level model)
+- ~ox-astro-handlers.el~ (doc-level detection: before any body content)
+- ~ox-astro-helpers.el~ (optional helper: keyword-before-body-p)
 - ~README.org~ (update placement rules)
 - ~docs/instructions.org~ (update documentation)
 - Tests: add regression tests for all scenarios

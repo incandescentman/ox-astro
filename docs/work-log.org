@@ -984,3 +984,49 @@ When =:repeat t= is set, the image appears both:
 - Exported org file with =:repeat t= on first image
 - Confirmed MDX contains both frontmatter =image:= reference AND inline =<Image>= component
 - Built Astro site and verified HTML output shows image inline
+
+* 2025-12-31 Fix theme/model banner placement and doc-level detection
+
+** Summary
+Tightened document-level keyword detection to mean "before any body content",
+normalized theme/model emission for multi-AI posts, and ensured doc-level MODEL
+banners do not float above inline theme markers.
+
+** Changes
+- Added body-aware helpers to detect the first real body element, count unique
+  THEME values, and detect inline MODEL keywords.
+- Document-level THEME now promotes to frontmatter only for single-theme posts.
+- Document-level MODEL banners are skipped when inline MODEL keywords exist.
+- MODEL banners are inserted after any leading inline theme marker.
+- Keywords under headline sections are never treated as document-level.
+
+** Files Modified
+- =ox-astro-helpers.el= — body-position helpers + doc-level detection changes
+- =ox-astro-handlers.el= — theme/model emission and banner placement logic
+- =docs/bugs/document-level-model-banner.org= — updated rules and fixes
+
+** Verification
+- Re-exported socratic posts and checked:
+  - =tip-of-the-tongue.mdx= — banner now appears inside the first theme section
+  - =consciousness-as-an-emergent-phenomenon.mdx= — banner follows the theme marker
+  - =how-to-use-ai-to-understand-shakespeare.mdx= — no duplicate theme markers
+  - =sinners.mdx= — no orphan theme marker at top; single Claude banner before heading
+
+** Follow-up Fix: Numeric frontmatter encoding
+- Adjusted YAML scalar encoding so numeric values are emitted unquoted.
+- Fixes Astro content schema errors like =tocDepth= being written as a string.
+
+** Files Modified (follow-up)
+- =ox-astro-helpers.el= — numeric scalar encoding now outputs plain numbers
+
+** Follow-up Fix: Theme+Model adjacency emission
+- Emit MODEL immediately after THEME when adjacent in the same section, even
+  without headings; mark MODEL as consumed to avoid duplicate banners.
+- Corrected a parenthesis imbalance introduced in the THEME adjacency loop.
+
+** Files Modified (follow-up)
+- =ox-astro-handlers.el= — theme/model adjacency emission + paren fix
+
+** Verification (follow-up)
+- =tip-of-the-tongue.mdx= now renders theme marker + model banner adjacent in
+  headingless sections (no floating banner, no duplicates).

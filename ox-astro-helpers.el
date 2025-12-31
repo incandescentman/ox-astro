@@ -1183,7 +1183,7 @@ KEY optionally provides field context."
     (when (and (stringp value) (not (string-empty-p value)))
       (string-trim value)))
    ((numberp value)
-    (org-astro--yaml-quote-string (format "%s" value)))
+    (format "%s" value))
    ((stringp value)
     (let ((trimmed (string-trim value)))
       (cond
@@ -1501,6 +1501,62 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                        (match-string 1))))))))
     (org-astro--split-quoted-list raw)))
 
+(defun org-astro--first-body-element-pos (tree)
+  "Return the position of the first body content element in TREE."
+  (when tree
+    (cl-labels ((node-pos (node)
+                  (let ((type (org-element-type node)))
+                    (cond
+                     ((memq type '(keyword comment comment-block property-drawer drawer planning))
+                      nil)
+                     ((eq type 'paragraph)
+                      (let ((has-link (org-element-map node 'link (lambda (_l) t) nil 'first-match)))
+                        (if (or has-link
+                                (not (string-blank-p (org-element-interpret-data node))))
+                            (org-element-property :begin node)
+                          nil)))
+                     ((eq type 'section)
+                      (cl-loop for child in (org-element-contents node)
+                               for child-pos = (node-pos child)
+                               when child-pos return child-pos))
+                     (t (org-element-property :begin node))))))
+      (cl-loop for node in (org-element-contents tree)
+               for pos = (node-pos node)
+               when pos return pos))))
+
+(defun org-astro--keyword-before-body-p (keyword tree)
+  "Return non-nil when KEYWORD appears before any body content in TREE."
+  (let ((key-pos (org-element-property :begin keyword))
+        (body-pos (org-astro--first-body-element-pos tree))
+        (parent (org-element-parent keyword))
+        (in-headline nil))
+    (while (and parent (not in-headline))
+      (when (eq (org-element-type parent) 'headline)
+        (setq in-headline t))
+      (setq parent (org-element-parent parent)))
+    (and key-pos (not in-headline) (or (null body-pos) (< key-pos body-pos)))))
+
+(defun org-astro--theme-keyword-count (tree)
+  "Return count of unique THEME keyword values in TREE."
+  (let ((seen (make-hash-table :test 'equal)))
+    (org-element-map tree 'keyword
+      (lambda (k)
+        (when (string-equal (org-element-property :key k) "THEME")
+          (let ((value (downcase (string-trim (or (org-element-property :value k) "")))))
+            (when (not (string-empty-p value))
+              (puthash value t seen)))))
+      nil)
+    (hash-table-count seen)))
+
+(defun org-astro--has-inline-model-keywords-p (tree)
+  "Return non-nil when TREE includes MODEL keywords after body content."
+  (org-element-map tree 'keyword
+    (lambda (k)
+      (when (string-equal (org-element-property :key k) "MODEL")
+        (when (not (org-astro--keyword-before-body-p k tree))
+          t)))
+    nil 'first-match))
+
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
   (let* ((posts-folder (or (plist-get info :destination-folder)
@@ -1556,21 +1612,12 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                        (when (and v (not (string-empty-p (org-trim v))))
                          (org-trim v))))
          (theme
-          (let* ((th (plist-get info :theme))
-                 (theme-clean (and th (not (string-empty-p (org-trim th))) (org-trim th)))
-                 (first-headline-pos (org-element-map tree 'headline
-                                         (lambda (h) (org-element-property :begin h))
-                                         nil 'first-match))
-                 (first-theme-pos (org-element-map tree 'keyword
-                                      (lambda (k)
-                                        (when (string-equal (org-element-property :key k) "THEME")
-                                          (org-element-property :begin k)))
-                                      nil 'first-match)))
-            ;; If the first THEME keyword appears after the first heading, treat it as inline
-            ;; only and avoid promoting it to page/frontmatter theme.
-            (if (and theme-clean first-theme-pos first-headline-pos
-                     (>= first-theme-pos first-headline-pos))
-                nil
+          (let* ((doc-theme (org-astro--doc-level-keyword-value tree "THEME"))
+                 (theme-clean (and doc-theme (org-trim doc-theme)))
+                 (theme-count (org-astro--theme-keyword-count tree)))
+            ;; Only promote THEME to frontmatter when it is doc-level and the
+            ;; post uses a single theme.
+            (when (and theme-clean (= theme-count 1))
               theme-clean)))
          (status (plist-get info :status))
          (draft (when (and status (string= (downcase (org-trim status)) "draft")) "true")))
@@ -2007,11 +2054,16 @@ For coding-agent blocks, supports :collapsible header arg:
                          (or (plist-get info :headline-offset) 0)))
                (level (min (max level 1) 6))
                (header (concat (make-string level ?#) " " title))
-               (theme-prefix (org-astro--theme-prefix-for-heading heading info)))
+               (theme-prefix (org-astro--theme-prefix-for-heading heading info))
+               (model-prefix (org-astro--model-prefix-for-heading heading info))
+               (prefix (concat (or theme-prefix "") (or model-prefix ""))))
           ;; If we hoisted a theme marker, drop the original from contents to avoid duplication.
           (when (and theme-prefix contents (string-prefix-p theme-prefix contents))
             (setq contents (substring contents (length theme-prefix))))
-          (concat (or theme-prefix "") header "\n\n" (or contents ""))))))
+          ;; If we hoisted a model banner, drop the original from contents to avoid duplication.
+          (when (and model-prefix contents (string-prefix-p model-prefix contents))
+            (setq contents (substring contents (length model-prefix))))
+          (concat prefix header "\n\n" (or contents ""))))))
 
 (defun org-astro--theme-prefix-for-heading (heading _info)
   "Emit a theme marker if HEADING is immediately followed by a THEME keyword.
@@ -2027,6 +2079,42 @@ Marks the keyword as consumed so it won't render twice."
         (when (and value (not (string-empty-p value)))
           (org-element-put-property first-child :astro-consumed t)
           (format "{/* theme: %s */}\n\n" (downcase value)))))))
+
+(defun org-astro--model-prefix-for-heading (heading _info)
+  "Emit a model banner if HEADING section starts with a MODEL keyword.
+Allows THEME to appear first; marks MODEL keyword as consumed."
+  (let* ((section (car (org-element-contents heading)))
+         (children (when (and section (eq 'section (org-element-type section)))
+                     (org-element-contents section))))
+    (when children
+      (cl-labels ((blank-paragraph-p (node)
+                    (and (eq (org-element-type node) 'paragraph)
+                         (string-blank-p (org-element-interpret-data node))))
+                  (next-meaningful (nodes)
+                    (cl-loop for node in nodes
+                             unless (blank-paragraph-p node)
+                             return node)))
+        (let* ((first (next-meaningful children))
+               (rest (and first (cdr (member first children))))
+               (second (and rest (next-meaningful rest)))
+               (model-node
+                (cond
+                 ((and first
+                       (eq (org-element-type first) 'keyword)
+                       (string-equal (org-element-property :key first) "MODEL"))
+                  first)
+                 ((and first second
+                       (eq (org-element-type first) 'keyword)
+                       (string-equal (org-element-property :key first) "THEME")
+                       (eq (org-element-type second) 'keyword)
+                       (string-equal (org-element-property :key second) "MODEL"))
+                  second))))
+          (when model-node
+            (let* ((raw (org-element-property :value model-node))
+                   (value (and raw (string-trim raw))))
+              (when (and value (not (string-empty-p value)))
+                (org-element-put-property model-node :astro-consumed t)
+                (format "<div class=\"model-banner\">%s</div>\n\n" value)))))))))
 
 (defun org-astro--handle-broken-image-paragraph (paragraph info)
   "Handle a paragraph containing a broken image path with subscripts."
