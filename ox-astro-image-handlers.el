@@ -925,6 +925,21 @@ When USE-ALIAS is non-nil, use :alias paths; otherwise use :new."
         (setq changed t)))
     base))
 
+(defun org-astro--normalize-path-style (old-path new-path)
+  "Return NEW-PATH using the same style as OLD-PATH when possible."
+  (if (and (stringp old-path) (string-prefix-p "~/" old-path))
+      (concat "~/" (file-relative-name new-path (expand-file-name "~")))
+    new-path))
+
+(defun org-astro--normalize-existing-image-extension (path)
+  "Normalize PATH's extension based on its contents when possible."
+  (when (and path (file-exists-p path))
+    (let* ((data (org-astro--read-file-bytes path 4096))
+           (type (org-astro--detect-image-type-from-bytes data)))
+      (if type
+          (org-astro--normalize-downloaded-image-extension path type)
+        path))))
+
 (defun org-astro--normalize-downloaded-image-extension (path type)
   "Normalize PATH's extension based on TYPE, returning the final path."
   (if (null type)
@@ -1067,8 +1082,16 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
                (string-match-p (regexp-quote (expand-file-name assets-folder))
                                (expand-file-name image-path))))
         (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
-               (filename (file-name-nondirectory image-path)))
-          (concat "~/assets/images/" sub-dir filename)))
+               (expanded-path (expand-file-name image-path))
+               (normalized-path (org-astro--normalize-existing-image-extension expanded-path))
+               (filename (file-name-nondirectory normalized-path))
+               (alias-path (concat "~/assets/images/" sub-dir filename)))
+          (when (and update-buffer normalized-path
+                     (not (string= expanded-path normalized-path)))
+            (org-astro--update-source-buffer-image-path
+             image-path
+             (org-astro--normalize-path-style image-path normalized-path)))
+          alias-path))
 
        ;; Handle remote URLs (both full https:// and protocol-relative //)
        ((or (string-match-p "^https?://" image-path)

@@ -1,0 +1,107 @@
+:PROPERTIES:
+:ID:       hero-image-keyword
+:END:
+#+TITLE: Hero Image Keyword Support - ox-astro Enhancement
+#+CREATED: [2026-01-01 Wed]
+
+* Problem Statement
+
+Currently, ox-astro uses the *first inline image* in the document as the hero image for frontmatter. This creates two issues:
+
+1. *No explicit control* - Authors cannot specify a hero image without it appearing in the body
+2. *Unwanted duplication* - If you want a specific hero image, it must appear first in content, even if that's not where it belongs editorially
+
+* Current Behavior
+
+ox-astro scans the document for the first image link and uses it for the =image:= frontmatter field:
+
+#+begin_src markdown
+---
+image: ~/assets/images/posts/my-post/first-image-found.jpg
+imageAlt: First Image Found
+---
+#+end_src
+
+* Proposed Solution
+
+Add support for =#+HERO_IMAGE:= keyword in org frontmatter:
+
+#+begin_src org
+#+TITLE: My Blog Post
+#+HERO_IMAGE: /path/to/hero-image.jpg
+#+HERO_IMAGE_ALT: A beautiful sunset over the mountains
+
+* First Heading
+...content...
+#+end_src
+
+** Behavior
+
+1. If =#+HERO_IMAGE:= is present, use it for frontmatter =image:= field
+2. If =#+HERO_IMAGE_ALT:= is present, use it for =imageAlt:= field
+3. If no =#+HERO_IMAGE:=, fall back to current behavior (first inline image)
+4. The hero image should NOT be duplicated in the body content
+
+** Path Handling
+
+The =#+HERO_IMAGE:= value should support:
+
+- Absolute paths: =/Users/jay/.../image.jpg=
+- Relative paths from posts folder: =./assets/hero.jpg=
+- Already-exported paths: =~/assets/images/posts/slug/hero.jpg=
+
+* Implementation Notes
+
+** Location
+
+The logic should be added to =ox-astro-image-handlers.el=, likely in or near the frontmatter generation code.
+
+** Pseudocode
+
+#+begin_src elisp
+(defun org-astro--get-hero-image (info)
+  "Return hero image path from #+HERO_IMAGE or first inline image."
+  (or (plist-get info :hero-image)      ; Check explicit keyword first
+      (org-astro--find-first-image info))) ; Fall back to current behavior
+
+(defun org-astro--get-hero-image-alt (info)
+  "Return hero image alt text from #+HERO_IMAGE_ALT or derive from filename."
+  (or (plist-get info :hero-image-alt)
+      (org-astro--derive-alt-from-path (org-astro--get-hero-image info))))
+#+end_src
+
+** Keyword Registration
+
+Add to the ox-astro backend definition:
+
+#+begin_src elisp
+:options-alist
+'((:hero-image "HERO_IMAGE" nil nil t)
+  (:hero-image-alt "HERO_IMAGE_ALT" nil nil t))
+#+end_src
+
+* Benefits
+
+1. *Editorial control* - Hero image can be different from first content image
+2. *Cleaner content* - No need for a "dummy" first image just for the hero
+3. *Explicit intent* - Clear what the author intends as the hero
+4. *Backwards compatible* - Falls back to current behavior if keyword absent
+
+* Testing
+
+After implementing, verify:
+
+1. =#+HERO_IMAGE:= with absolute path works
+2. =#+HERO_IMAGE_ALT:= overrides auto-generated alt text
+3. Missing =#+HERO_IMAGE:= falls back to first inline image
+4. Hero image is properly copied/processed to assets folder
+5. No duplicate image in body when =#+HERO_IMAGE:= matches first inline image
+
+* Status
+
+- [ ] Add =:hero-image= and =:hero-image-alt= to options-alist
+- [ ] Implement =org-astro--get-hero-image= function
+- [ ] Update frontmatter generation to use new function
+- [ ] Handle path normalization for hero image
+- [ ] Add tests
+- [ ] Update documentation
