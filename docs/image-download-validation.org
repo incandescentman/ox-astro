@@ -132,13 +132,21 @@ The =-f= flag makes curl return non-zero exit code on HTTP 4xx/5xx, preventing e
 
 * Testing
 
-After implementing, test with known problematic URLs:
+Test with known problematic URLs:
 
 - =https://houseandhistory.com/wp-content/uploads/2021/03/203-8th-Avenue.jpg= (returns 406)
 - =https://www.cheapoair.com/miles-away/wp-content/uploads/2019/11/Winter-in-New-York-3.jpg= (returns 403)
 - =https://i.guim.co.uk/img/media/.../3187.jpg= (returns 401)
 
-All should fail gracefully without creating fake image files.
+** Test Results [2026-01-01]
+
+| URL | HTTP Status | curl -f | Validation |
+|-----+-------------+---------+------------|
+| 203-8th-Avenue.jpg | 200 (HTML body!) | Downloads 496-byte HTML | ✅ Caught by =<!doctype html= pattern |
+| Winter-in-New-York-3.jpg | 403 | Exit 56, no file | ✅ curl rejects |
+| 3187.jpg | 401 | Exit 56, no file | ✅ curl rejects |
+
+Key finding: The first URL returns HTTP 200 but serves an HTML error page. This is why post-download validation is essential — curl's =-f= flag only catches HTTP-level errors, not content-level deception.
 
 * Implementation Notes
 
@@ -151,5 +159,5 @@ All should fail gracefully without creating fake image files.
 - [X] Implement =org-astro--validate-downloaded-image=
 - [X] Integrate into =org-astro--download-remote-image=
 - [X] Add curl fallback option
-- [ ] Test with problematic URLs
+- [X] Test with problematic URLs
 - [X] Update documentation

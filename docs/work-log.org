@@ -1051,3 +1051,6 @@ normalized file extensions based on detected content.
 
 ** Verification
 - Not run in this session.
+
+** Follow-up
+- Logged remote download test results in =docs/image-download-validation.org= and marked tests complete.
