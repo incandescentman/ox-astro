@@ -1054,3 +1054,7 @@ normalized file extensions based on detected content.
 
 ** Follow-up
 - Logged remote download test results in =docs/image-download-validation.org= and marked tests complete.
+
+** Follow-up: Normalize double extensions
+- Collapsed chained image extensions (e.g., =.png.webp= -> =.webp=) during download normalization.
+- Batch test: temp file rename verified via =org-astro--normalize-downloaded-image-extension=.

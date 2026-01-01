@@ -913,18 +913,32 @@ When USE-ALIAS is non-nil, use :alias paths; otherwise use :new."
       ('svg (string= ext "svg"))
       (_ t))))
 
+(defun org-astro--strip-image-extension-chain (path)
+  "Remove trailing image extensions from PATH (e.g., foo.png.webp -> foo)."
+  (let ((case-fold-search t)
+        (base path)
+        (changed t))
+    (while changed
+      (setq changed nil)
+      (when (string-match "\\.\\(png\\|jpe?g\\|gif\\|webp\\|svg\\)\\'" base)
+        (setq base (substring base 0 (match-beginning 0)))
+        (setq changed t)))
+    base))
+
 (defun org-astro--normalize-downloaded-image-extension (path type)
   "Normalize PATH's extension based on TYPE, returning the final path."
-  (if (or (null type) (org-astro--extension-matches-image-type-p path type))
+  (if (null type)
       path
     (let* ((ext (org-astro--image-type->extension type))
            (base (file-name-sans-extension path))
-           (case-fold-search t)
-           (new-path (if (and ext (string-match-p (concat "\\." (regexp-quote ext) "\\'") base))
-                         base
-                       (concat base "." ext))))
-      (rename-file path new-path t)
-      new-path)))
+           (stripped (org-astro--strip-image-extension-chain base))
+           (case-fold-search t))
+      (if (and (org-astro--extension-matches-image-type-p path type)
+               (string= stripped base))
+          path
+        (let ((new-path (if ext (concat stripped "." ext) path)))
+          (rename-file path new-path t)
+          new-path)))))
 
 (defun org-astro--download-with-curl (url target-path)
   "Download URL to TARGET-PATH with curl when available."
