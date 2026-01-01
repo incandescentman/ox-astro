@@ -1030,3 +1030,24 @@ banners do not float above inline theme markers.
 ** Verification (follow-up)
 - =tip-of-the-tongue.mdx= now renders theme marker + model banner adjacent in
   headingless sections (no floating banner, no duplicates).
+
+* 2026-01-01 Remote image download validation and extension normalization
+
+** Summary
+Hardened remote image downloads to avoid auth prompts and HTML error pages, and
+normalized file extensions based on detected content.
+
+** Changes
+- Prefer curl for downloads (fails cleanly on 4xx/5xx); fall back to url.el.
+- Validate downloaded files via magic bytes + HTML sniffing; delete invalid files.
+- Normalize file extensions to avoid =.png.jpg= / =.webp.jpg= mismatches.
+- Case-insensitive image extension matching for remote URLs.
+- Documented the new validation approach and logged the gotcha.
+
+** Files Modified
+- =ox-astro-image-handlers.el=
+- =docs/image-download-validation.org=
+- =docs/codebase-wisdom.org=
+
+** Verification
+- Not run in this session.

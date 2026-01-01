@@ -62,21 +62,24 @@ fails on animated GIFs with dimension limit errors."
 (defun org-astro--image-path-matches-p (path)
   "Return non-nil when PATH looks like an image reference."
   (when (stringp path)
-    (let ((candidate (org-astro--image-query-stripped-path path)))
+    (let ((candidate (org-astro--image-query-stripped-path path))
+          (case-fold-search t))
       (and candidate
            (string-match-p org-astro--image-extension-regexp candidate)))))
 
 (defun org-astro--audio-path-matches-p (path)
   "Return non-nil when PATH looks like an audio file reference."
   (when (stringp path)
-    (let ((candidate (org-astro--image-query-stripped-path path)))
+    (let ((candidate (org-astro--image-query-stripped-path path))
+          (case-fold-search t))
       (and candidate
            (string-match-p org-astro--audio-extension-regexp candidate)))))
 
 (defun org-astro--media-path-matches-p (path)
   "Return non-nil when PATH looks like any media file (image or audio)."
   (when (stringp path)
-    (let ((candidate (org-astro--image-query-stripped-path path)))
+    (let ((candidate (org-astro--image-query-stripped-path path))
+          (case-fold-search t))
       (and candidate
            (string-match-p org-astro--media-extension-regexp candidate)))))
 
@@ -842,6 +845,137 @@ When USE-ALIAS is non-nil, use :alias paths; otherwise use :new."
     (setq clean-name (replace-regexp-in-string "--+" "-" clean-name))
     clean-name))
 
+(defconst org-astro--remote-image-user-agent
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0 Safari/537.36"
+  "User-Agent string for remote image downloads.")
+
+(defun org-astro--read-file-bytes (path max-bytes)
+  "Return up to MAX-BYTES from PATH as a unibyte string."
+  (with-temp-buffer
+    (set-buffer-multibyte nil)
+    (insert-file-contents-literally path nil 0 max-bytes)
+    (buffer-string)))
+
+(defun org-astro--binary-prefix-p (prefix data)
+  "Return non-nil when DATA starts with PREFIX."
+  (and (stringp data)
+       (>= (length data) (length prefix))
+       (string= (substring data 0 (length prefix)) prefix)))
+
+(defun org-astro--data-looks-like-html-p (data)
+  "Return non-nil when DATA looks like HTML or an error page."
+  (let ((case-fold-search t))
+    (or (string-match-p "<!doctype\\s-+html" data)
+        (string-match-p "<html\\b" data)
+        (string-match-p "<head\\b" data)
+        (string-match-p "<body\\b" data)
+        (string-match-p "access denied" data)
+        (string-match-p "forbidden" data)
+        (string-match-p "unauthorized" data)
+        (string-match-p "request blocked" data))))
+
+(defun org-astro--detect-image-type-from-bytes (data)
+  "Return an image type symbol for DATA when recognized, nil otherwise."
+  (or (condition-case nil
+          (image-type-from-data data)
+        (error nil))
+      (cond
+       ((org-astro--binary-prefix-p (string #x89 ?P ?N ?G ?\r ?\n #x1A ?\n) data) 'png)
+       ((or (org-astro--binary-prefix-p "GIF87a" data)
+            (org-astro--binary-prefix-p "GIF89a" data)) 'gif)
+       ((org-astro--binary-prefix-p (string #xFF #xD8 #xFF) data) 'jpeg)
+       ((and (>= (length data) 12)
+             (string= (substring data 0 4) "RIFF")
+             (string= (substring data 8 12) "WEBP")) 'webp)
+       ((let ((case-fold-search t))
+          (string-match-p "<svg\\b" data)) 'svg)
+       (t nil))))
+
+(defun org-astro--image-type->extension (type)
+  "Return a canonical file extension for TYPE."
+  (pcase type
+    ('jpeg "jpg")
+    ('jpg "jpg")
+    ('png "png")
+    ('gif "gif")
+    ('webp "webp")
+    ('svg "svg")
+    (_ nil)))
+
+(defun org-astro--extension-matches-image-type-p (path type)
+  "Return non-nil when PATH's extension matches TYPE."
+  (let ((ext (downcase (file-name-extension path ""))))
+    (pcase type
+      ((or 'jpeg 'jpg) (member ext '("jpg" "jpeg")))
+      ('png (string= ext "png"))
+      ('gif (string= ext "gif"))
+      ('webp (string= ext "webp"))
+      ('svg (string= ext "svg"))
+      (_ t))))
+
+(defun org-astro--normalize-downloaded-image-extension (path type)
+  "Normalize PATH's extension based on TYPE, returning the final path."
+  (if (or (null type) (org-astro--extension-matches-image-type-p path type))
+      path
+    (let* ((ext (org-astro--image-type->extension type))
+           (base (file-name-sans-extension path))
+           (case-fold-search t)
+           (new-path (if (and ext (string-match-p (concat "\\." (regexp-quote ext) "\\'") base))
+                         base
+                       (concat base "." ext))))
+      (rename-file path new-path t)
+      new-path)))
+
+(defun org-astro--download-with-curl (url target-path)
+  "Download URL to TARGET-PATH with curl when available."
+  (let ((curl (executable-find "curl")))
+    (when curl
+      (let ((exit-code (call-process curl nil nil nil
+                                     "-L"
+                                     "-sS"
+                                     "-f"
+                                     "--connect-timeout" "10"
+                                     "--max-time" "30"
+                                     "-H" (concat "User-Agent: " org-astro--remote-image-user-agent)
+                                     "-o" target-path
+                                     url)))
+        (cond
+         ((and (eq exit-code 0) (file-exists-p target-path))
+          target-path)
+         ((file-exists-p target-path)
+          (ignore-errors (delete-file target-path))
+          nil)
+         (t nil))))))
+
+(defun org-astro--download-with-url (url target-path)
+  "Download URL to TARGET-PATH using Emacs url.el."
+  (let ((url-request-extra-headers `(("User-Agent" . ,org-astro--remote-image-user-agent)
+                                     ("Accept" . "image/*,*/*;q=0.8")))
+        (url-http-attempt-keepalives nil)
+        (url-http-use-global-credentials nil)
+        (url-show-status nil)
+        (url-user nil)
+        (url-user-password nil))
+    (url-copy-file url target-path t)
+    (when (file-exists-p target-path)
+      target-path)))
+
+(defun org-astro--validate-downloaded-image (target-path url)
+  "Return plist (:path PATH :type TYPE) when TARGET-PATH looks valid."
+  (when (file-exists-p target-path)
+    (let* ((data (org-astro--read-file-bytes target-path 4096))
+           (size (file-attribute-size (file-attributes target-path)))
+           (type (org-astro--detect-image-type-from-bytes data)))
+      (cond
+       ((or (string-empty-p data)
+            (org-astro--data-looks-like-html-p data)
+            (and (not type) (< size 1024)))
+        (message "[ox-astro][img] Invalid download for %s (size %d)" url size)
+        (org-astro--dbg-log nil "REMOTE invalid: %s (size %d)" url size)
+        (ignore-errors (delete-file target-path))
+        nil)
+       (t (list :path target-path :type type))))))
+
 (defun org-astro--download-remote-image (url posts-folder sub-dir)
   "Download remote image from URL to assets folder.
 Returns the local file path if successful, nil otherwise."
@@ -853,9 +987,10 @@ Returns the local file path if successful, nil otherwise."
                              (match-string 1 path)
                              "downloaded-image"))
            ;; Ensure we have an image extension
-           (filename (if (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)$" raw-filename)
+           (case-fold-search t)
+           (filename (if (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp\\|svg)$" raw-filename)
                          raw-filename
-                         (concat raw-filename ".jpg")))
+                       (concat raw-filename ".jpg")))
            (clean-filename (org-astro--sanitize-filename filename))
            (assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
            (target-path (when assets-folder
@@ -870,11 +1005,17 @@ Returns the local file path if successful, nil otherwise."
             (progn
               (message "Downloading remote image: %s" url)
               (org-astro--dbg-log nil "REMOTE downloading: %s" url)
-              (url-copy-file url target-path t)
-              (when (file-exists-p target-path)
-                (message "Successfully downloaded: %s -> %s" url target-path)
-                (org-astro--dbg-log nil "REMOTE downloaded: %s -> %s" url clean-filename)
-                target-path))
+              (let* ((downloaded (or (org-astro--download-with-curl url target-path)
+                                     (org-astro--download-with-url url target-path)))
+                     (validated (and downloaded (org-astro--validate-downloaded-image downloaded url)))
+                     (final (when validated
+                              (org-astro--normalize-downloaded-image-extension
+                               (plist-get validated :path)
+                               (plist-get validated :type)))))
+                (when final
+                  (message "Successfully downloaded: %s -> %s" url final)
+                  (org-astro--dbg-log nil "REMOTE downloaded: %s -> %s" url (file-name-nondirectory final))
+                  final)))
           (error
            (message "Failed to download image %s: %s" url err)
            (org-astro--dbg-log nil "REMOTE failed: %s - %s" url err)
@@ -918,7 +1059,7 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
        ;; Handle remote URLs (both full https:// and protocol-relative //)
        ((or (string-match-p "^https?://" image-path)
             (and (string-match-p "^//" image-path)
-                 (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp)" image-path)))
+                 (org-astro--image-path-matches-p image-path)))
         (let* ((full-url (if (string-match-p "^//" image-path)
                              (concat "https:" image-path)
                              image-path))

@@ -84,6 +84,12 @@
 - *Fix:* When rewriting, reconstruct the full URL using link type + path before searching/replacing; see `org-astro--process-image-manifest` and `org-astro--update-image-path-in-buffer`.
 - *Actionable insight:* Whenever matching against remote links parsed from Org, prefer `:raw-link` or rebuild `type + path` instead of relying on `:path` alone.
 
+** Gotcha: Remote image downloads can save HTML error pages
+- *Date:* 2026-01-01
+- *Trigger:* 401/403/406 responses returned HTML, saved as =.jpg= files, and caused Emacs image read errors.
+- *Mechanism:* =url-copy-file= saves whatever the server returns and can prompt for auth; no validation was performed.
+- *Actionable insight:* Use curl-first downloads and validate magic bytes/HTML before accepting a file; normalize extensions based on detected content.
+
 ** Gotcha: Export block indentation was converted to blockquotes
 - *Date:* 2025-10-05
 - *Trigger:* MDX export blocks with indented HTML (like `<button>`) were being converted to blockquote syntax (`> `)

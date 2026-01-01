@@ -1,0 +1,155 @@
+:PROPERTIES:
+:ID:       image-download-validation
+:END:
+#+TITLE: Image Download Validation - ox-astro Enhancement
+#+CREATED: [2026-01-01 Wed]
+
+* Problem Statement
+
+The remote image downloading system in ox-astro has several issues:
+
+1. *No validation of downloaded content* - When servers return HTTP 401, 403, or 406 errors, they send HTML error pages instead of images. The current code saves these as if they were valid images.
+
+2. *Username/password prompts* - Emacs's =url.el= prompts for credentials on 401 responses, interrupting the export flow.
+
+3. *No post-download verification* - The code only checks =file-exists-p= but doesn't verify the file is actually an image.
+
+* Current Implementation
+
+The problematic function is =org-astro--download-remote-image= in =ox-astro-image-handlers.el= (lines 845-881):
+
+#+begin_src elisp
+(defun org-astro--download-remote-image (url posts-folder sub-dir)
+  "Download remote image from URL to assets folder."
+  ;; ... setup code ...
+  (condition-case err
+      (progn
+        (message "Downloading remote image: %s" url)
+        (url-copy-file url target-path t)  ;; <- No validation!
+        (when (file-exists-p target-path)
+          ;; <- Only checks existence, not validity
+          target-path))
+    (error
+     (message "Failed to download image %s: %s" url err)
+     nil)))
+#+end_src
+
+* Symptoms
+
+- Files like =203-8th-Avenue.jpg= (496 bytes) are actually HTML error pages
+- Astro build fails with "Could not process image metadata" errors
+- Small file sizes (< 1KB) indicate failed downloads
+
+* Proposed Solution
+
+Add validation after =url-copy-file= to detect and remove invalid downloads:
+
+#+begin_src elisp
+(defun org-astro--validate-downloaded-image (target-path url)
+  "Validate TARGET-PATH is a real image, not an error page.
+Returns TARGET-PATH if valid, nil otherwise (and deletes invalid file)."
+  (when (file-exists-p target-path)
+    (let ((file-size (file-attribute-size (file-attributes target-path))))
+      (cond
+       ;; Check 1: Minimum size (error pages are typically < 500 bytes)
+       ((< file-size 1000)
+        (message "[ox-astro] Suspicious file size %d bytes for %s - likely error page"
+                 file-size url)
+        (delete-file target-path)
+        nil)
+
+       ;; Check 2: Verify file type using magic bytes
+       (t
+        (let ((file-type (string-trim
+                          (shell-command-to-string
+                           (format "file -b '%s' 2>/dev/null | head -c 50" target-path)))))
+          (if (or (string-match-p "HTML" file-type)
+                  (string-match-p "ASCII" file-type)
+                  (string-match-p "text" file-type))
+              (progn
+                (message "[ox-astro] Downloaded file is not an image: %s (%s)"
+                         url (substring file-type 0 (min 30 (length file-type))))
+                (delete-file target-path)
+                nil)
+            ;; Valid image
+            target-path)))))))
+#+end_src
+
+* Integration
+
+Update =org-astro--download-remote-image= to use validation:
+
+#+begin_src elisp
+(condition-case err
+    (progn
+      (message "Downloading remote image: %s" url)
+      (org-astro--dbg-log nil "REMOTE downloading: %s" url)
+      (url-copy-file url target-path t)
+      ;; Validate the download
+      (when-let ((validated (org-astro--validate-downloaded-image target-path url)))
+        (message "Successfully downloaded: %s -> %s" url validated)
+        (org-astro--dbg-log nil "REMOTE downloaded: %s -> %s" url clean-filename)
+        validated))
+  (error
+   (message "Failed to download image %s: %s" url err)
+   (org-astro--dbg-log nil "REMOTE failed: %s - %s" url err)
+   nil))
+#+end_src
+
+* Username/Password Prompts
+
+To suppress auth prompts, add before the download:
+
+#+begin_src elisp
+(let ((url-request-extra-headers
+       '(("User-Agent" . "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")))
+      (url-http-attempt-keepalives nil))
+  (url-copy-file url target-path t))
+#+end_src
+
+This doesn't fully prevent prompts but makes downloads more reliable. For complete suppression, consider using =curl= as a fallback.
+
+* Alternative: Use curl
+
+For more robust downloading with proper error handling:
+
+#+begin_src elisp
+(defun org-astro--download-with-curl (url target-path)
+  "Download URL to TARGET-PATH using curl with proper error handling."
+  (let ((exit-code
+         (call-process "curl" nil nil nil
+                       "-L"  ;; Follow redirects
+                       "-s"  ;; Silent
+                       "-f"  ;; Fail on HTTP errors
+                       "-o" target-path
+                       "-H" "User-Agent: Mozilla/5.0"
+                       url)))
+    (when (and (= exit-code 0) (file-exists-p target-path))
+      (org-astro--validate-downloaded-image target-path url))))
+#+end_src
+
+The =-f= flag makes curl return non-zero exit code on HTTP 4xx/5xx, preventing error pages from being saved.
+
+* Testing
+
+After implementing, test with known problematic URLs:
+
+- =https://houseandhistory.com/wp-content/uploads/2021/03/203-8th-Avenue.jpg= (returns 406)
+- =https://www.cheapoair.com/miles-away/wp-content/uploads/2019/11/Winter-in-New-York-3.jpg= (returns 403)
+- =https://i.guim.co.uk/img/media/.../3187.jpg= (returns 401)
+
+All should fail gracefully without creating fake image files.
+
+* Implementation Notes
+
+- Validation now checks for HTML/error pages and magic bytes (no shell =file= dependency).
+- Downloads use =curl= when available (no auth prompts), with =url.el= fallback.
+- Extensions are normalized based on detected content to avoid =.png.jpg= and =.webp.jpg=.
+
+* Status
+
+- [X] Implement =org-astro--validate-downloaded-image=
+- [X] Integrate into =org-astro--download-remote-image=
+- [X] Add curl fallback option
+- [ ] Test with problematic URLs
+- [X] Update documentation
