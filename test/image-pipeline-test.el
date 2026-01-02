@@ -43,6 +43,12 @@
       (setq start (match-end 0)))
     count))
 
+(defun ox-astro-test--write-minimal-png (path)
+  "Write a minimal PNG header to PATH."
+  (with-temp-file path
+    (set-buffer-multibyte nil)
+    (insert (string #x89 ?P ?N ?G ?\r ?\n #x1A ?\n))))
+
 (defun ox-astro-test--export-gallery ()
   "Export the gallery test org file and return the produced MDX string.
 The export runs against a temporary copy of the source file and writes
@@ -133,5 +139,55 @@ to a temporary destination folder so the real workspace stays untouched."
     (should-not (string-match "2\\.  Goals" output))
     (should-not (string-match "3\\.  Projects" output))
     (should (string-match "2\\.  .*Two working project files" output))))
+
+(ert-deftest ox-astro-hero-image-keyword-test ()
+  "HERO_IMAGE should override the first inline image."
+  (let* ((temp-project (make-temp-file "ox-astro-hero-project" t))
+         (posts-dir (expand-file-name "src/content/blog" temp-project))
+         (assets-dir (expand-file-name "src/assets/images/posts" temp-project))
+         (source-dir (expand-file-name "source" temp-project))
+         (hero-path (expand-file-name "hero-image.png" source-dir))
+         (body-path (expand-file-name "body-image.png" source-dir))
+         (temp-org (make-temp-file "ox-astro-hero" nil ".org"))
+         (output nil))
+    (make-directory posts-dir t)
+    (make-directory assets-dir t)
+    (make-directory source-dir t)
+    (ox-astro-test--write-minimal-png hero-path)
+    (ox-astro-test--write-minimal-png body-path)
+    (with-temp-file temp-org
+      (insert (format "#+TITLE: Hero Image Keyword Test\n#+SLUG: hero-image-test\n#+DESTINATION_FOLDER: jaydocs\n#+HERO_IMAGE: %s\n#+HERO_IMAGE_ALT: Cozy hero\n\n* Body\n[[%s]]\n"
+                      hero-path
+                      body-path)))
+    (unwind-protect
+        (let ((org-export-show-temporary-export-buffer nil)
+              (org-export-with-toc nil)
+              (org-export-with-section-numbers nil)
+              (org-astro-debug-images nil)
+              (org-astro-debug-console nil)
+              (org-astro-debug-log nil)
+              (org-astro-known-posts-folders `(("jaydocs" . (:path ,posts-dir))))
+              (org-astro-source-root-folder (file-name-directory temp-org)))
+          (let ((buffer (find-file-noselect temp-org)))
+            (unwind-protect
+                (with-current-buffer buffer
+                  (org-mode)
+                  (let ((inhibit-message t))
+                    (org-astro-export-to-mdx)))
+              (when (buffer-live-p buffer)
+                (with-current-buffer buffer
+                  (set-buffer-modified-p nil))
+                (kill-buffer buffer))))
+          (let ((mdx-path (expand-file-name "hero-image-test.mdx" posts-dir)))
+            (setq output (with-temp-buffer
+                           (insert-file-contents mdx-path)
+                           (buffer-string)))))
+      (when (file-exists-p temp-org)
+        (delete-file temp-org))
+      (when (file-exists-p temp-project)
+        (delete-directory temp-project t)))
+    (should (string-match-p "image: ~/assets/images/posts/hero-image-test/hero-image.png" output))
+    (should (string-match-p "imageAlt: .*Cozy hero" output))
+    (should (string-match-p "body-image.png" output))))
 
 (provide 'image-pipeline-test)

@@ -1083,7 +1083,8 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
                                (expand-file-name image-path))))
         (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
                (expanded-path (expand-file-name image-path))
-               (normalized-path (org-astro--normalize-existing-image-extension expanded-path))
+               (normalized-path (or (org-astro--normalize-existing-image-extension expanded-path)
+                                    expanded-path))
                (filename (file-name-nondirectory normalized-path))
                (alias-path (concat "~/assets/images/" sub-dir filename)))
           (when (and update-buffer normalized-path
@@ -1137,13 +1138,17 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
                 (copy-file image-path target-path t)
               (error (message "[ox-astro][img] Failed to copy %s: %s" image-path err)))
 
-            ;; Update the buffer if requested
-            (when update-buffer
-              (org-astro--update-source-buffer-image-path image-path target-path))
+            (let* ((normalized-path (org-astro--normalize-existing-image-extension target-path))
+                   (final-path (or normalized-path target-path)))
+              ;; Update the buffer if requested
+              (when update-buffer
+                (org-astro--update-source-buffer-image-path
+                 image-path
+                 (org-astro--normalize-path-style image-path final-path)))
 
-            ;; Return the alias path for imports
-            (when (file-exists-p target-path)
-              (concat "~/assets/images/" sub-dir clean-filename)))))))))
+              ;; Return the alias path for imports
+              (when (file-exists-p final-path)
+                (concat "~/assets/images/" sub-dir (file-name-nondirectory final-path)))))))))))
 
 
 (defun org-astro--collect-raw-images-from-tree-region (tree)

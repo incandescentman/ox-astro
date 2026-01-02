@@ -1412,7 +1412,10 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                    (let ((title (or (plist-get info :title)
                                     (org-astro--get-title (plist-get info :parse-tree) info))))
                      (and title (org-astro--slugify title)))))
-         (image-raw (or (plist-get info :astro-image)
+         (hero-image-raw (plist-get info :hero-image))
+         (hero-image-alt (and hero-image-raw (plist-get info :hero-image-alt)))
+         (image-raw (or hero-image-raw
+                        (plist-get info :astro-image)
                         (plist-get info :cover-image)))
          (image (and image-raw posts-folder
                      (let ((slug-path (if slug (concat "posts/" slug "/") "posts/")))
@@ -1426,7 +1429,8 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                              (or (plist-get first-img :public-path)
                                  (plist-get first-img :astro-path)))))
          (final-image (or image fallback-image))
-         (image-alt (or (plist-get info :astro-image-alt)
+         (image-alt (or hero-image-alt
+                        (plist-get info :astro-image-alt)
                         (plist-get info :cover-image-alt)
                         (and final-image (org-astro--filename-to-alt-text final-image)))))
     (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)

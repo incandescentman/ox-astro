@@ -54,7 +54,8 @@ The =#+HERO_IMAGE:= value should support:
 
 ** Location
 
-The logic should be added to =ox-astro-image-handlers.el=, likely in or near the frontmatter generation code.
+Hero image selection lives in =ox-astro-helpers.el=, inside =org-astro--get-cover-image=.
+Keyword registration belongs in =ox-astro.el= under =:options-alist=.
 
 ** Pseudocode
 
@@ -99,9 +100,9 @@ After implementing, verify:
 
 * Status
 
-- [ ] Add =:hero-image= and =:hero-image-alt= to options-alist
-- [ ] Implement =org-astro--get-hero-image= function
-- [ ] Update frontmatter generation to use new function
-- [ ] Handle path normalization for hero image
-- [ ] Add tests
-- [ ] Update documentation
+- [X] Add =:hero-image= and =:hero-image-alt= to options-alist
+- [X] Prefer =HERO_IMAGE= in hero selection logic
+- [X] Update frontmatter generation to use new logic
+- [X] Handle path normalization for hero image
+- [X] Add tests
+- [X] Update documentation

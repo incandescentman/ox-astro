@@ -1050,11 +1050,34 @@ normalized file extensions based on detected content.
 - =docs/codebase-wisdom.org=
 
 ** Verification
-- Not run in this session.
+- =emacs --batch -Q -l ert -l test/image-pipeline-test.el --eval "(ert-run-tests-batch 'ox-astro-hero-image-keyword-test)"=
 
 ** Follow-up
 - Logged remote download test results in =docs/image-download-validation.org= and marked tests complete.
 
 ** Follow-up: Normalize double extensions
 - Collapsed chained image extensions (e.g., =.png.webp= -> =.webp=) during download normalization.
-- Batch test: temp file rename verified via =org-astro--normalize-downloaded-image-extension=.
+- Expanded normalization to existing local asset files and local copies.
+- Batch test: temp WebP header renamed via =org-astro--normalize-existing-image-extension=.
+
+* 2026-01-01 HERO_IMAGE keyword support
+
+** Summary
+Added explicit =HERO_IMAGE= / =HERO_IMAGE_ALT= keywords so authors can set the
+hero image independently from the first inline image.
+
+** Changes
+- HERO_IMAGE takes precedence over COVER_IMAGE/ASTRO_IMAGE and the first inline image.
+- HERO_IMAGE_ALT overrides derived alt text for the frontmatter image.
+- Documented the new keywords in usage docs.
+- Added an ERT test to lock in HERO_IMAGE behavior.
+
+** Files Modified
+- =ox-astro.el=
+- =ox-astro-helpers.el=
+- =docs/hero-image-keyword.org=
+- =docs/instructions.org=
+- =test/image-pipeline-test.el=
+
+** Verification
+- Not run in this session.

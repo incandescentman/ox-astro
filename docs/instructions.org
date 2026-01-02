@@ -137,7 +137,8 @@ Add credit and caption metadata to images using keywords that follow the image l
 For the hero/cover image, use keywords at document level:
 
 #+begin_src org
-[[/path/to/hero-image.png]]
+#+HERO_IMAGE: /path/to/hero-image.png
+#+HERO_IMAGE_ALT: A brief description
 #+HERO-CREDIT: Photographer Name or AI Model
 #+HERO-CAPTION: Prompt or description text
 #+end_src
@@ -177,9 +178,10 @@ Generated With: Model
 #+end_src
 
 *** Notes
-- Keywords must immediately follow the image (or other IMAGE-* keywords for the same image); blank lines in between are ok
+- IMAGE_* keywords must immediately follow the body image they describe (blank lines ok); HERO_* keywords should appear at document level
 - Underscores and hyphens are interchangeable (e.g., ~IMAGE_CREDIT~ = ~IMAGE-CREDIT~)
 - The hero image is automatically suppressed from the body; its credit/caption only appear in the header area
+- If =HERO_IMAGE= is not set, ox-astro falls back to =COVER_IMAGE= / =ASTRO_IMAGE= and then the first inline image
 
 * Verifying Broken Links
 - Open the generated MDX file and click through the links to confirm navigation
@@ -202,7 +204,10 @@ These are common fields used by most Astro content collections:
 | =#+tags:=          | =tags=          | Array (comma-separated)            |
 | =#+filetags:=      | =tags=          | Merged with =#+tags:=, deduped     |
 | =#+categories:=    | =categories=    | Array                              |
-| =#+image:=         | =image=         | Cover/hero image                   |
+| =#+hero_image:=    | =image=         | Explicit hero image (highest priority) |
+| =#+hero_image_alt:= | =imageAlt=     | Alt text for hero image            |
+| =#+cover_image:=   | =image=         | Fallback hero image                |
+| =#+astro_image:=   | =image=         | Alias for cover image              |
 | =#+draft:=         | =draft=         | Boolean                            |
 
 ** Extended Fields (life-web project)
