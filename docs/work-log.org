@@ -1050,7 +1050,7 @@ normalized file extensions based on detected content.
 - =docs/codebase-wisdom.org=
 
 ** Verification
-- =emacs --batch -Q -l ert -l test/image-pipeline-test.el --eval "(ert-run-tests-batch 'ox-astro-hero-image-keyword-test)"=
+- Not run in this session.
 
 ** Follow-up
 - Logged remote download test results in =docs/image-download-validation.org= and marked tests complete.
@@ -1078,6 +1078,21 @@ hero image independently from the first inline image.
 - =docs/hero-image-keyword.org=
 - =docs/instructions.org=
 - =test/image-pipeline-test.el=
+
+** Verification
+- =emacs --batch -Q -l ert -l test/image-pipeline-test.el --eval "(ert-run-tests-batch 'ox-astro-hero-image-keyword-test)"=
+
+* 2026-01-01 Reload guidance for local development
+
+** Summary
+Documented a hardened =ox-astro-reload= helper to avoid stale modules when
+reloading ox-astro during development.
+
+** Changes
+- Added a reload snippet with =load-prefer-newer= and explicit =require= calls.
+
+** Files Modified
+- =docs/instructions.org=
 
 ** Verification
 - Not run in this session.

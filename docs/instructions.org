@@ -85,6 +85,40 @@ Note: If you have actual content after =Links:= or =Source:= labels (not just em
 
 * Debug and Development Options
 
+** Reloading ox-astro without restarting Emacs
+If you iterate on ox-astro code, prefer a clean reload to avoid stale function
+definitions (especially when =.elc= files are present). This snippet unloads
+modules, reloads from the repo, and verifies core helpers are present:
+
+#+begin_src emacs-lisp
+(defun ox-astro-reload ()
+  "Reload ox-astro and its modules."
+  (interactive)
+  (let ((repo "/Users/jay/Dropbox/github/ox-astro"))
+    (add-to-list 'load-path repo)
+    (setq load-prefer-newer t)
+    (dolist (feat '(ox-astro-table-handlers
+                    ox-astro-image-handlers
+                    ox-astro-pdf-handlers
+                    ox-astro-handlers
+                    ox-astro-helpers
+                    ox-astro-metadata
+                    ox-astro-config
+                    ox-astro))
+      (when (featurep feat)
+        (ignore-errors (unload-feature feat t))))
+    (load-file (expand-file-name "ox-astro.el" repo))
+    (dolist (feat '(ox-astro-config
+                    ox-astro-helpers
+                    ox-astro-metadata
+                    ox-astro-image-handlers
+                    ox-astro-pdf-handlers
+                    ox-astro-table-handlers
+                    ox-astro-handlers))
+      (require feat nil t))
+    (message "ox-astro reloaded successfully")))
+#+end_src
+
 ** Clipboard Copying (macOS)
 By default, clipboard copying is disabled. To enable copying of source/output/debug paths to macOS clipboard after export:
 
