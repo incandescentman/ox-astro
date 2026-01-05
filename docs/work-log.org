@@ -1,6 +1,45 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-01-04
+** Session: Fountain screenplay format support
+
+*** Summary
+Added support for exporting =#+begin_example fountain= blocks as fenced Markdown code blocks with the =fountain= language identifier.
+
+*** Implementation
+- Created =org-astro-example-block= function in =ox-astro-helpers.el=
+- Registered handler in translate-alist in =ox-astro.el=
+- Example blocks with switches (e.g., =#+begin_example fountain=) now emit =```fountain= fenced blocks
+
+*** Usage
+#+begin_src org
+#+begin_example fountain
+INT. WAITING ROOM - DAY
+
+KUMAIL
+Hey, so when are we going to talk?
+#+end_example
+#+end_src
+
+Exports to:
+#+begin_src markdown
+```fountain
+INT. WAITING ROOM - DAY
+
+KUMAIL
+Hey, so when are we going to talk?
+```
+#+end_src
+
+*** Files Modified
+- =ox-astro-helpers.el= — added =org-astro-example-block= function
+- =ox-astro.el= — registered example-block handler in translate-alist
+
+*** Notes
+- Works with any example block switch, not just fountain
+- Pairs with =remarkFountainBlocks= in astro-utils for screenplay rendering
+
 * 2025-12-26
 ** Session: Em-dash support for emphasis boundaries
 

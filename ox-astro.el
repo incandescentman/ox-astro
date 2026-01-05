@@ -625,6 +625,7 @@ Note: Uses &rest _args for compatibility with both old (3-arg) and new (2-arg) O
 
   :translate-alist
   '((src-block . org-astro-src-block)
+    (example-block . org-astro-example-block)
     (link . org-astro-link-wrapper)
     (headline . org-astro-heading)
     (paragraph . org-astro-paragraph)
