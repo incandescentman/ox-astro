@@ -26,6 +26,25 @@ keeping a thin loader for backward compatibility.
 ** Verification
 - =emacs --batch -Q -L . -f batch-byte-compile ox-astro-helpers-core.el ox-astro-transcode.el ox-astro-export-helpers.el= (clean)
 
+* 2026-01-04 Byte-compile warning cleanup
+
+** Summary
+Cleaned up byte-compile warnings introduced by the helper-module split.
+
+** Changes
+- Reflowed docstrings and fixed quoting/unused-arg warnings.
+- Updated image-dimension detection to avoid obsolete APIs.
+- Added missing requires/declares and corrected a debug log call.
+
+** Files Modified
+- =ox-astro-helpers-core.el=
+- =ox-astro-transcode.el=
+- =ox-astro-export-helpers.el=
+- =docs/work-log.org=
+
+** Verification
+- =emacs --batch -Q -L . -f batch-byte-compile ox-astro-helpers-core.el ox-astro-transcode.el ox-astro-export-helpers.el= (clean)
+
 * 2026-01-04
 ** Session: Fountain screenplay format support
 
