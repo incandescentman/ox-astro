@@ -206,7 +206,7 @@ Supports youtu.be short links, watch URLs, embed URLs, or bare 11-character IDs.
       (match-string 1 s))
      ((string-match "youtube\.com/embed/\\([^?&#/]+\\)" s)
       (match-string 1 s))
-     ((string-match "^[A-Za-z0-9_-]\{11\}$" s)
+     ((string-match "^[A-Za-z0-9_-]\\{11\\}$" s)
       s)
      (t nil))))
 
