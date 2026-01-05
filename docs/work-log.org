@@ -1,6 +1,33 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-01-05 Pass through example block meta to MDX code fences
+
+** Summary
+Modified ~org-astro-example-block~ to pass additional switches beyond the language as meta in the code fence.
+
+** Example
+#+begin_src org
+#+begin_example fountain collapsible
+INT. WAITING ROOM - LATER
+...
+#+end_example
+#+end_src
+
+Now exports to:
+
+#+begin_src markdown
+```fountain collapsible
+INT. WAITING ROOM - LATER
+...
+```
+#+end_src
+
+This enables foldable fountain blocks in the Astro renderer.
+
+** Files Modified
+- ~ox-astro-transcode.el~ — updated ~org-astro-example-block~ to include meta tokens
+
 * 2026-01-04 Split ox-astro-helpers into modules
 
 ** Summary

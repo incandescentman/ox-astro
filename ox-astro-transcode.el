@@ -341,16 +341,19 @@ For coding-agent blocks, supports :collapsible header arg:
 
 (defun org-astro-example-block (example-block _contents _info)
   "Transcode an EXAMPLE-BLOCK element into fenced Markdown format.
-If the block has switches (e.g., #+begin_example fountain), use
-the first switch as the language for the fenced code block.
+If the block has switches (e.g., #+begin_example fountain collapsible),
+use the first switch as the language and remaining switches as meta.
 Otherwise, output as a plain fenced code block."
   (let* ((switches (org-element-property :switches example-block))
-         (lang (when switches
-                 (car (seq-filter
-                       (lambda (token) (not (string-prefix-p "-" token)))
-                       (split-string switches "[[:space:]]+" t)))))
+         (tokens (when switches
+                   (seq-filter
+                    (lambda (token) (not (string-prefix-p "-" token)))
+                    (split-string switches "[[:space:]]+" t))))
+         (lang (car tokens))
+         (meta (when (cdr tokens)
+                 (concat " " (string-join (cdr tokens) " "))))
          (code (org-element-property :value example-block)))
-    (format "```%s\n%s\n```" (or lang "") (org-trim code))))
+    (format "```%s%s\n%s\n```" (or lang "") (or meta "") (org-trim code))))
 
 (defun org-astro-heading (heading contents info)
   (let ((todo-keyword (org-element-property :todo-keyword heading)))
