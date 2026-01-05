@@ -1,19 +1,24 @@
 ;;; ox-astro-helpers-core.el --- Core helper functions for ox-astro  -*- lexical-binding: t -*-
 
 ;;; Code:
-(eval-when-compile (require 'cl-lib))
+(eval-and-compile
+  (require 'cl-lib))
 (require 'subr-x) ; for string-trim, string-trim-right
-(require 'cl-lib)
 (require 'json)
 (require 'org)
 (require 'org-element)
 (require 'org-id)
+(require 'ox-astro-config)
+(require 'ox-astro-metadata)
 
 ;; Fallback for older Org that might not provide org-element-parent.
 (unless (fboundp 'org-element-parent)
   (defun org-element-parent (element)
     "Return parent of ELEMENT via :parent property (compat shim)."
     (org-element-property :parent element)))
+
+;; Declare org-element-parent for byte-compile when it exists upstream.
+(declare-function org-element-parent "org-element")
 
 (defun org-astro--normalize-image-key (path &optional source-file)
   "Normalize PATH to a key for image metadata lookup.
@@ -154,6 +159,7 @@ indicator/value pairs.  Returns the updated plist."
 (declare-function org-astro--get-hero-credit "ox-astro-metadata")
 (declare-function org-astro--get-hero-caption "ox-astro-metadata")
 (declare-function org-astro--get-toc-depth "ox-astro-metadata")
+(declare-function org-astro--doc-level-keyword-value "ox-astro-handlers")
 
 ;; Declare global variable for data persistence across export phases
 (defvar org-astro--current-body-images-imports nil
@@ -179,8 +185,9 @@ indicator/value pairs.  Returns the updated plist."
 
 (defvar org-astro--current-id-link-base-path nil
   "Base path for absolute ID link routes during current export.
-When non-nil, ID links render as /base-path/collection-id instead of relative .mdx paths.
-Set from :id-link-base-path in destination config or global `org-astro-id-link-base-path'.")
+When non-nil, ID links render as /base-path/collection-id instead of
+relative .mdx paths. Set from :id-link-base-path in destination config
+or global `org-astro-id-link-base-path'.")
 
 (defun org-astro--string-truthy-p (value)
   "Return non-nil when VALUE (a string) looks truthy.
@@ -230,8 +237,16 @@ Escapes &, <, >, and \" to their entity equivalents."
   "Return (WIDTH . HEIGHT) for PATH when readable; nil otherwise."
   (when (and path (file-exists-p path) (not (org-astro--image-remote-p path)))
     (condition-case _
-        (let* ((type (image-type-from-file-name path))
-               (image (and type (create-image path type)))
+        (let* ((type (cond
+                      ((fboundp 'image-supported-file-p)
+                       (and (image-supported-file-p path) 'auto))
+                      ((fboundp 'image-type-from-file-name)
+                       (funcall (symbol-function 'image-type-from-file-name) path))
+                      (t nil)))
+               (image (cond
+                       ((eq type 'auto) (create-image path nil nil))
+                       (type (create-image path type))
+                       (t nil)))
                (size (and image (image-size image t))))
           (when (and size (consp size))
             (cons (round (car size)) (round (cdr size)))))
@@ -266,7 +281,8 @@ Escapes &, <, >, and \" to their entity equivalents."
 (defun org-astro--format-image-component (var-name alt-text &optional credit caption width height)
   "Return a standardized Image component string for VAR-NAME and ALT-TEXT.
 Includes layout prop based on `org-astro-image-default-layout' config.
-If CREDIT or CAPTION is non-nil, wraps the image in a figure with PhotoSwipe support.
+If CREDIT or CAPTION is non-nil, wraps the image in a figure with PhotoSwipe
+support.
 CREDIT appears on the page, CAPTION appears in lightbox.
 WIDTH/HEIGHT (numbers) populate PhotoSwipe data attributes when available."
   (let* ((layout-prop (when (and (boundp 'org-astro-image-default-layout)
@@ -324,7 +340,7 @@ IMG-PATH is used to look up credit/caption metadata if provided."
       (if (and is-hero (not already-suppressed))
           (progn
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-              (org-astro--debug-log info "Skipping inline hero image for %s" var-name))
+              (org-astro--dbg-log info "Skipping inline hero image for %s" var-name))
             (setf (plist-get info :astro-hero-body-suppressed) t)
             ;; Hero suppressed - don't render anything (including credit/caption)
             "")
@@ -408,7 +424,8 @@ IMG-PATH is used to look up credit/caption metadata if provided."
 
 ;; Debug helpers
 (defun org-astro--dbg-log (info fmt &rest args)
-  "Append a formatted debug message to INFO and write to ox-astro-debug.log when enabled."
+  "Append a formatted debug message to INFO and write to ox-astro-debug.log
+when enabled."
   (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
     (let* ((msg (apply #'format fmt args))
            (existing (plist-get info :astro-debug-log))
@@ -687,7 +704,8 @@ This helper respects the first matching keyword encountered in TREE."
 
 (defun org-astro--id-path-score (path)
   "Return a score for PATH to choose a canonical source.
-Lower is better; penalize conflicted/copy variants, then use length as tiebreaker."
+Lower is better; penalize conflicted/copy variants, then use length as the
+tiebreaker."
   (let* ((p (downcase path))
          (score (length path)))
     (when (string-match "conflicted copy" p)
@@ -739,7 +757,8 @@ TRACKER, when non-nil, accumulates duplicate counts keyed by ID."
 (defun org-astro--build-id-map (source-dir)
   "Build and return a hash table mapping org-roam IDs in SOURCE-DIR.
 Logs duplicate IDs once per ID with a summary of the kept/ignored sources.
-Set environment variable OX_ASTRO_DUP_LOG_MODE=verbose to log every duplicate ID."
+Set environment variable OX_ASTRO_DUP_LOG_MODE=verbose to log every duplicate
+ID."
   (let* ((root (and source-dir (expand-file-name source-dir)))
          (map (make-hash-table :test #'equal))
          (duplicate-tracker (make-hash-table :test #'equal))
@@ -1031,7 +1050,8 @@ Respects narrowing - works within the current narrowed region."
   (org-astro--upsert-keyword key value))
 
 (defun org-astro--upsert-keyword-after-roam (key value)
-  "Insert #+KEY: VALUE after org-roam preamble if present, else use normal placement."
+  "Insert #+KEY: VALUE after the org-roam preamble if present.
+Otherwise, use normal keyword placement."
   (save-excursion
     (goto-char (point-min))
     (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
@@ -1232,7 +1252,7 @@ KEY is forwarded to scalar encoding for per-item quoting rules."
 
 (defun org-astro--path-to-var-name (path)
   "Convert a file PATH to a camelCase JS variable name.
-If the generated name starts with a number, it is prefixed with 'img'."
+If the generated name starts with a number, it is prefixed with \"img\"."
   (when (stringp path)
     (let* ((original-filename (file-name-sans-extension (file-name-nondirectory path)))
            ;; Use the sanitized filename for variable generation
@@ -1700,8 +1720,6 @@ Returns cleaned alist; emits warnings when coercions occur."
                (string-join (nreverse warnings) "\n")))
     (nreverse cleaned)))
 
-
-(require 'ox-astro-metadata)
 
 (provide 'ox-astro-helpers-core)
 ;;; ox-astro-helpers-core.el ends here

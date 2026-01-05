@@ -31,7 +31,8 @@ can share a single discovery pass."
     images))
 
 (defun org-astro--extract-image-path-from-paragraph (paragraph)
-  "Extract a potential image path from a PARAGRAPH that may contain subscript elements."
+  "Extract a potential image path from a PARAGRAPH that may contain
+subscript elements."
   (let ((raw-content (org-element-interpret-data paragraph)))
     ;; Look for patterns like /Users/jay/Downloads/file_name.webp that may have been broken by subscripts
     (when (string-match "/[^[:space:]<>]*\\.\\(webp\\|png\\|jpe?g\\)" raw-content)
@@ -66,7 +67,7 @@ Returns the path string or nil if not found."
     (error nil)))
 
 (defun org-astro--cleanup-stale-mdx-files (output-dir source-file current-outfile)
-  "Delete MDX files in OUTPUT-DIR from SOURCE-FILE but different from CURRENT-OUTFILE.
+  "Delete MDX files in OUTPUT-DIR from SOURCE-FILE but not CURRENT-OUTFILE.
 Scans all .mdx files in OUTPUT-DIR, checks their orgPath frontmatter field,
 and deletes any that match SOURCE-FILE but have a different filename.
 Returns a list of deleted file paths."

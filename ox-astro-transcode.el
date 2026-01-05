@@ -210,10 +210,11 @@
                    (text (or desc raw)))
               (format "[%s](%s)" text raw))))))))
 
-(defun org-astro-src-block (src-block contents info)
+(defun org-astro-src-block (src-block _contents _info)
   "Transcode a SRC-BLOCK element into fenced Markdown format.
-For 'user', 'prompt', 'quote', 'poetry', 'verse', and 'pullquote' blocks,
-preserve org-mode syntax literally - convert org headings to markdown equivalents.
+For user, prompt, quote, poetry, verse, and pullquote blocks, preserve
+org-mode syntax literally and convert Org headings to markdown
+equivalents.
 
 For coding-agent blocks, supports :collapsible header arg:
   :collapsible open  → collapsible open (starts expanded)
@@ -495,8 +496,9 @@ Allows THEME to appear first; marks MODEL keyword as consumed."
 
 (defun org-astro-plain-text (text info)
   "Transcode a plain-text element.
-  If the text contains raw image paths on their own lines, convert them to <img> tags.
-  If the text contains raw URLs on their own lines, convert them to LinkPeek components."
+If the text contains raw image paths on their own lines, convert them to
+<img> tags. If the text contains raw URLs on their own lines, convert them
+to LinkPeek components."
   (let* ((lines (split-string text "\n"))
          (has-linkpeek nil)
          (processed-lines
@@ -532,7 +534,7 @@ Allows THEME to appear first; marks MODEL keyword as consumed."
     (mapconcat 'identity processed-lines "\n")))
 
 
-(defun org-astro-subscript (subscript contents info)
+(defun org-astro-subscript (subscript contents _info)
   "Handle subscript elements, removing ones that are part of broken image paths."
   (let* ((parent (org-element-property :parent subscript))
          (parent-context (when parent (org-element-interpret-data parent))))
@@ -551,7 +553,8 @@ Allows THEME to appear first; marks MODEL keyword as consumed."
 
 (defun org-astro-export-block (export-block _contents info)
   "Transcode EXPORT-BLOCK element into MDX format.
-Recognizes MDX, MARKDOWN, and MD export blocks and passes their content through verbatim."
+Recognizes MDX, MARKDOWN, and MD export blocks and passes their content
+through verbatim."
   (let ((type (org-element-property :type export-block)))
     (if (member (upcase type) '("MDX" "MARKDOWN" "MD"))
         ;; Pass through the content completely unindented to prevent the final-output

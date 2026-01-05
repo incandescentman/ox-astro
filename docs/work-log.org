@@ -24,7 +24,7 @@ keeping a thin loader for backward compatibility.
 - =docs/concept-map.org=
 
 ** Verification
-- =emacs --batch -Q -L . -f batch-byte-compile ox-astro-helpers-core.el ox-astro-transcode.el ox-astro-export-helpers.el= (warnings only)
+- =emacs --batch -Q -L . -f batch-byte-compile ox-astro-helpers-core.el ox-astro-transcode.el ox-astro-export-helpers.el= (clean)
 
 * 2026-01-04
 ** Session: Fountain screenplay format support
