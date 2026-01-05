@@ -13,7 +13,7 @@
 (require 'subr-x)
 
 ;; Declare functions from other ox-astro modules
-(declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
+(declare-function org-astro--collect-images-from-tree "ox-astro-export-helpers")
 (declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
 (declare-function org-astro--build-render-map "ox-astro-image-handlers")
 (declare-function org-astro--process-image-manifest "ox-astro-image-handlers")

@@ -18,8 +18,8 @@
 (declare-function org-astro--sanitize-filename "ox-astro-helpers")
 (declare-function org-astro--path-to-var-name "ox-astro-helpers")
 (declare-function org-astro--filename-to-alt-text "ox-astro-helpers")
-(declare-function org-astro--collect-raw-image-paths "ox-astro-helpers")
-(declare-function org-astro--extract-image-path-from-paragraph "ox-astro-helpers")
+(declare-function org-astro--collect-raw-image-paths "ox-astro-export-helpers")
+(declare-function org-astro--extract-image-path-from-paragraph "ox-astro-export-helpers")
 (declare-function org-astro--hero-image-entry-p "ox-astro-helpers")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

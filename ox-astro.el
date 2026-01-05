@@ -80,7 +80,7 @@
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
 (declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
 (declare-function org-astro--process-pdf-path "ox-astro-pdf-handlers")
-(declare-function org-astro--cleanup-stale-mdx-files "ox-astro-helpers")
+(declare-function org-astro--cleanup-stale-mdx-files "ox-astro-export-helpers")
 
 ;; Placement helper: insert keywords after org-roam preamble (- Links :: / - Source ::)
 ;; (Placement helper removed for now — using existing insertion helper.)

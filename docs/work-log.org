@@ -1,6 +1,31 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-01-04 Split ox-astro-helpers into modules
+
+** Summary
+Split =ox-astro-helpers.el= into smaller modules to avoid loading a monolith,
+keeping a thin loader for backward compatibility.
+
+** Changes
+- Added =ox-astro-helpers-core.el=, =ox-astro-transcode.el=, and =ox-astro-export-helpers.el=.
+- Converted =ox-astro-helpers.el= into a loader requiring the new modules.
+- Updated =declare-function= references to point at the new module locations.
+- Updated concept map links to the new helper files.
+
+** Files Modified
+- =ox-astro-helpers.el=
+- =ox-astro-helpers-core.el=
+- =ox-astro-transcode.el=
+- =ox-astro-export-helpers.el=
+- =ox-astro-handlers.el=
+- =ox-astro-image-handlers.el=
+- =ox-astro.el=
+- =docs/concept-map.org=
+
+** Verification
+- =emacs --batch -Q -L . -f batch-byte-compile ox-astro-helpers-core.el ox-astro-transcode.el ox-astro-export-helpers.el= (warnings only)
+
 * 2026-01-04
 ** Session: Fountain screenplay format support
 

@@ -55,7 +55,7 @@ Implementation: See [[file:the-ox-astro-approach.org::*Asset Folder Resolution][
 A URL-friendly identifier for a post, typically derived from the title. Used for filenames, URL paths, and organizing assets.
 
 Related: [[*Post-Specific Folders]]
-Implementation: See [[file:../ox-astro-helpers.el::org-astro--slugify][org-astro--slugify]]
+Implementation: See [[file:../ox-astro-helpers-core.el::org-astro--slugify][org-astro--slugify]]
 Gotcha: Slug generation happens in multiple locations (see [[file:codebase-wisdom.org::*Gotcha: Slug generation logic was split across multiple locations][Codebase Wisdom]])
 
 ** Variable Name Generation
@@ -63,7 +63,7 @@ Converting filenames to valid JavaScript camelCase identifiers. Handles edge cas
 
 Example: =2025-image.png= → =img2025Image=
 Related: [[*Image Import]]
-Implementation: See [[file:../ox-astro-helpers.el::org-astro--path-to-var-name][org-astro--path-to-var-name]]
+Implementation: See [[file:../ox-astro-helpers-core.el::org-astro--path-to-var-name][org-astro--path-to-var-name]]
 
 * Configuration
 
@@ -94,7 +94,7 @@ Configuration: Set =:preserve-folder-structure t= in [[*Known Posts Folders]]
 YAML metadata block at the top of MDX files containing title, date, excerpt, tags, etc. Generated from Org keywords and fallback values.
 
 Related: [[*Keyword Mapping]]
-Implementation: See [[file:../ox-astro-helpers.el::org-astro--gen-yaml-front-matter][org-astro--gen-yaml-front-matter]]
+Implementation: See [[file:../ox-astro-helpers-core.el::org-astro--gen-yaml-front-matter][org-astro--gen-yaml-front-matter]]
 
 ** Keyword Mapping
 The translation between Org keywords and MDX front matter fields:
@@ -111,7 +111,7 @@ Implementation: See [[file:../ox-astro.el::418][ox-astro.el:418-444]]
 The pattern of inserting or updating Org keywords while respecting org-roam properties. Uses =org-astro--upsert-keyword-after-roam= to place keywords in the correct location.
 
 Related: [[*org-roam Integration]]
-Implementation: See [[file:../ox-astro-helpers.el::org-astro--upsert-keyword-after-roam][org-astro--upsert-keyword-after-roam]]
+Implementation: See [[file:../ox-astro-helpers-core.el::org-astro--upsert-keyword-after-roam][org-astro--upsert-keyword-after-roam]]
 
 * Content Transformation
 
@@ -121,7 +121,7 @@ Converting Org TODO items to GitHub-style interactive task lists in markdown:
 - =DONE= → =- [x]=
 
 Related: [[file:the-ox-astro-approach.org::*Decision 3: Custom TODO → Task List Conversion][Design Decision]]
-Implementation: See [[file:../ox-astro-helpers.el::org-astro-heading][org-astro-heading]]
+Implementation: See [[file:../ox-astro-transcode.el::org-astro-heading][org-astro-heading]]
 
 ** LinkPeek Component
 Custom React component for displaying rich previews of bare URLs. Bare URLs are automatically wrapped in =<LinkPeek url="..." />= tags.
@@ -181,7 +181,7 @@ Implementation: See [[file:the-ox-astro-approach.org::*8. Gallery Support][Galle
 Code blocks with specific types (user/prompt/quote) that receive special formatting in the MDX output.
 
 Related: [[*Content Transformation]]
-Implementation: See [[file:../ox-astro-helpers.el::org-astro-src-block][org-astro-src-block]]
+Implementation: See [[file:../ox-astro-transcode.el::org-astro-src-block][org-astro-src-block]]
 
 * Cross-References
 
