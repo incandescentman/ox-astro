@@ -2035,7 +2035,9 @@ the first switch as the language for the fenced code block.
 Otherwise, output as a plain fenced code block."
   (let* ((switches (org-element-property :switches example-block))
          (lang (when switches
-                 (car (split-string switches))))
+                 (car (seq-filter
+                       (lambda (token) (not (string-prefix-p "-" token)))
+                       (split-string switches "[[:space:]]+" t)))))
          (code (org-element-property :value example-block)))
     (format "```%s\n%s\n```" (or lang "") (org-trim code))))
 

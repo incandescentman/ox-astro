@@ -39,6 +39,7 @@ Hey, so when are we going to talk?
 *** Notes
 - Works with any example block switch, not just fountain
 - Pairs with =remarkFountainBlocks= in astro-utils for screenplay rendering
+- Ignores org example flags like =-n= / =-r= when selecting the fenced code language
 
 * 2025-12-26
 ** Session: Em-dash support for emphasis boundaries
