@@ -157,17 +157,29 @@
      ;; If the description is already a Markdown link, preserve it unchanged.
      ((and desc (org-astro--contains-markdown-link-p desc))
       desc)
-     ;; Internal target (fuzzy) → local anchor; degrade gracefully if INFO is partial
+     ;; Internal target (fuzzy) → wiki link or local anchor
+     ;; If the target resolves to a local headline, make an anchor link.
+     ;; If it doesn't resolve (external wiki link), output [[slug]] format
+     ;; for the remarkWikiLink plugin to process.
      ((and (string= type "fuzzy") (not (string-match-p "://" path)))
-      (let* ((resolved-title
-              (condition-case _
-                  (let* ((target (and (plist-get info :parse-tree)
-                                      (org-export-resolve-fuzzy-link link info))))
-                    (and target (org-element-property :raw-value target)))
-                (error nil)))
-             (text (or desc resolved-title path))
-             (slug (org-astro--slugify text)))
-        (format "[%s](#%s)" text slug)))
+      (let* ((target (condition-case _
+                         (and (plist-get info :parse-tree)
+                              (org-export-resolve-fuzzy-link link info))
+                       (error nil)))
+             (resolved-title (and target (org-element-property :raw-value target))))
+        (if target
+            ;; Local headline found → anchor link
+            ;; Use resolved-title for the anchor (matches what Astro generates for headings)
+            ;; Use desc for visible text (or fall back to resolved-title/path)
+            (let* ((anchor-source (or resolved-title path))
+                   (slug (org-astro--slugify anchor-source))
+                   (text (or desc resolved-title path)))
+              (format "[%s](#%s)" text slug))
+          ;; No local target → wiki link format for remarkWikiLink plugin
+          ;; Output [[slug]] or [[slug][display text]] based on whether desc differs from path
+          (if (and desc (not (string= desc path)))
+              (format "[[%s][%s]]" path desc)
+            (format "[[%s]]" path)))))
 
      ;; Bare YouTube URLs with no description → responsive embed
      ((and (null desc)
