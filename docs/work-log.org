@@ -1,6 +1,78 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-01-08 Fix jaydocs email export paragraph spacing
+
+** Problem
+Email exports from jaydocs had no visual spacing between paragraphs. Paragraphs were separate =<p>= tags but all had =margin: 0= inlined.
+
+** Root Cause
+Tailwind's CSS reset sets =margin: 0= on all elements. Socratic had =email-post.css= with explicit paragraph margins that overrode this; jaydocs had =extraCssPaths: []= so nothing overrode the reset.
+
+** Fix (in astro-monorepo)
+- Created =apps/jaydocs/src/styles/email-post.css= with margins for =.email-body .prose p=, headings, lists, etc.
+- Updated =apps/jaydocs/scripts/email-export.mjs= to include =email-post.css= in =extraCssPaths=
+
+* 2026-01-08 Email export CLI implemented in astro-monorepo
+
+** Summary
+The email export feature spec was implemented in astro-monorepo (not ox-astro). Deleted the redundant spec file from ox-astro.
+
+** Implementation (in astro-monorepo)
+- Shared core: =scripts/email-export.mjs= — Astro rendering, Tailwind build, CSS inlining via juice, URL rewriting
+- Socratic: =apps/socratic/scripts/email-export.mjs=, =EmailBody.astro=, =email-post.css=
+- Jaydocs: =apps/jaydocs/scripts/email-export.mjs=, =EmailBody.astro=
+
+** Usage
+#+begin_src shell
+pnpm -C apps/socratic email:export -- --slug does-chatgpt-believe-in-aliens
+pnpm -C apps/jaydocs email:export -- --slug some-post-slug
+#+end_src
+
+** Files Removed from ox-astro
+- =docs/spec-html-email-export.org= — moved to =astro-monorepo/docs/proposals/email-export-cli.org=
+
+* 2026-01-08 Preserve single newlines as Markdown soft breaks
+
+** Summary
+Modified =org-astro-plain-text= to preserve single newlines within paragraphs as visible line breaks in the rendered output. Previously, single newlines were collapsed to spaces (standard Markdown behavior).
+
+** Problem
+AI conversation transcripts often contain meaningful line breaks:
+#+begin_example
+A conclusion you can draw more cleanly, with a Bayesian lens.
+Neither assistant said "Bayes" explicitly...
+#+end_example
+
+Standard Markdown collapses this to one line, losing the intended formatting.
+
+** Solution
+Add two trailing spaces to each non-empty line (except the last) in =org-astro-plain-text=. This creates Markdown "soft breaks" that render as =<br>= in HTML.
+
+** Files Modified
+- =ox-astro-transcode.el= — updated =org-astro-plain-text= to add soft break trailing spaces
+- =docs/design-architecture.org= — documented Line Break Preservation behavior
+
+* 2026-01-08 Updated remarkHideAiModelHeadings to support version numbers
+
+** Summary
+Updated the =remarkHideAiModelHeadings= remark plugin in astro-monorepo to hide AI model headings that include version numbers, not just exact matches.
+
+** Problem
+Headings like "ChatGPT 5.2 Pro" or "Claude Sonnet 4.5" weren't being hidden because the plugin only matched exact strings like "ChatGPT" or "Claude".
+
+** Solution
+Changed from exact string matching to regex patterns that match model names with optional version numbers and variants:
+- =chatgpt= + optional version + optional (pro|plus|mini)
+- =claude= + optional version + optional (opus|sonnet|haiku) + optional version
+- =gemini= + optional version + optional (pro|flash|ultra|nano)
+
+** Files Modified
+- =packages/astro-utils/src/remark/hideAiModelHeadings.ts= — switched to regex-based pattern matching
+
+** Note
+This change is in astro-monorepo, not ox-astro, but documented here for context since it relates to the AI conversation export workflow.
+
 * 2026-01-05 Pass through example block meta to MDX code fences
 
 ** Summary

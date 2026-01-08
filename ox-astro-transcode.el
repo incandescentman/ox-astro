@@ -513,7 +513,9 @@ Allows THEME to appear first; marks MODEL keyword as consumed."
   "Transcode a plain-text element.
 If the text contains raw image paths on their own lines, convert them to
 <img> tags. If the text contains raw URLs on their own lines, convert them
-to LinkPeek components."
+to LinkPeek components.
+Single newlines within paragraphs are converted to Markdown soft breaks
+\(two trailing spaces + newline) to preserve line breaks in the output."
   (let* ((lines (split-string text "\n"))
          (has-linkpeek nil)
          (processed-lines
@@ -542,11 +544,20 @@ to LinkPeek components."
                     ;; Regular remote URL (non-image) is now handled correctly by org-astro-link.
                     ;; Regular line
                     (t line)))))
-           lines)))
+           lines))
+         ;; Add two trailing spaces to each line (except the last) for Markdown soft breaks
+         (num-lines (length processed-lines))
+         (soft-break-lines
+          (cl-loop for line in processed-lines
+                   for i from 1
+                   collect (if (and (< i num-lines)
+                                    (not (string-empty-p (org-trim line))))
+                               (concat (string-trim-right line) "  ")
+                               line))))
     ;; Store LinkPeek usage in info for import generation
     (when has-linkpeek
       (plist-put info :astro-uses-linkpeek t))
-    (mapconcat 'identity processed-lines "\n")))
+    (mapconcat 'identity soft-break-lines "\n")))
 
 
 (defun org-astro-subscript (subscript contents _info)

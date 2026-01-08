@@ -6,21 +6,28 @@ The exporter automates many of the tedious parts of content creation, including 
 
 * Installation and Setup
 
-To use this exporter, save the following files to your Emacs load path:
-- ~ox-astro.el~ (the main file)
-- ~ox-astro-config.el~ (configuration options)
-- ~ox-astro-helpers.el~ (internal helper functions)
-- ~ox-astro-handlers.el~ (export and filter handlers)
-- ~ox-astro-table-handlers.el~ (table processing)
-- ~ox-astro-image-handlers.el~ (image handling)
-- ~ox-astro-pdf-handlers.el~ (PDF handling)
-
-Then, add the following to your Emacs configuration (~init.el~):
+To use this exporter, save all ~ox-astro-*.el~ files to your Emacs load path, then add the following to your Emacs configuration (~init.el~):
 
 #+begin_src emacs-lisp
 (with-eval-after-load 'ox
   (require 'ox-astro))
 #+end_src
+
+* Module Overview
+
+| File                        | Purpose                                              |
+|-----------------------------+------------------------------------------------------|
+| ~ox-astro.el~                 | Main exporter engine and Org backend registration    |
+| ~ox-astro-config.el~          | User-customizable configuration                      |
+| ~ox-astro-helpers.el~         | Loader for helper modules                            |
+| ~ox-astro-helpers-core.el~    | Core utilities (slugify, date formatting, etc.)      |
+| ~ox-astro-export-helpers.el~  | Export utilities and file management                 |
+| ~ox-astro-transcode.el~       | Element transcoding (headings, links, blocks)        |
+| ~ox-astro-metadata.el~        | Front matter extraction and generation               |
+| ~ox-astro-handlers.el~        | Export filters and content processing pipeline       |
+| ~ox-astro-table-handlers.el~  | Table → Markdown conversion                          |
+| ~ox-astro-image-handlers.el~  | Image detection, copying, and ~<Image>~ component output |
+| ~ox-astro-pdf-handlers.el~    | PDF detection, copying, and path handling            |
 
 * Core Features
 

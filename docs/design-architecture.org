@@ -14,7 +14,8 @@
   - Keyword insertion must respect org-roam properties
 - *Key features*:
   - Stale MDX cleanup: Auto-deletes old files when slug changes (uses =orgPath= in frontmatter)
-- *Last major update*: 2025-12-23 (Stale MDX cleanup on slug change)
+  - Line break preservation: Single newlines become Markdown soft breaks (two trailing spaces)
+- *Last major update*: 2026-01-08 (Line break preservation)
 
 * For LLM Context
 
@@ -231,6 +232,20 @@ Maps nicknames to destination configurations:
 - **Raw image paths** → =<Image src={varName} alt="..." />= components
 - **Special code blocks** (user/prompt/quote) → Preserved with formatting
 - **Tables** → Markdown format (not HTML)
+- **Single newlines** → Markdown soft breaks (two trailing spaces + newline)
+
+*** Line Break Preservation
+In standard Markdown, single newlines within a paragraph are collapsed to spaces. ox-astro preserves single newlines as visible line breaks by adding two trailing spaces before each newline (Markdown soft break syntax).
+
+*Why*: AI conversation transcripts often contain meaningful line breaks that would be lost with standard Markdown behavior. For example:
+#+begin_example
+A conclusion you can draw more cleanly, with a Bayesian lens.
+Neither assistant said "Bayes" explicitly...
+#+end_example
+
+Without soft breaks, this renders as one continuous line. With soft breaks, each line renders separately.
+
+*Implementation*: =org-astro-plain-text= in =ox-astro-transcode.el= adds two trailing spaces to each non-empty line (except the last) before joining with newlines.
 
 *** Link Handling Strategy
 Links are processed in transcoding phase (not final filter) to avoid regex complexity:
