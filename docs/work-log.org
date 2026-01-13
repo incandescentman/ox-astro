@@ -1,6 +1,19 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-01-13 YouTube auto-embed scoped to line-only URLs
+
+** Summary
+Aligned YouTube auto-embed with the documented behavior: only bare URLs on their own line embed. This prevents reference-style link definitions from being converted into iframes.
+
+** Changes
+- Added =org-astro--paragraph-only-raw-link-p= to detect URL-only paragraphs
+- Gated YouTube embeds in =org-astro-link= on paragraph-only context
+- Documented the issue in =bugs/20260113-youtube-url-in-reference-links.org=
+
+** Verification
+- Confirmed in =apps/socratic/src/content/blog/comparing-softboxes.mdx= that a standalone YouTube URL embeds while a reference-style YouTube definition remains intact
+
 * 2026-01-08 Fix jaydocs email export paragraph spacing
 
 ** Problem
