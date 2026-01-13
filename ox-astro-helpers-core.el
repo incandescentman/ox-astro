@@ -1167,6 +1167,15 @@ reference-style links like [label][ref]."
            (raw (and beg end (buffer-substring-no-properties beg end))))
       (and raw (org-astro--markdown-link-definition-line-p raw)))))
 
+(defun org-astro--paragraph-only-raw-link-p (paragraph raw-link)
+  "Return non-nil if PARAGRAPH contains only RAW-LINK text."
+  (when (and paragraph (stringp raw-link) (eq (org-element-type paragraph) 'paragraph))
+    (let* ((beg (org-element-property :begin paragraph))
+           (end (org-element-property :end paragraph))
+           (raw (and beg end (buffer-substring-no-properties beg end)))
+           (trimmed (and raw (string-trim raw))))
+      (and trimmed (string= trimmed raw-link)))))
+
 (defun org-astro--format-date (date-raw info)
   "Format DATE-RAW into a string suitable for Astro front matter."
   (let ((date-fmt (plist-get info :astro-date-format)))

@@ -35,7 +35,14 @@
 (defun org-astro-link (link desc info)
   "Transcode a LINK object for Astro MDX, robust to partial INFO during preflight."
   (let* ((type (org-element-property :type link))
-         (path (org-element-property :path link)))
+         (path (org-element-property :path link))
+         (raw-link (or (org-element-property :raw-link link)
+                       (and type path (concat type ":" path))))
+         (parent (condition-case _
+                     (org-element-property :parent link)
+                   (error nil)))
+         (youtube-id (and (member type '("http" "https"))
+                          (org-astro--youtube-id-from-url raw-link))))
     (cond
      ;; org-roam ID links → resolve to absolute routes or relative Markdown links
      ((string= type "id")
@@ -183,42 +190,29 @@
 
      ;; Bare YouTube URLs with no description → responsive embed
      ((and (null desc)
-           (member type '("http" "https"))
-           (org-astro--youtube-id-from-url
-            (or (org-element-property :raw-link link)
-                (and type path (concat type ":" path)))))
-      (let* ((raw (or (org-element-property :raw-link link)
-                      (and type path (concat type ":" path))))
-             (video-id (org-astro--youtube-id-from-url raw)))
-        (when video-id
-          (setf (plist-get info :astro-uses-youtube-embed) t)
-          (org-astro--youtube-embed video-id))))
+           youtube-id
+           (org-astro--paragraph-only-raw-link-p parent raw-link))
+      (setf (plist-get info :astro-uses-youtube-embed) t)
+      (org-astro--youtube-embed youtube-id))
 
      ;; Bare URLs with no description → LinkPeek + set import flag
      ((and (null desc) (member type '("http" "https" "ftp" "mailto")))
       ;; If this bare URL is part of a Markdown reference link definition
       ;; like "[1]: https://example.com", preserve it literally.
-      (let* ((parent (condition-case _
-                         (org-element-property :parent link)
-                       (error nil))))
-        (if (and parent (org-astro--markdown-link-definition-paragraph-p parent))
-            ;; Return the raw URL so the whole line exports as "[x]: url"
-            (or (org-element-property :raw-link link)
-                (concat type ":" path))
-            ;; Otherwise, emit LinkPeek + mark for import
-            (progn
-              (setf (plist-get info :astro-uses-linkpeek) t)
-              (format "<LinkPeek href=\"%s\"></LinkPeek>"
-                      (or (org-element-property :raw-link link)
-                          (concat type ":" path)))))))
+      (if (and parent (org-astro--markdown-link-definition-paragraph-p parent))
+          ;; Return the raw URL so the whole line exports as "[x]: url"
+          raw-link
+          ;; Otherwise, emit LinkPeek + mark for import
+          (progn
+            (setf (plist-get info :astro-uses-linkpeek) t)
+            (format "<LinkPeek href=\"%s\"></LinkPeek>" raw-link))))
 
      ;; Everything else → prefer org's MD translator; fall back to plain Markdown
      (t
       (let ((md (when (fboundp 'org-md-link)
                   (ignore-errors (org-md-link link desc info)))))
         (or md
-            (let* ((raw (or (org-element-property :raw-link link)
-                            (concat type ":" path)))
+            (let* ((raw raw-link)
                    (text (or desc raw)))
               (format "[%s](%s)" text raw))))))))
 

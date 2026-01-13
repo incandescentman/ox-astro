@@ -1,0 +1,120 @@
+:PROPERTIES:
+:ID:       20260113T170000.000000
+:END:
+#+TITLE: Bug: YouTube URLs in Reference Link Definitions Get Converted to Embeds
+#+CREATED: [2026-01-13 Mon]
+#+RESOLVED: [2026-01-13 Mon]
+#+STATUS: resolved
+
+* Summary
+
+When a markdown-style reference link definition contains a YouTube URL, ox-astro incorrectly converts the URL into a full YouTube embed (iframe inside a div), breaking MDX parsing.
+
+* Reproduction
+
+** Export Command
+
+#+begin_src elisp
+(org-export-to-file 'astro "output.mdx")
+;; or via ox-astro interactive export (C-c C-e a f)
+#+end_src
+
+** Org Source (Correct)
+
+#+begin_src org
+Some text with a citation. ([YouTube][4])
+
+[4]: https://www.youtube.com/watch?v=Flgca-tC6O4 "Video Title"
+#+end_src
+
+** Expected MDX Output
+
+#+begin_src markdown
+Some text with a citation. ([YouTube][4])
+
+[4]: https://www.youtube.com/watch?v=Flgca-tC6O4 "Video Title"
+#+end_src
+
+** Actual MDX Output (Broken)
+
+#+begin_src markdown
+Some text with a citation. ([YouTube][4])
+
+[4]: <div class="astro-youtube-embed" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 2rem 0;">
+  <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+          src="https://www.youtube.com/embed/Flgca-tC6O4"
+          title="YouTube video"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen></iframe>
+</div>
+ "Video Title"
+#+end_src
+
+* Error Message
+
+#+begin_example
+Unexpected closing slash / in tag, expected an open tag first
+blog/comparing-softboxes.mdx:106:2
+#+end_example
+
+The MDX parser fails because it encounters =</div>= where it expects markdown syntax.
+
+* Root Cause
+
+The =org-astro-link= function in =ox-astro-transcode.el= converts YouTube URLs to embeds when the link has no description text. This logic doesn't distinguish between:
+- A bare YouTube link intended for embedding (e.g., =[[https://youtube.com/watch?v=xxx]]=)
+- A YouTube URL inside a reference link definition (e.g., =[4]: https://youtube.com/...=)
+
+Both cases have no "description" from the transcoder's perspective, so both get converted to embeds.
+
+* Affected File
+
+=/Users/jay/Dropbox/roam/photography/20260113161016-comparing_softboxes.org=
+
+Exported to: =apps/socratic/src/content/blog/comparing-softboxes.mdx=
+
+* Suggested Fix
+
+** Minimal fix (addresses this bug only)
+Skip YouTube embed conversion when the URL is inside a reference link definition.
+
+** Broader fix (needs design decision)
+Current behavior: Any description-less YouTube link gets embedded, even inline.
+
+Possible stricter behavior: Only embed YouTube URLs when they appear as the sole content on a line (matching the documented "bare YouTube URLs" behavior).
+
+*Question*: Should we tighten the embed scope to line-only, or just fix the reference link case?
+
+** Should NOT embed
+- URLs inside reference link definitions (=[n]: url "title"=)
+- URLs inside inline links with description text (=[[url][text]]=)
+
+* Workaround
+
+Manually edit the MDX file to restore the reference link:
+
+#+begin_src markdown
+[4]: https://www.youtube.com/watch?v=Flgca-tC6O4 "Video Title"
+#+end_src
+
+Note: This fix will be overwritten on next export from org.
+
+* Related Code
+
+** Primary location
+- =ox-astro-transcode.el= — =org-astro-link= function
+  - This is where the embed decision is made based on link type and description
+
+** Supporting code
+- =ox-astro-helpers-core.el= — =org-astro--youtube-embed= function
+  - Generates the actual embed HTML (not the decision logic)
+
+* Resolution
+
+Implemented the broader fix: YouTube auto-embed now only triggers when the URL is the sole content of a paragraph (matching documented "bare URL on its own line" behavior).
+
+** Changes made
+- Added =org-astro--paragraph-only-raw-link-p= in =ox-astro-helpers-core.el= to detect URL-only paragraphs
+- Updated =org-astro-link= in =ox-astro-transcode.el= to require the paragraph-only check before embedding YouTube
+- Reference link definitions and inline URLs now correctly stay as links
