@@ -15,7 +15,7 @@
 - *Key features*:
   - Stale MDX cleanup: Auto-deletes old files when slug changes (uses =orgPath= in frontmatter)
   - Line break preservation: Single newlines become Markdown soft breaks (two trailing spaces)
-- *Last major update*: 2026-01-08 (Line break preservation)
+- *Last major update*: 2026-01-14 (Line break fix - paragraph level)
 
 * For LLM Context
 
@@ -245,7 +245,7 @@ Neither assistant said "Bayes" explicitly...
 
 Without soft breaks, this renders as one continuous line. With soft breaks, each line renders separately.
 
-*Implementation*: =org-astro-plain-text= in =ox-astro-transcode.el= adds two trailing spaces to each non-empty line (except the last) before joining with newlines.
+*Implementation*: =org-astro--add-soft-breaks= helper called from =org-astro-paragraph= in =ox-astro-transcode.el=. This must happen at the paragraph level (not =org-astro-plain-text=) because plain-text only sees text fragments between other elements, not whole paragraphs.
 
 *** Link Handling Strategy
 Links are processed in transcoding phase (not final filter) to avoid regex complexity:

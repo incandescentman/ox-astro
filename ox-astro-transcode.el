@@ -462,6 +462,23 @@ Allows THEME to appear first; marks MODEL keyword as consumed."
         "")))
 
 
+(defun org-astro--add-soft-breaks (text)
+  "Add Markdown soft breaks (two trailing spaces) before internal newlines in TEXT.
+This preserves single line breaks in the rendered output."
+  (when text
+    (let* ((lines (split-string text "\n"))
+           (num-lines (length lines)))
+      (mapconcat
+       'identity
+       (cl-loop for line in lines
+                for i from 1
+                collect (if (and (< i num-lines)
+                                 (not (string-empty-p (string-trim line))))
+                            (concat (string-trim-right line) "  ")
+                          line))
+       "\n"))))
+
+
 (defun org-astro-paragraph (paragraph contents info)
   "Transcode a PARAGRAPH element.
   If the paragraph is a raw image path, convert it to an <img> tag.
@@ -499,17 +516,16 @@ Allows THEME to appear first; marks MODEL keyword as consumed."
           (if (string-match-p "/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)" paragraph-context)
               ;; This paragraph contains a broken image path - try to handle it
               (org-astro--handle-broken-image-paragraph paragraph info)
-              ;; Regular paragraph
-              (org-md-paragraph paragraph contents info))))))
+              ;; Regular paragraph - add soft breaks for single newlines
+              (org-astro--add-soft-breaks
+               (org-md-paragraph paragraph contents info)))))))
 
 
 (defun org-astro-plain-text (text info)
   "Transcode a plain-text element.
 If the text contains raw image paths on their own lines, convert them to
 <img> tags. If the text contains raw URLs on their own lines, convert them
-to LinkPeek components.
-Single newlines within paragraphs are converted to Markdown soft breaks
-\(two trailing spaces + newline) to preserve line breaks in the output."
+to LinkPeek components."
   (let* ((lines (split-string text "\n"))
          (has-linkpeek nil)
          (processed-lines
@@ -538,20 +554,11 @@ Single newlines within paragraphs are converted to Markdown soft breaks
                     ;; Regular remote URL (non-image) is now handled correctly by org-astro-link.
                     ;; Regular line
                     (t line)))))
-           lines))
-         ;; Add two trailing spaces to each line (except the last) for Markdown soft breaks
-         (num-lines (length processed-lines))
-         (soft-break-lines
-          (cl-loop for line in processed-lines
-                   for i from 1
-                   collect (if (and (< i num-lines)
-                                    (not (string-empty-p (org-trim line))))
-                               (concat (string-trim-right line) "  ")
-                               line))))
+           lines)))
     ;; Store LinkPeek usage in info for import generation
     (when has-linkpeek
       (plist-put info :astro-uses-linkpeek t))
-    (mapconcat 'identity soft-break-lines "\n")))
+    (mapconcat 'identity processed-lines "\n")))
 
 
 (defun org-astro-subscript (subscript contents _info)

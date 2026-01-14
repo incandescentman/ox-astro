@@ -136,17 +136,18 @@
 - *Fix strategy:* Cache folder resolution results in `let`-bound locals before any `org-export-get-environment` calls
 
 ** Design: Single newlines preserved as Markdown soft breaks
-- *Date:* 2026-01-08
+- *Date:* 2026-01-08 (fixed 2026-01-14)
 - *Context:* AI conversation transcripts often contain meaningful single newlines (not paragraph breaks) that would be lost in standard Markdown rendering.
-- *Mechanism:* Standard Markdown collapses single newlines to spaces. ox-astro's `org-astro-plain-text` adds two trailing spaces to each non-empty line (except the last), creating Markdown "soft breaks" that render as `<br>` in HTML.
+- *Mechanism:* Standard Markdown collapses single newlines to spaces. ox-astro's =org-astro-paragraph= applies =org-astro--add-soft-breaks= to add two trailing spaces to each non-empty line (except the last), creating Markdown "soft breaks" that render as =<br>= in HTML.
 - *Example:*
-  ```
+  #+begin_example
   A conclusion with a Bayesian lens.
   Neither assistant said "Bayes" explicitly...
-  ```
+  #+end_example
   Without soft breaks: renders as one continuous line.
   With soft breaks: each line renders separately with a line break.
-- *Implementation:* `ox-astro-transcode.el` - `org-astro-plain-text` function
+- *Implementation:* =ox-astro-transcode.el= - =org-astro--add-soft-breaks= helper called from =org-astro-paragraph=
+- *Gotcha:* This must happen at the paragraph level, NOT in =org-astro-plain-text=. The plain-text transcoder only sees text fragments between other elements (bold, links, etc.), not whole paragraphs. If you have =*bold*\nmore text=, plain-text gets ="\nmore text"=, not the full paragraph.
 - *Actionable insight:* This is intentional behavior for preserving formatting in AI transcripts. If a user reports "extra line breaks," explain this is by design.
 
 * CSS Animation Patterns (astro-utils)

@@ -1,6 +1,36 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-01-14 Fix soft break logic location (paragraph level, not plain-text)
+
+** Problem
+Single newlines within paragraphs weren't being preserved as Markdown soft breaks, despite the feature being "implemented" in commit 420d2c9.
+
+** Root Cause
+The soft break logic was in =org-astro-plain-text=, but that function only sees text fragments between other elements. For a paragraph like:
+
+#+begin_example
+*Bold line one.*
+Or: *Bold line two.*
+#+end_example
+
+The parse tree is:
+- paragraph
+  - bold "Bold line one."
+  - plain-text "\nOr: "
+  - bold "Bold line two."
+
+So =org-astro-plain-text= gets fragments like ="\nOr: "=, not the whole paragraph. The soft break logic couldn't work there.
+
+** Fix
+Moved soft break logic to the paragraph level:
+1. Added =org-astro--add-soft-breaks= helper function
+2. Applied it to the output of =org-md-paragraph= in =org-astro-paragraph=
+3. Removed ineffective logic from =org-astro-plain-text=
+
+** Files Modified
+- =ox-astro-transcode.el= — new helper + paragraph handler update + plain-text cleanup
+
 * 2026-01-13 YouTube auto-embed scoped to line-only URLs
 
 ** Summary
