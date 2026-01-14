@@ -150,6 +150,13 @@
 - *Gotcha:* This must happen at the paragraph level, NOT in =org-astro-plain-text=. The plain-text transcoder only sees text fragments between other elements (bold, links, etc.), not whole paragraphs. If you have =*bold*\nmore text=, plain-text gets ="\nmore text"=, not the full paragraph.
 - *Actionable insight:* This is intentional behavior for preserving formatting in AI transcripts. If a user reports "extra line breaks," explain this is by design.
 
+** Design: Stale assets cleanup is reference-guarded
+- *Date:* 2026-01-14
+- *Context:* Slug changes create new asset folders under =src/assets/images/posts/{slug}/= and leave the old ones behind.
+- *Mechanism:* After stale MDX deletion, ox-astro resolves the app root via =src/content= and scans =src/= and =public/= for references to =assets/images/posts/{slug}/= or =/images/posts/{slug}/= before deleting the directory.
+- *Gotcha:* Asset cleanup only runs when a stale MDX is detected via =orgPath=. Missing or altered frontmatter will prevent cleanup.
+- *Actionable insight:* Keep =orgPath= intact if you want slug-change cleanup (MDX + assets) to work.
+
 * CSS Animation Patterns (astro-utils)
 
 ** Gotcha: animation: none on hover causes blipping when hovering off

@@ -1,6 +1,43 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-01-14 Stale asset directory cleanup on slug change
+
+** Summary
+Extended stale MDX cleanup to also delete orphaned image directories when a post's slug changes.
+
+** Problem
+When renaming a post (changing its slug), =org-astro--cleanup-stale-mdx-files= deleted the old MDX file but left behind the =src/assets/images/posts/{old-slug}/= directory as orphaned cruft.
+
+** Solution
+Added guarded asset cleanup: when a stale MDX is deleted, ox-astro now:
+1. Resolves the app root (via =src/content= path traversal)
+2. Scans =src/= and =public/= for any references to the old slug's asset paths
+3. Only deletes =src/assets/images/posts/{slug}/= if truly unreferenced
+
+** New Functions (ox-astro-export-helpers.el)
+- =org-astro--resolve-app-root-from-output= — finds app root containing =src/content=
+- =org-astro--slug-assets-dir= — builds path =src/assets/images/posts/{slug}/=
+- =org-astro--slug-assets-referenced-p= — scans for references in mdx, md, astro, js, ts, json, yaml, css, html, org files
+- =org-astro--cleanup-stale-asset-dirs= — deletes unreferenced asset directories
+
+** Modified Functions
+- =org-astro--cleanup-stale-mdx-files= — now collects deleted slugs and calls =org-astro--cleanup-stale-asset-dirs=
+
+** Safety Features
+- Reference scanning checks both =assets/images/posts/{slug}/= and =/images/posts/{slug}/= patterns
+- Short-circuits scan when first reference found
+- Logs "keeping" message when assets are still referenced
+- Error handling with =condition-case=
+
+** Files Modified
+- =ox-astro-export-helpers.el=
+- =docs/design-architecture.org=
+- =docs/codebase-wisdom.org=
+
+** Verification
+- =emacs --batch -Q -L /Users/jay/Dropbox/github/ox-astro -l /tmp/ox-astro-stale-cleanup-test.el=
+
 * 2026-01-14 Fix soft break logic location (paragraph level, not plain-text)
 
 ** Problem

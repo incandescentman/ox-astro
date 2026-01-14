@@ -152,22 +152,24 @@ Production MDX with Imports
 
 *Files*: =ox-astro-pdf-handlers.el=
 
-*** Stale MDX Cleanup
-*Goal*: Automatically delete old MDX files when slug changes
+*** Stale MDX + Asset Cleanup
+*Goal*: Automatically delete old MDX files (and their unused asset folders) when slug changes
 
 *Flow*:
-1. After export completes → 2. Scan output directory for =.mdx= files → 3. Read =orgPath= from each file's frontmatter → 4. Delete files matching source but with different filename
+1. After export completes → 2. Scan output directory for =.mdx= files → 3. Read =orgPath= from each file's frontmatter → 4. Delete files matching source but with different filename → 5. For each deleted slug, scan the app for references and delete =src/assets/images/posts/{slug}/= if unreferenced
 
 *How it works*:
 - Each exported MDX contains =orgPath: /path/to/source.org= in frontmatter
 - On export, =org-astro--cleanup-stale-mdx-files= compares this against the source file
 - Files from the same source with different slugs are deleted
+- Asset cleanup resolves the app root (by locating =src/content=) and scans =src/= and =public/= for =assets/images/posts/{slug}/= or =/images/posts/{slug}/= references before deleting directories
 
 *Key functions*:
 - =org-astro--extract-orgpath-from-mdx= — Reads orgPath from MDX frontmatter
 - =org-astro--cleanup-stale-mdx-files= — Scans directory and deletes stale files
+- =org-astro--cleanup-stale-asset-dirs= — Deletes slug asset directories if unreferenced
 
-*Files*: =ox-astro-helpers.el= (lines 2150-2192), =ox-astro.el= (cleanup call after export)
+*Files*: =ox-astro-export-helpers.el=, =ox-astro.el= (cleanup call after export)
 
 ** 2. Front Matter System
 
