@@ -1247,6 +1247,17 @@ KEY is forwarded to scalar encoding for per-item quoting rules."
             (org-astro--yaml-format-list tags "  " 'tag)
             "\n"))))
 
+(defun org-astro--format-related-thread-yaml (thread)
+  "Return YAML snippet for RELATED_THREAD alist."
+  (let* ((slug (cdr (assoc 'slug thread)))
+         (note (cdr (assoc 'note thread)))
+         (slug-val (org-astro--yaml-encode-scalar 'relatedThread slug))
+         (note-val (and note (org-astro--yaml-encode-scalar 'relatedThread note))))
+    (when slug-val
+      (concat
+       "  slug: " slug-val "\n"
+       (when note-val (concat "  note: " note-val "\n"))))))
+
 (defun org-astro--filename-to-alt-text (path)
   "Generate a human-readable alt text from an image PATH."
   (when (stringp path)
@@ -1618,6 +1629,8 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          (story-type (org-astro--get-story-type tree info))
          (hero-credit (org-astro--get-hero-credit tree info))
          (hero-caption (org-astro--get-hero-caption tree info))
+         (related-thread (org-astro--parse-related-thread tree info))
+         (related-thread-yaml (and related-thread (org-astro--format-related-thread-yaml related-thread)))
          (hide-hero-image
           (let* ((raw (or (plist-get info :hide-hero-image)
                           (plist-get info :astro-hide-hero-image)))
@@ -1665,6 +1678,8 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       (imageAlt . ,image-alt)
       ,@(when hero-credit `((heroCredit . ,hero-credit)))
       ,@(when hero-caption `((heroCaption . ,hero-caption)))
+      ,@(when related-thread-yaml
+          `((relatedThread . (:raw-yaml . ,related-thread-yaml))))
       ,@(when hide-hero-image `((hideHeroImage . ,hide-hero-image)))
       ,@(when toc-depth `((tocDepth . ,toc-depth)))
       ,@(when date-occurred `((dateOccurred . ,date-occurred)))

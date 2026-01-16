@@ -1,6 +1,21 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-01-16 Related Thread keyword export (#+RELATED_THREAD)
+
+** Summary
+Added =#+RELATED_THREAD:= keyword support to export a structured =relatedThread= frontmatter object.
+
+** Behavior
+- Keyword format: =slug | optional note=
+- Exported frontmatter:
+  - =relatedThread: { slug, note }=
+- Supports =RELATED_THREAD=, =RELATED-THREAD=, and =ASTRO_RELATED_THREAD=
+
+** Files Modified
+- =ox-astro-metadata.el=
+- =ox-astro-helpers-core.el=
+
 * 2026-01-14 Stale asset directory cleanup on slug change
 
 ** Summary

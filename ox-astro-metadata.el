@@ -141,6 +141,10 @@ or double quotes retain internal spacing; quotes are stripped in the result."
   "Return raw value for TOC_DEPTH or TOC-DEPTH keyword from TREE."
   (org-astro--keyword-first-value tree '("TOC_DEPTH" "TOC-DEPTH")))
 
+(defun org-astro--keyword-raw-related-thread (tree)
+  "Return raw value for ASTRO_RELATED_THREAD or RELATED_THREAD keyword."
+  (org-astro--keyword-first-value tree '("ASTRO_RELATED_THREAD" "RELATED_THREAD" "RELATED-THREAD")))
+
 (defun org-astro--get-toc-depth (tree info)
   "Return the TOC depth as a number from TREE/INFO, or nil if not set."
   (let ((raw (or (org-astro--keyword-raw-toc-depth tree)
@@ -218,6 +222,22 @@ or double quotes retain internal spacing; quotes are stripped in the result."
       (cl-remove-if (lambda (item) (and (stringp item) (string-empty-p item)))
                     media-raw))
      (t (org-astro--split-quoted-list media-raw)))))
+
+(defun org-astro--parse-related-thread (tree info)
+  "Return an alist with slug/note for RELATED_THREAD, or nil when absent."
+  (let* ((raw (or (org-astro--keyword-raw-related-thread tree)
+                  (plist-get info :astro-related-thread)
+                  (plist-get info :related-thread))))
+    (when raw
+      (let* ((parts (mapcar #'string-trim (split-string raw "|" t)))
+             (slug (car parts))
+             (note (when (cdr parts)
+                     (string-join (cdr parts) " | "))))
+        (when (and slug (not (string-empty-p slug)))
+          (let ((result `((slug . ,slug))))
+            (when (and note (not (string-empty-p note)))
+              (setq result (append result `((note . ,note)))))
+            result))))))
 
 (defun org-astro--parse-incomplete (tree info)
   "Return :true, :false, or nil depending on INCOMPLETE keyword presence."
