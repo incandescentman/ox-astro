@@ -1059,6 +1059,10 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
     (let* ((image-path (substring-no-properties image-path))
            (is-gif (org-astro--gif-p image-path)))
       (cond
+       ;; Allow explicit public web paths (e.g., /og/...) to pass through unchanged
+       ((string-match-p "^/og/" image-path)
+        image-path)
+
        ;; GIF files go to public/ folder for static serving
        ((and is-gif (file-exists-p image-path))
         (let* ((public-folder (org-astro--get-public-folder posts-folder sub-dir))
