@@ -1,0 +1,189 @@
+#+TITLE: Fix: Extract Images from User/Prompt Code Blocks
+#+AUTHOR: Jay Dixit
+#+DATE: [2026-02-09 Sun]
+
+* Problem Statement
+
+Images inside =#+begin_src user= and =#+begin_src prompt= blocks are not being processed by the ox-astro image pipeline. They remain as raw text paths in the MDX output instead of being converted to proper Astro Image imports.
+
+** Example
+
+In the org source:
+#+begin_example
+#+begin_src user
+suggest improvements to my photo
+
+[[/Volumes/Pantheon/lightroom/exports/photo.jpg]]
+#+end_src
+#+end_example
+
+Expected MDX output:
+#+begin_example
+import imgPhoto from '~/assets/images/posts/slug/photo.jpg';
+
+```user
+suggest improvements to my photo
+```
+
+<Image src={imgPhoto} alt="Photo" />
+#+end_example
+
+Actual MDX output:
+#+begin_example
+```user
+suggest improvements to my photo
+
+[/Volumes/Pantheon/lightroom/exports/photo.jpg](/Volumes/Pantheon/lightroom/exports/photo.jpg)
+```
+#+end_example
+
+The image path stays as plain text inside the code block and is never imported or rendered.
+
+* Root Cause Analysis
+
+** How Images Are Currently Detected
+
+The image detection happens in =org-astro--build-image-manifest()= (lines 131-216 in =ox-astro-image-handlers.el=). It searches for images in four ways:
+
+1. *Org Links* (lines 161-176): Searches for =[[file:...]]= and remote URLs using =org-element-map tree 'link=
+2. *Plain Text* (lines 179-199): Uses regex to find raw absolute paths, remote URLs, and =assets/images/= paths
+3. *Paragraph Repair* (lines 201-208): Recovers image paths broken by Org's subscript parsing
+4. *Raw Buffer Scans* (lines 210-211): Calls =org-astro--collect-raw-image-paths()= for final catch-all
+
+** The Critical Limitation
+
+*Code blocks (src-blocks) are completely bypassed by the image detection pipeline.*
+
+- =org-element-map tree 'link= only finds explicit =[[...]]= links in regular content
+- =org-element-map tree 'plain-text= finds paths but doesn't discriminate by context
+- There is *no special traversal of src-block children* to extract media references
+- The =org-astro-src-block()= transcoder just extracts raw code and passes it through unchanged
+
+* Proposed Solution
+
+** Feasibility
+
+*MODERATE* — Estimated 3-4 hours of careful work
+
+** Implementation Steps
+
+*** 1. Add src-block traversal to manifest builder (15 mins)
+
+Add an =org-element-map tree 'src-block= loop inside =org-astro--build-image-manifest= after line 208 (after paragraph repair, before raw buffer scans).
+
+*** 2. Filter by block type (30 mins)
+
+Only process images from "safe" block types that represent user content, not code examples:
+
+#+begin_src elisp
+(org-element-map tree 'src-block
+  (lambda (block)
+    (let ((lang (org-element-property :language block)))
+      (when (member lang '("user" "prompt" "quote"))
+        ;; Extract and register images from this block
+        ))))
+#+end_src
+
+*** 3. Extract image paths from block content (1 hour)
+
+Within each safe src-block:
+- Get raw code: =(org-element-property :value src-block)=
+- Run the same path-matching regex that plain-text scanning uses
+- Register each match with origin marker like ='src-block-user=
+- Track the block type in occurrence metadata
+
+*** 4. Update occurrence tracking (30 mins)
+
+Extend the occurrence plist to include =:src-block-type= so downstream processing knows the image came from a user block.
+
+*** 5. Update src-block transcoding (optional)
+
+In =ox-astro-transcode.el= (lines 292-316), update the rendered user/prompt blocks to reference the imported images instead of leaving raw paths.
+
+*** 6. Testing (1.5 hours)
+
+- Create test files with images in =user=, =prompt=, and =coding-agent= blocks
+- Verify images are extracted and copied correctly
+- Ensure code blocks still render correctly
+- Test edge cases: URLs, remote images, GIFs
+
+* Files to Modify
+
+| File | Lines | Purpose |
+|------+-------+---------|
+| =ox-astro-image-handlers.el= | 131-216 | Add src-block traversal to =org-astro--build-image-manifest= |
+| =ox-astro-transcode.el= | 292-316 | (Optional) Update rendered blocks to use imported images |
+
+* Risk Considerations
+
+** Semantic Ambiguity
+
+An image path inside a code block might be:
+- A literal reference intended for processing (should extract)
+- Example text showing what a path looks like (should NOT extract)
+- Part of documentation or pseudocode (should NOT extract)
+
+** Mitigation
+
+- Only enable extraction for semantic block types (=user=, =prompt=, =quote=) that are NOT code examples
+- Never extract from language-specific blocks like =python=, =javascript=, =elisp=
+- Add debug logging showing which block type an image came from
+- Document the new behavior clearly
+
+* Code Sketch
+
+#+begin_src elisp
+;; Add after line 208 in org-astro--build-image-manifest
+;; Inside the cl-labels block, after paragraph repair
+
+;; 4. Extract images from safe src-blocks (user, prompt, quote)
+(org-element-map tree 'src-block
+  (lambda (block)
+    (let ((lang (org-element-property :language block))
+          (value (org-element-property :value block)))
+      (when (and value (member lang '("user" "prompt" "quote")))
+        ;; Look for org-style links [[path]]
+        (let ((pos 0))
+          (while (string-match "\\[\\[\\([^]]+\\)\\]" value pos)
+            (let ((path (match-string 1 value)))
+              (when (org-astro--image-path-p path)
+                (register-entry path 'src-block-user)))
+            (setq pos (match-end 0))))
+        ;; Look for raw absolute paths
+        (let ((pos 0))
+          (while (string-match "/[A-Za-z][^]\n\t ]*\\.\\(jpe?g\\|png\\|gif\\|webp\\|svg\\)" value pos)
+            (register-entry (match-string 0 value) 'src-block-user)
+            (setq pos (match-end 0))))))))
+#+end_src
+
+* Test Case
+
+Create a test org file with:
+
+#+begin_example
+#+begin_src user
+Here's my photo for feedback:
+
+[[/Volumes/Pantheon/photos/test-image.jpg]]
+#+end_src
+
+Some response text here.
+
+#+begin_src python
+# This path should NOT be extracted
+path = "/path/to/image.jpg"
+#+end_src
+#+end_example
+
+Expected behavior:
+- =test-image.jpg= from the user block IS extracted and imported
+- =image.jpg= from the python block is NOT extracted (left as code)
+
+* Related Files
+
+- [[file:../ox-astro-image-handlers.el][ox-astro-image-handlers.el]] — Image manifest building
+- [[file:../ox-astro-transcode.el][ox-astro-transcode.el]] — Src-block transcoding
+
+* Status
+
+*NOT IMPLEMENTED* — Document created [2026-02-09 Sun] for future reference.

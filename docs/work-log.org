@@ -118,6 +118,15 @@ The email export feature spec was implemented in astro-monorepo (not ox-astro). 
 - Socratic: =apps/socratic/scripts/email-export.mjs=, =EmailBody.astro=, =email-post.css=
 - Jaydocs: =apps/jaydocs/scripts/email-export.mjs=, =EmailBody.astro=
 
+* 2026-02-09 Public /og cover image support
+
+** Summary
+Allow =#+COVER_IMAGE:= values that use public web paths like =/og/...= to pass through unchanged, so Cloudflare-protected sites can serve OG images without relying on hashed =/_astro/= assets.
+
+** Files Modified
+- =ox-astro-image-handlers.el=
+- =docs/instructions.org=
+
 ** Usage
 #+begin_src shell
 pnpm -C apps/socratic email:export -- --slug does-chatgpt-believe-in-aliens

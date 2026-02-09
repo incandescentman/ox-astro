@@ -159,6 +159,7 @@ indicator/value pairs.  Returns the updated plist."
 (declare-function org-astro--get-hero-credit "ox-astro-metadata")
 (declare-function org-astro--get-hero-caption "ox-astro-metadata")
 (declare-function org-astro--get-toc-depth "ox-astro-metadata")
+(declare-function org-astro--get-series "ox-astro-metadata")
 (declare-function org-astro--doc-level-keyword-value "ox-astro-handlers")
 
 ;; Declare global variable for data persistence across export phases
@@ -1629,6 +1630,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          (story-type (org-astro--get-story-type tree info))
          (hero-credit (org-astro--get-hero-credit tree info))
          (hero-caption (org-astro--get-hero-caption tree info))
+         (series (org-astro--get-series tree info))
          (related-thread (org-astro--parse-related-thread tree info))
          (related-thread-yaml (and related-thread (org-astro--format-related-thread-yaml related-thread)))
          (hide-hero-image
@@ -1678,6 +1680,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       (imageAlt . ,image-alt)
       ,@(when hero-credit `((heroCredit . ,hero-credit)))
       ,@(when hero-caption `((heroCaption . ,hero-caption)))
+      ,@(when series `((series . ,series)))
       ,@(when related-thread-yaml
           `((relatedThread . (:raw-yaml . ,related-thread-yaml))))
       ,@(when hide-hero-image `((hideHeroImage . ,hide-hero-image)))

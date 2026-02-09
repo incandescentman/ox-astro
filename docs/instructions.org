@@ -216,6 +216,7 @@ Generated With: Model
 - Underscores and hyphens are interchangeable (e.g., ~IMAGE_CREDIT~ = ~IMAGE-CREDIT~)
 - The hero image is automatically suppressed from the body; its credit/caption only appear in the header area
 - If =HERO_IMAGE= is not set, ox-astro falls back to =COVER_IMAGE= / =ASTRO_IMAGE= and then the first inline image
+- Public web paths (e.g., =/og/...= or =https://...=) are preserved as-is for hero/cover images
 
 * Verifying Broken Links
 - Open the generated MDX file and click through the links to confirm navigation

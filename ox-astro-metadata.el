@@ -145,6 +145,10 @@ or double quotes retain internal spacing; quotes are stripped in the result."
   "Return raw value for ASTRO_RELATED_THREAD or RELATED_THREAD keyword."
   (org-astro--keyword-first-value tree '("ASTRO_RELATED_THREAD" "RELATED_THREAD" "RELATED-THREAD")))
 
+(defun org-astro--keyword-raw-series (tree)
+  "Return raw value for ASTRO_SERIES or SERIES keyword from TREE."
+  (org-astro--keyword-first-value tree '("ASTRO_SERIES" "SERIES")))
+
 (defun org-astro--get-toc-depth (tree info)
   "Return the TOC depth as a number from TREE/INFO, or nil if not set."
   (let ((raw (or (org-astro--keyword-raw-toc-depth tree)
@@ -361,6 +365,16 @@ or double quotes retain internal spacing; quotes are stripped in the result."
                          (plist-get info :hero-caption))))
     (when caption-raw
       (let ((trimmed (org-trim caption-raw)))
+        (unless (string-empty-p trimmed)
+          trimmed)))))
+
+(defun org-astro--get-series (tree info)
+  "Return the series name string from TREE/INFO."
+  (let ((series-raw (or (org-astro--keyword-raw-series tree)
+                        (plist-get info :astro-series)
+                        (plist-get info :series))))
+    (when series-raw
+      (let ((trimmed (org-trim series-raw)))
         (unless (string-empty-p trimmed)
           trimmed)))))
 
