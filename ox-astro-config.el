@@ -72,6 +72,8 @@ Set this to match your Astro routing structure. For example:
   '(("blog"       . (:path "~/projects/my-astro-site/src/content/blog"))
     ("docs"       . (:path "~/projects/my-docs-site/src/content/docs"))
     ("socratic"   . (:path "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog"))
+    ("socratic-studies" . (:path "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/socratic/src/content/studies"
+                          :frontmatter studies))
     ("jaydocs"    . (:path "/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog"))
     ("life-web"   . (:path "/Users/jay/Dropbox/github/life-web/src/content/notes"
                      :preserve-folder-structure t))

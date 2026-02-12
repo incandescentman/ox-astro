@@ -1409,3 +1409,14 @@ during astro export (e.g., repeated =org-babel-exp process user at position ...=
 - Batch behavior check with simulated interactive mode:
   - Outside astro export: user/assistant/python still log progress
   - Inside astro export: only python logs progress; user/assistant are silent
+
+** Follow-up Validation (real transcript exports)
+- Source files validated:
+  - =/Users/jay/Dropbox/roam/chatgpt-outputs/20260212131525-claude_encouraging_me_to_text_emily_original.org=
+  - =/Users/jay/Dropbox/roam/chatgpt-outputs/20260212133316-claude_encouraging_me_to_text_emily.org=
+- Confirmed both source files contain =106= =#+begin_src user= blocks.
+- Export check result: =0= occurrences of =org-babel-exp process ...= in both runs (no user/assistant spam).
+- Output files written/updated:
+  - =/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/claude-encouraging-me-to-text-emily-original.mdx=
+  - =/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/claude-encouraging-me-to-text-emily.mdx=
+- Note: The originally referenced non-=original= 13:15 source path was not present; validation used the existing =..._original.org= plus the 13:33 derived file.

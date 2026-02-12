@@ -558,7 +558,7 @@ when enabled."
 
 (defun org-astro--resolve-destination-config (value)
   "Resolve VALUE (nickname or path) to an output directory description.
-Returns a plist with keys :path, :preserve, :nickname, :raw."
+Returns a plist with keys :path, :preserve, :nickname, :raw, :frontmatter."
   (let* ((trim (and value (string-trim value)))
          (config (and trim
                       (cdr (cl-find trim org-astro-known-posts-folders
@@ -568,13 +568,15 @@ Returns a plist with keys :path, :preserve, :nickname, :raw."
                    (and (listp config) (plist-get config :path))
                    (and trim (file-name-absolute-p trim) trim)))
          (preserve (and (listp config)
-                        (plist-get config :preserve-folder-structure))))
+                        (plist-get config :preserve-folder-structure)))
+         (frontmatter (and (listp config) (plist-get config :frontmatter))))
     (when path
       (setq path (expand-file-name path)))
     (list :path path
           :preserve preserve
           :nickname (when (and trim config) trim)
-          :raw trim)))
+          :raw trim
+          :frontmatter frontmatter)))
 
 (defun org-astro--relative-subdir-for-file (file &optional source-root)
   "Return relative directory for FILE under SOURCE-ROOT preserving structure."
@@ -1602,10 +1604,55 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
           t)))
     nil 'first-match))
 
+(defun org-astro--get-study-front-matter-data (tree info)
+  "Build front matter for study exports."
+  (let* ((title (org-astro--get-title tree info))
+         (slug (or (plist-get info :slug)
+                   (when title (org-astro--slugify title))))
+         (study-id (or (org-astro--keyword-value tree '("STUDY_ID" "STUDY-ID" "ID"))
+                       slug))
+         (authors (or (org-astro--keyword-value tree '("AUTHORS" "AUTHOR"))
+                      (plist-get info :author)))
+         (year (or (org-astro--keyword-value tree '("YEAR"))
+                   (org-astro--keyword-value tree '("DATE"))))
+         (href (org-astro--keyword-value tree '("HREF" "URL" "LINK")))
+         (abstract (org-astro--keyword-value tree '("ABSTRACT")))
+         (tags (org-astro--parse-tags tree info))
+         (doi (org-astro--keyword-value tree '("DOI")))
+         (journal (org-astro--keyword-value tree '("JOURNAL")))
+         (study-type (org-astro--keyword-value tree '("STUDY_TYPE" "STUDY-TYPE")))
+         (sample-size (org-astro--keyword-value tree '("SAMPLE_SIZE" "SAMPLE-SIZE")))
+         (method (org-astro--keyword-value tree '("METHOD")))
+         (key-findings (org-astro--split-quoted-list
+                        (org-astro--keyword-value tree '("KEY_FINDINGS" "KEY-FINDINGS"))))
+         (limitations (org-astro--split-quoted-list
+                       (org-astro--keyword-value tree '("LIMITATIONS"))))
+         (evidence (org-astro--keyword-value tree '("EVIDENCE")))
+         (pdf (org-astro--keyword-value tree '("PDF"))))
+    (delq nil
+          `((id . ,study-id)
+            (title . ,title)
+            (authors . ,authors)
+            (year . ,year)
+            ,@(when href `((href . ,href)))
+            ,@(when abstract `((abstract . ,abstract)))
+            ,@(when tags `((tags . ,tags)))
+            ,@(when doi `((doi . ,doi)))
+            ,@(when journal `((journal . ,journal)))
+            ,@(when study-type `((studyType . ,study-type)))
+            ,@(when sample-size `((sampleSize . ,sample-size)))
+            ,@(when method `((method . ,method)))
+            ,@(when key-findings `((keyFindings . ,key-findings)))
+            ,@(when limitations `((limitations . ,limitations)))
+            ,@(when evidence `((evidence . ,evidence)))
+            ,@(when pdf `((pdf . ,pdf)))))))
+
 (defun org-astro--get-front-matter-data (tree info)
   "Build an alist of final front-matter data, applying defaults."
   (let* ((posts-folder (or (plist-get info :destination-folder)
                            (plist-get info :astro-posts-folder)))
+         (destination-info (org-astro--resolve-destination-config posts-folder))
+         (frontmatter-mode (plist-get destination-info :frontmatter))
          (title (org-astro--get-title tree info))
          ;; Always use slug from info or generate from title
          (slug (or (plist-get info :slug)
@@ -1669,42 +1716,44 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
               theme-clean)))
          (status (plist-get info :status))
          (draft (when (and status (string= (downcase (org-trim status)) "draft")) "true")))
-    ;; Return the alist of final data - include visibility as a string when provided
-    `((title . ,title)
-      (slug . ,slug)
-      (author . ,author)
-      (authorImage . ,author-image)
-      (publishDate . ,publish-date)
-      (excerpt . ,excerpt)
-      (image . ,image)
-      (imageAlt . ,image-alt)
-      ,@(when hero-credit `((heroCredit . ,hero-credit)))
-      ,@(when hero-caption `((heroCaption . ,hero-caption)))
-      ,@(when series `((series . ,series)))
-      ,@(when related-thread-yaml
-          `((relatedThread . (:raw-yaml . ,related-thread-yaml))))
-      ,@(when hide-hero-image `((hideHeroImage . ,hide-hero-image)))
-      ,@(when toc-depth `((tocDepth . ,toc-depth)))
-      ,@(when date-occurred `((dateOccurred . ,date-occurred)))
-      (tags . ,tags)
-      ,@(when place `((place . ,place)))
-      ,@(when people `((people . ,people)))
-      ,@(when emotions `((emotions . ,emotions)))
-      ,@(when media `((media . ,media)))
-      ,@(when places `((places . ,places)))
-      ,@(when themes-list `((themes . ,themes-list)))
-      ,@(when story-type `((storyType . ,story-type)))
-      (categories . ,categories)
-      ,@(when era `((era . ,era)))
-      ,@(when incomplete `((incomplete . ,incomplete)))
-      ,@(when org-roam-id `((orgRoamId . ,org-roam-id)))
-      ,@(when org-roam-aliases `((aliases . ,org-roam-aliases)))
-      ,@(when org-path `((orgPath . ,org-path)))
-      ,@(when connections-yaml
-          `((connections . (:raw-yaml . ,connections-yaml))))
-      ,@(when visibility `((visibility . ,visibility)))
-      ,@(when theme `((theme . ,theme)))
-      ,@(when draft `((draft . ,draft))))))
+    (if (eq frontmatter-mode 'studies)
+        (org-astro--get-study-front-matter-data tree info)
+      ;; Return the alist of final data - include visibility as a string when provided
+      `((title . ,title)
+        (slug . ,slug)
+        (author . ,author)
+        (authorImage . ,author-image)
+        (publishDate . ,publish-date)
+        (excerpt . ,excerpt)
+        (image . ,image)
+        (imageAlt . ,image-alt)
+        ,@(when hero-credit `((heroCredit . ,hero-credit)))
+        ,@(when hero-caption `((heroCaption . ,hero-caption)))
+        ,@(when series `((series . ,series)))
+        ,@(when related-thread-yaml
+            `((relatedThread . (:raw-yaml . ,related-thread-yaml))))
+        ,@(when hide-hero-image `((hideHeroImage . ,hide-hero-image)))
+        ,@(when toc-depth `((tocDepth . ,toc-depth)))
+        ,@(when date-occurred `((dateOccurred . ,date-occurred)))
+        (tags . ,tags)
+        ,@(when place `((place . ,place)))
+        ,@(when people `((people . ,people)))
+        ,@(when emotions `((emotions . ,emotions)))
+        ,@(when media `((media . ,media)))
+        ,@(when places `((places . ,places)))
+        ,@(when themes-list `((themes . ,themes-list)))
+        ,@(when story-type `((storyType . ,story-type)))
+        (categories . ,categories)
+        ,@(when era `((era . ,era)))
+        ,@(when incomplete `((incomplete . ,incomplete)))
+        ,@(when org-roam-id `((orgRoamId . ,org-roam-id)))
+        ,@(when org-roam-aliases `((aliases . ,org-roam-aliases)))
+        ,@(when org-path `((orgPath . ,org-path)))
+        ,@(when connections-yaml
+            `((connections . (:raw-yaml . ,connections-yaml))))
+        ,@(when visibility `((visibility . ,visibility)))
+        ,@(when theme `((theme . ,theme)))
+        ,@(when draft `((draft . ,draft)))))))
 
 (defun org-astro--validate-front-matter (data)
   "Validate and sanitize front-matter DATA alist.

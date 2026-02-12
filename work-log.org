@@ -1,3 +1,17 @@
+* 2026-02-12 - Studies frontmatter mode + socratic-studies destination
+
+** Summary
+Added a studies export mode so academic references can live in a dedicated content collection (one file per study).
+
+** Changes
+- Added =socratic-studies= destination mapping in =org-astro-known-posts-folders=
+- New frontmatter mode (=studies=) emits study fields: =id=, =title=, =authors=, =year=, =href=, =abstract=, =tags=
+- Optional fields supported: =doi=, =journal=, =studyType=, =sampleSize=, =method=, =keyFindings=, =limitations=, =evidence=, =pdf=
+
+** Files Modified
+- =ox-astro-config.el=
+- =ox-astro-helpers-core.el=
+
 * 2025-12-26 - GIF handling: copy to public folder, bypass Sharp optimization
 
 ** Summary
