@@ -157,6 +157,16 @@
 - *Gotcha:* Asset cleanup only runs when a stale MDX is detected via =orgPath=. Missing or altered frontmatter will prevent cleanup.
 - *Actionable insight:* Keep =orgPath= intact if you want slug-change cleanup (MDX + assets) to work.
 
+** Gotcha: Babel export progress messages are emitted before language execution
+- *Date:* 2026-02-12
+- *Trigger:* Exporting conversation transcripts with many =#+begin_src user= / =assistant= blocks spammed messages like =org-babel-exp process user at position ...=.
+- *Mechanism:* In Org's =ob-exp.el=, =org-babel-exp-src-block= calls =message= before execution dispatch, so defining =org-babel-execute:user= alone does not silence it.
+- *Fix:* Add an around advice on =org-babel-exp-src-block= that binds =noninteractive= to non-nil for selected languages during astro exports.
+- *Prevention:*
+  - If message noise comes from =org-babel-exp-src-block=, inspect that function before assuming executors control logging.
+  - Scope advice to astro export mode to avoid global behavior changes.
+  - Guard advice registration with =advice-member-p= to avoid duplicate advice on reload.
+
 * CSS Animation Patterns (astro-utils)
 
 ** Gotcha: animation: none on hover causes blipping when hovering off

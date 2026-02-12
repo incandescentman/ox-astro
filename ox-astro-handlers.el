@@ -52,10 +52,12 @@
 ;; Suppress "org-babel-exp process <lang>" messages for conversation blocks.
 ;; The message is hardcoded in `org-babel-exp-src-block' and only suppressed
 ;; when `noninteractive' is t. We advise the function to pretend we're in
-;; batch mode for these specific languages.
+;; batch mode for these specific languages during Astro exports only.
 
 (defvar org-astro--silent-babel-languages '("user" "assistant")
   "Languages for which to suppress babel export processing messages.")
+
+(defvar org-astro--export-in-progress)
 
 (defun org-astro--silence-babel-exp-message (orig-fun &optional element)
   "Advice to suppress babel-exp messages for conversation block languages.
@@ -63,11 +65,17 @@ Calls ORIG-FUN with ELEMENT, suppressing the progress message for
 languages listed in `org-astro--silent-babel-languages'."
   (let* ((info (org-babel-get-src-block-info nil element))
          (lang (nth 0 info))
+         (silence-p (and (boundp 'org-astro--export-in-progress)
+                         org-astro--export-in-progress
+                         (member lang org-astro--silent-babel-languages)))
          (noninteractive (or noninteractive
-                             (member lang org-astro--silent-babel-languages))))
+                             silence-p)))
     (funcall orig-fun element)))
 
-(advice-add 'org-babel-exp-src-block :around #'org-astro--silence-babel-exp-message)
+(unless (advice-member-p #'org-astro--silence-babel-exp-message
+                         'org-babel-exp-src-block)
+  (advice-add 'org-babel-exp-src-block :around
+              #'org-astro--silence-babel-exp-message))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Filter Functions

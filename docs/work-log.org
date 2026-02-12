@@ -1383,3 +1383,29 @@ reloading ox-astro during development.
 
 ** Verification
 - Not run in this session.
+
+* 2026-02-12 Silence babel export noise for conversation blocks
+
+** Summary
+Suppressed verbose babel progress messages for conversation transcript blocks
+during astro export (e.g., repeated =org-babel-exp process user at position ...=).
+
+** Changes
+- Added no-op babel executors:
+  - =org-babel-execute:user=
+  - =org-babel-execute:assistant=
+- Added around advice for =org-babel-exp-src-block=:
+  - Detects block language
+  - Dynamically binds =noninteractive= for selected languages
+  - Scoped to active astro export via =org-astro--export-in-progress=
+  - Guarded with =advice-member-p= to avoid duplicate advice on reload
+
+** Files Modified
+- =ox-astro-handlers.el=
+- =docs/codebase-wisdom.org=
+- =docs/work-log.org=
+
+** Verification
+- Batch behavior check with simulated interactive mode:
+  - Outside astro export: user/assistant/python still log progress
+  - Inside astro export: only python logs progress; user/assistant are silent
