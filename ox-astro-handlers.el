@@ -35,6 +35,41 @@
 (declare-function org-astro--youtube-embed "ox-astro-helpers")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Babel Language Handlers for Conversation Blocks
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Define minimal babel handlers for conversation block languages.
+;; These register user/assistant as known languages.
+
+(defun org-babel-execute:user (_body _params)
+  "No-op executor for user conversation blocks."
+  nil)
+
+(defun org-babel-execute:assistant (_body _params)
+  "No-op executor for assistant conversation blocks."
+  nil)
+
+;; Suppress "org-babel-exp process <lang>" messages for conversation blocks.
+;; The message is hardcoded in `org-babel-exp-src-block' and only suppressed
+;; when `noninteractive' is t. We advise the function to pretend we're in
+;; batch mode for these specific languages.
+
+(defvar org-astro--silent-babel-languages '("user" "assistant")
+  "Languages for which to suppress babel export processing messages.")
+
+(defun org-astro--silence-babel-exp-message (orig-fun &optional element)
+  "Advice to suppress babel-exp messages for conversation block languages.
+Calls ORIG-FUN with ELEMENT, suppressing the progress message for
+languages listed in `org-astro--silent-babel-languages'."
+  (let* ((info (org-babel-get-src-block-info nil element))
+         (lang (nth 0 info))
+         (noninteractive (or noninteractive
+                             (member lang org-astro--silent-babel-languages))))
+    (funcall orig-fun element)))
+
+(advice-add 'org-babel-exp-src-block :around #'org-astro--silence-babel-exp-message)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Filter Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
