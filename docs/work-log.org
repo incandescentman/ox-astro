@@ -1472,3 +1472,8 @@ Fixed an export crash when Org returned deferred vectors for src/example block
 - =emacs --batch -Q -L . -f batch-byte-compile ox-astro-helpers-core.el ox-astro-transcode.el=
 - =emacs --batch -Q -L . --eval "(progn (require 'ox-astro-transcode) (let* ((block '(src-block (:language \"user\" :parameters nil :value [org-element-deferred identity \"one---two\"])) ) (out (org-astro-src-block block nil nil))) (princ out)))"=
 - =emacs --batch -Q -L . --eval "(progn (require 'ox-astro-transcode) (let* ((block '(example-block (:switches \"fountain\" :value [org-element-deferred identity \"alpha\\n\"])) ) (out (org-astro-example-block block nil nil))) (princ out)))"=
+
+** Follow-up Documentation
+- Added a troubleshooting note to =docs/instructions.org= for
+  =wrong-type-argument stringp [org-element-deferred ...]= errors and the
+  expected fix path.

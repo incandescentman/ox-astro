@@ -140,6 +140,20 @@ Enable verbose debug logging for image processing:
 
 Debug output is written to the file specified by =org-astro-debug-log-file= (defaults to =ox-astro-debug.log= in the system temp directory).
 
+** Troubleshooting Deferred Org Values
+If export fails with an error like:
+- =wrong-type-argument stringp [org-element-deferred ...]=
+
+This means Org returned a deferred value wrapper where ox-astro expected a
+plain string (commonly in =src-block= or =example-block= content on newer Org
+versions).
+
+Checklist:
+- Ensure you are running a version that includes =org-astro--resolve-deferred-string=
+  and uses it in =org-astro-src-block= and =org-astro-example-block=.
+- Reload ox-astro modules after updating (see =ox-astro-reload= above).
+- Re-run export on the same file to confirm the deferred-value path is now handled.
+
 * Image Configuration
 
 ** Responsive Images (Default)
