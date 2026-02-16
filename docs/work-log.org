@@ -1420,3 +1420,28 @@ during astro export (e.g., repeated =org-babel-exp process user at position ...=
   - =/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/claude-encouraging-me-to-text-emily-original.mdx=
   - =/Users/jay/Library/CloudStorage/Dropbox/github/astro-monorepo/apps/jaydocs/src/content/blog/claude-encouraging-me-to-text-emily.mdx=
 - Note: The originally referenced non-=original= 13:15 source path was not present; validation used the existing =..._original.org= plus the 13:33 derived file.
+
+* 2026-02-13 Deferred headline raw-value export fix
+
+** Summary
+Fixed a parse-tree filter crash caused by Org deferred headline values during
+theme marker insertion.
+
+** Changes
+- Added =org-astro--headline-title-string= to resolve headline titles safely
+  when =:raw-value= is deferred (vector wrapper) or absent.
+- Updated =org-astro--ensure-inline-theme-markers= to use resolved headline
+  titles before string operations (=downcase= / =member=).
+- Hardened fuzzy-link heading resolution in =org-astro-link= to fall back from
+  deferred =:raw-value= to interpreted =:title=.
+- Documented the gotcha in =docs/codebase-wisdom.org=.
+
+** Files Modified
+- =ox-astro-handlers.el=
+- =ox-astro-transcode.el=
+- =docs/codebase-wisdom.org=
+- =docs/work-log.org=
+
+** Verification
+- =emacs --batch -Q -L . --eval "(progn (find-file \"ox-astro-handlers.el\") (check-parens) (kill-buffer) (find-file \"ox-astro-transcode.el\") (check-parens) (kill-buffer) (princ \"parens-ok\"))"=
+- =emacs --batch -Q -L . -f batch-byte-compile ox-astro-handlers.el ox-astro-transcode.el=

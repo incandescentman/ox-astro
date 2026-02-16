@@ -85,6 +85,32 @@ languages listed in `org-astro--silent-babel-languages'."
 (defvar org-astro--current-body-images-imports nil
   "Global storage for body image imports to persist across export phases.")
 
+(defun org-astro--headline-title-string (headline)
+  "Return plain string title for HEADLINE, resolving deferred Org values."
+  (let* ((raw (org-element-property :raw-value headline))
+         (resolved-raw
+          (cond
+           ((stringp raw) raw)
+           ;; Org may defer headline raw-value computation with a vector wrapper.
+           ((and (vectorp raw)
+                 (>= (length raw) 2)
+                 (eq (aref raw 0) 'org-element-deferred)
+                 (functionp (aref raw 1)))
+            (condition-case nil
+                (let* ((fn (aref raw 1))
+                       (args (cl-loop for i from 2 below (length raw)
+                                      collect (aref raw i)))
+                       (value (apply fn args)))
+                  (and (stringp value) value))
+              (error nil)))
+           (t nil)))
+         (title (or resolved-raw
+                    (ignore-errors
+                      (org-element-interpret-data
+                       (org-element-property :title headline))))))
+    (when (stringp title)
+      (string-trim title))))
+
 (defun org-astro--ordered-item-number (item struct)
   "Return 1-based index for ITEM counting only numeric siblings in STRUCT."
   (let ((pos (org-element-property :begin item))
@@ -329,12 +355,15 @@ marker placement in Org."
                                         :post-blank 1)))))
       (while children
         (let* ((node (car children))
-               (next (cadr children)))
+               (next (cadr children))
+               (node-title (and (eq (org-element-type node) 'headline)
+                                (org-astro--headline-title-string node)))
+               (node-theme (and node-title (downcase node-title))))
           (if (and (eq (org-element-type node) 'headline)
                    (= 1 (org-element-property :level node))
-                   (member (downcase (org-element-property :raw-value node))
-                           '("claude" "chatgpt")))
-              (let* ((theme (downcase (org-element-property :raw-value node)))
+                   node-theme
+                   (member node-theme '("claude" "chatgpt")))
+              (let* ((theme node-theme)
                      (prev (funcall last-nonblank result)))
                 ;; Ensure correct theme keyword immediately before headline.
                 (cond

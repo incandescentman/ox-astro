@@ -167,6 +167,16 @@
   - Scope advice to astro export mode to avoid global behavior changes.
   - Guard advice registration with =advice-member-p= to avoid duplicate advice on reload.
 
+** Gotcha: Headline raw-value can be deferred (non-string) in newer Org trees
+- *Date:* 2026-02-13
+- *Trigger:* Parse-tree filter errored with =wrong-type-argument char-or-string-p [org-element-deferred ...]= when calling =downcase= on headline =:raw-value=.
+- *Mechanism:* Some Org parses return deferred wrappers for =:raw-value= (vector form) instead of immediate strings.
+- *Fix:* Resolve headline titles via a safe helper that handles deferred vectors and falls back to interpreting =:title=.
+- *Prevention:*
+  - Do not assume =org-element-property :raw-value= is always a string.
+  - Guard string operations (e.g. =downcase=, =string-trim=) with string checks or deferred-resolution logic.
+  - Prefer a shared helper for headline title extraction in parse-tree filters/transcoders.
+
 * CSS Animation Patterns (astro-utils)
 
 ** Gotcha: animation: none on hover causes blipping when hovering off

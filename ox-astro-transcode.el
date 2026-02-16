@@ -173,7 +173,14 @@
                          (and (plist-get info :parse-tree)
                               (org-export-resolve-fuzzy-link link info))
                        (error nil)))
-             (resolved-title (and target (org-element-property :raw-value target))))
+             (resolved-title
+              (and target
+                   (let ((raw (org-element-property :raw-value target)))
+                     (cond
+                      ((stringp raw) raw)
+                      (t (ignore-errors
+                           (org-element-interpret-data
+                            (org-element-property :title target)))))))))
         (if target
             ;; Local headline found → anchor link
             ;; Use resolved-title for the anchor (matches what Astro generates for headings)
