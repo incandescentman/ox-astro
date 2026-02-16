@@ -119,6 +119,13 @@ modules, reloads from the repo, and verifies core helpers are present:
     (message "ox-astro reloaded successfully")))
 #+end_src
 
+If Emacs logs this during export/load:
+- =Source file '.../ox-astro-*.el' newer than byte-compiled file; using older file=
+
+then your runtime may still be using stale bytecode. In that case:
+- Re-run =ox-astro-reload=
+- If behavior still does not change, remove stale =.elc= files in the repo and reload again
+
 ** Clipboard Copying (macOS)
 By default, clipboard copying is disabled. To enable copying of source/output/debug paths to macOS clipboard after export:
 
@@ -153,6 +160,29 @@ Checklist:
   and uses it in =org-astro-src-block= and =org-astro-example-block=.
 - Reload ox-astro modules after updating (see =ox-astro-reload= above).
 - Re-run export on the same file to confirm the deferred-value path is now handled.
+
+** Troubleshooting Empty Conversation Blocks
+If exported MDX shows empty conversation fences like:
+- =```user=
+- blank line
+- =```=
+
+or conversation fences disappear entirely, but the Org source has text in
+=#+begin_src user= / =assistant= / =prompt= blocks:
+
+Checklist:
+- Confirm source blocks in Org are non-empty.
+- Check Babel language defaults at runtime:
+  - =org-babel-default-header-args:user=
+  - =org-babel-default-header-args:assistant=
+- If any conversation language resolves to =:exports results=, block content can be dropped because no-op executors return nil results.
+- Ensure exporter path forces =:exports code= for conversation-style languages during export.
+- Reload exporter modules and re-export after changes.
+
+Quick verification:
+- Count user fences and empty user fences in output; they should match total>0 and empty=0 for normal transcripts.
+- Run the regression test:
+  - =emacs --batch -Q -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch 'org-astro-conversation-blocks-survive-hostile-babel-defaults)"=
 
 * Image Configuration
 

@@ -129,6 +129,61 @@ functions filtered out."
                                       removed-parsing)))
      ,@body))
 
+(defmacro org-astro--with-conversation-babel-code-exports (&rest body)
+  "Execute BODY with conversation-style Babel languages forced to export code."
+  (declare (indent 0) (debug t))
+  `(let* ((had-user (boundp 'org-babel-default-header-args:user))
+          (old-user (and had-user org-babel-default-header-args:user))
+          (had-assistant (boundp 'org-babel-default-header-args:assistant))
+          (old-assistant (and had-assistant org-babel-default-header-args:assistant))
+          (had-prompt (boundp 'org-babel-default-header-args:prompt))
+          (old-prompt (and had-prompt org-babel-default-header-args:prompt))
+          (had-quote (boundp 'org-babel-default-header-args:quote))
+          (old-quote (and had-quote org-babel-default-header-args:quote))
+          (had-poetry (boundp 'org-babel-default-header-args:poetry))
+          (old-poetry (and had-poetry org-babel-default-header-args:poetry))
+          (had-verse (boundp 'org-babel-default-header-args:verse))
+          (old-verse (and had-verse org-babel-default-header-args:verse))
+          (had-pullquote (boundp 'org-babel-default-header-args:pullquote))
+          (old-pullquote (and had-pullquote org-babel-default-header-args:pullquote))
+          (had-coding-agent (boundp 'org-babel-default-header-args:coding-agent))
+          (old-coding-agent (and had-coding-agent org-babel-default-header-args:coding-agent)))
+     (unwind-protect
+         (progn
+           (setq org-babel-default-header-args:user '((:exports . "code")))
+           (setq org-babel-default-header-args:assistant '((:exports . "code")))
+           (setq org-babel-default-header-args:prompt '((:exports . "code")))
+           (setq org-babel-default-header-args:quote '((:exports . "code")))
+           (setq org-babel-default-header-args:poetry '((:exports . "code")))
+           (setq org-babel-default-header-args:verse '((:exports . "code")))
+           (setq org-babel-default-header-args:pullquote '((:exports . "code")))
+           (setq org-babel-default-header-args:coding-agent '((:exports . "code")))
+           ,@body)
+       (if had-user
+           (setq org-babel-default-header-args:user old-user)
+         (makunbound 'org-babel-default-header-args:user))
+       (if had-assistant
+           (setq org-babel-default-header-args:assistant old-assistant)
+         (makunbound 'org-babel-default-header-args:assistant))
+       (if had-prompt
+           (setq org-babel-default-header-args:prompt old-prompt)
+         (makunbound 'org-babel-default-header-args:prompt))
+       (if had-quote
+           (setq org-babel-default-header-args:quote old-quote)
+         (makunbound 'org-babel-default-header-args:quote))
+       (if had-poetry
+           (setq org-babel-default-header-args:poetry old-poetry)
+         (makunbound 'org-babel-default-header-args:poetry))
+       (if had-verse
+           (setq org-babel-default-header-args:verse old-verse)
+         (makunbound 'org-babel-default-header-args:verse))
+       (if had-pullquote
+           (setq org-babel-default-header-args:pullquote old-pullquote)
+         (makunbound 'org-babel-default-header-args:pullquote))
+       (if had-coding-agent
+           (setq org-babel-default-header-args:coding-agent old-coding-agent)
+         (makunbound 'org-babel-default-header-args:coding-agent)))))
+
 
 ;;;###autoload
 (defun org-astro-export-as-mdx (&optional async subtreep visible-only body-only)
@@ -140,8 +195,9 @@ functions filtered out."
         (let ((org-astro--export-in-progress t)
               ;; Default: no auto-TOC unless explicitly requested in the Org file
               (org-export-with-toc nil))
-          (org-export-to-buffer 'astro "*Astro MDX Export*"
-            async subtreep visible-only body-only)))))
+          (org-astro--with-conversation-babel-code-exports
+            (org-export-to-buffer 'astro "*Astro MDX Export*"
+              async subtreep visible-only body-only))))))
 
 ;;;###autoload
 (defun org-astro-export-to-mdx (&optional async subtreep visible-only body-only)
@@ -532,17 +588,19 @@ generated and added to the Org source file."
                               (while (re-search-forward "\\[\\[id:" nil t)
                                 (setq id-link-count (1+ id-link-count)))
                               (message "[DEBUG-BUFFER] Found %d [[id: patterns in buffer before export" id-link-count))))
-                        (save-excursion
-                          (when narrow-start (goto-char narrow-start))
-                          (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only))
+                        (org-astro--with-conversation-babel-code-exports
+                          (save-excursion
+                            (when narrow-start (goto-char narrow-start))
+                            (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only)))
                         ;; Clear import state for second pass
                         (setq org-astro--current-body-images-imports nil)
                         ;; Second export pass to ensure complete image processing
                         (when org-astro-debug-console
                           (message "Running second export pass to ensure complete image processing..."))
-                        (save-excursion
-                          (when narrow-start (goto-char narrow-start))
-                          (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only))
+                        (org-astro--with-conversation-babel-code-exports
+                          (save-excursion
+                            (when narrow-start (goto-char narrow-start))
+                            (org-export-to-file 'astro outfile async effective-subtreep visible-only body-only)))
                         ;; Clean up stale MDX files from slug changes
                         (let ((source-file (buffer-file-name)))
                           (when source-file

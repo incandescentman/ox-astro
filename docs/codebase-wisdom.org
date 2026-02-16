@@ -167,6 +167,19 @@
   - Scope advice to astro export mode to avoid global behavior changes.
   - Guard advice registration with =advice-member-p= to avoid duplicate advice on reload.
 
+** Gotcha: Conversation block content can disappear when Babel exports results
+- *Date:* 2026-02-16
+- *Trigger:* MDX contains empty conversation fences (e.g., =```user ... ```= with no body) or drops conversation fences entirely, even though source Org blocks contain text.
+- *Mechanism:* If language-specific Babel defaults resolve to =:exports results= for conversation block languages (user/assistant/prompt/etc.), Org executes the block and exports only results. With no-op executors, results are nil, so source content is not exported.
+- *Compounding factor:* Stale bytecode can make local fixes appear inactive (e.g., message: =Source file ... newer than byte-compiled file; using older file=), so expected header-arg defaults may not actually be loaded.
+- *Fix:* Enforce =:exports code= inside the exporter during the actual export pass (buffer + file exports, both file passes), then restore prior values after export.
+- *Prevention:*
+  - Do not rely on ambient/global Babel defaults for conversation transcript correctness.
+  - Keep this behavior centralized in =ox-astro.el= export entry points (not ad-hoc global =setq= in handlers).
+  - Keep the export path deterministic by setting conversation-language export behavior inside exporter code.
+  - If behavior is inconsistent, check runtime source with =symbol-file= and verify whether stale =.elc= is being used.
+  - Keep a regression test that simulates hostile defaults (=:exports results=) and asserts non-empty exported conversation fences.
+
 ** Gotcha: Headline raw-value can be deferred (non-string) in newer Org trees
 - *Date:* 2026-02-13
 - *Trigger:* Parse-tree filter errored with =wrong-type-argument char-or-string-p [org-element-deferred ...]= when calling =downcase= on headline =:raw-value=.

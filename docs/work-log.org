@@ -1477,3 +1477,73 @@ Fixed an export crash when Org returned deferred vectors for src/example block
 - Added a troubleshooting note to =docs/instructions.org= for
   =wrong-type-argument stringp [org-element-deferred ...]= errors and the
   expected fix path.
+
+* 2026-02-16 Conversation block export determinism fix
+
+** Summary
+Fixed intermittent empty conversation fences in exported MDX when Babel
+language defaults resolved to =:exports results= for transcript block
+languages (=user=, =assistant=, etc.).
+
+** Changes
+- Added exporter-scoped macro =org-astro--with-conversation-babel-code-exports=
+  to force =:exports code= for conversation-style languages during export, with
+  restore-on-exit behavior via =unwind-protect=.
+- Applied the macro to:
+  - =org-astro-export-as-mdx=
+  - both =org-export-to-file= passes in =org-astro-export-to-mdx=
+- Documented the gotcha and troubleshooting flow in:
+  - =docs/codebase-wisdom.org=
+  - =docs/instructions.org=
+
+** Files Modified
+- =ox-astro.el=
+- =docs/codebase-wisdom.org=
+- =docs/instructions.org=
+- =docs/work-log.org=
+
+** Verification
+- Simulated hostile defaults:
+  - Set =org-babel-default-header-args:user= and =...:assistant= to
+    =((:exports . "results"))=
+- Exported the Pasternak transcript and verified output counts:
+  - =user_total=25=
+  - =user_empty=0=
+  - =verse_total=1=
+  - =verse_empty=0=
+- Re-exported real target file:
+  - =/Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/what-we-carry-with-us.mdx=
+  - Verified no empty conversation fences.
+
+* 2026-02-16 Conversation export regression test and cleanup
+
+** Summary
+Followed through on hardening after the determinism fix by adding a dedicated
+regression test, removing redundant global Babel defaults from handlers, and
+cleaning stale local bytecode artifacts.
+
+** Changes
+- Added ERT regression test:
+  - =org-astro-conversation-blocks-survive-hostile-babel-defaults=
+  - Simulates hostile defaults (=:exports results=) for conversation languages
+    and asserts exported fences remain non-empty.
+- Removed redundant global Babel default =setq= lines from:
+  - =ox-astro-handlers.el=
+- Removed stale local bytecode files from repo working tree:
+  - =ox-astro-handlers.elc=
+  - =ox-astro-helpers-core.elc=
+  - =ox-astro-transcode.elc=
+- Updated docs:
+  - Added wisdom/prevention note to =docs/codebase-wisdom.org=
+  - Added regression test command to =docs/instructions.org=
+
+** Files Modified
+- =test/conversation-export-test.el=
+- =ox-astro-handlers.el=
+- =docs/codebase-wisdom.org=
+- =docs/instructions.org=
+- =docs/work-log.org=
+
+** Verification
+- =emacs --batch -Q -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch 'org-astro-conversation-blocks-survive-hostile-babel-defaults)"=
+- Confirmed test passes with non-empty =user=, =assistant=, and =verse= fences.
