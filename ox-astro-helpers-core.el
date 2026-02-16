@@ -1122,6 +1122,26 @@ these special blocks, which would break the block structure."
        (setq s (replace-regexp-in-string "[*_~/=]" "" s))
        (string-trim (replace-regexp-in-string "\n+" " " s))))))
 
+(defun org-astro--resolve-deferred-string (value)
+  "Return VALUE as a string, resolving Org deferred wrappers when needed.
+Org can represent deferred values as vectors like
+`[org-element-deferred FN ARG1 ARG2 ...]'."
+  (cond
+   ((stringp value) value)
+   ((and (vectorp value)
+         (>= (length value) 2)
+         (eq (aref value 0) 'org-element-deferred)
+         (functionp (aref value 1)))
+    (condition-case nil
+        (let* ((fn (aref value 1))
+               (args (cl-loop for i from 2 below (length value)
+                              collect (aref value i)))
+               (resolved (apply fn args)))
+          (when (stringp resolved)
+            resolved))
+      (error nil)))
+   (t nil)))
+
 (defun org-astro--date-string-p (s)
   "Return non-nil if string S looks like a numeric date (digits plus separators)."
   (when (and s (stringp s))

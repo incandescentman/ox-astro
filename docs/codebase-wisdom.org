@@ -177,6 +177,16 @@
   - Guard string operations (e.g. =downcase=, =string-trim=) with string checks or deferred-resolution logic.
   - Prefer a shared helper for headline title extraction in parse-tree filters/transcoders.
 
+** Gotcha: Src/example block =:value= can be deferred (non-string)
+- *Date:* 2026-02-16
+- *Trigger:* Export crashed in =org-astro-src-block= with =wrong-type-argument stringp [org-element-deferred ...]= when applying regex transforms to block content.
+- *Mechanism:* On newer Org builds, =org-element-property :value= for block elements may be a deferred vector wrapper instead of an immediate string.
+- *Fix:* Added =org-astro--resolve-deferred-string= and routed =org-astro-src-block= and =org-astro-example-block= through it before string operations.
+- *Prevention:*
+  - Do not assume block =:value= is always a string.
+  - Resolve deferred wrappers before calling =string-match-p=, =replace-regexp-in-string=, =org-trim=, etc.
+  - Reuse the shared helper for any future property reads that are fed into string-only APIs.
+
 * CSS Animation Patterns (astro-utils)
 
 ** Gotcha: animation: none on hover causes blipping when hovering off

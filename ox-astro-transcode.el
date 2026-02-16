@@ -263,7 +263,9 @@ For coding-agent blocks, supports :collapsible header arg:
              (folded-meta (when (and (string= lang "coding-agent") has-collapsible)
                             (if explicit-open " collapsible open" " collapsible")))
              ;; Use :value to get raw content, preserving internal newlines.
-             (code (org-element-property :value src-block)))
+             (code (or (org-astro--resolve-deferred-string
+                        (org-element-property :value src-block))
+                       "")))
         ;; Handle pullquote blocks specially - wrap in div with blank lines
         (if (string-equal lang "pullquote")
             (let ((processed-code code))
@@ -349,7 +351,9 @@ For coding-agent blocks, supports :collapsible header arg:
              (explicit-open (or (eq collapsible-value 'open) legacy-open (string= lang "coding-agent")))
              (folded-meta (when (and (string= lang "coding-agent") has-collapsible)
                             (if explicit-open " collapsible open" " collapsible")))
-             (code (org-element-property :value src-block)))
+             (code (or (org-astro--resolve-deferred-string
+                        (org-element-property :value src-block))
+                       "")))
         (format "```%s%s\n%s\n```" (or lang "") (or folded-meta "") (org-trim code)))))
 
 (defun org-astro-example-block (example-block _contents _info)
@@ -365,7 +369,9 @@ Otherwise, output as a plain fenced code block."
          (lang (car tokens))
          (meta (when (cdr tokens)
                  (concat " " (string-join (cdr tokens) " "))))
-         (code (org-element-property :value example-block)))
+         (code (or (org-astro--resolve-deferred-string
+                    (org-element-property :value example-block))
+                   "")))
     (format "```%s%s\n%s\n```" (or lang "") (or meta "") (org-trim code))))
 
 (defun org-astro-heading (heading contents info)

@@ -1445,3 +1445,30 @@ theme marker insertion.
 ** Verification
 - =emacs --batch -Q -L . --eval "(progn (find-file \"ox-astro-handlers.el\") (check-parens) (kill-buffer) (find-file \"ox-astro-transcode.el\") (check-parens) (kill-buffer) (princ \"parens-ok\"))"=
 - =emacs --batch -Q -L . -f batch-byte-compile ox-astro-handlers.el ox-astro-transcode.el=
+
+* 2026-02-16 Deferred src/example block value export fix
+
+** Summary
+Fixed an export crash when Org returned deferred vectors for src/example block
+=:value= properties during MDX transcoding.
+
+** Changes
+- Added =org-astro--resolve-deferred-string= helper to resolve deferred Org
+  vector wrappers into strings safely.
+- Updated =org-astro-src-block= to resolve block content before regex/string
+  transforms.
+- Updated =org-astro-example-block= to resolve block content before trimming
+  and fence rendering.
+- Documented the gotcha in =docs/codebase-wisdom.org=.
+
+** Files Modified
+- =ox-astro-helpers-core.el=
+- =ox-astro-transcode.el=
+- =docs/codebase-wisdom.org=
+- =docs/work-log.org=
+
+** Verification
+- =emacs --batch -Q -L . --eval "(progn (find-file \"ox-astro-helpers-core.el\") (check-parens) (kill-buffer) (find-file \"ox-astro-transcode.el\") (check-parens) (kill-buffer) (princ \"parens-ok\"))"=
+- =emacs --batch -Q -L . -f batch-byte-compile ox-astro-helpers-core.el ox-astro-transcode.el=
+- =emacs --batch -Q -L . --eval "(progn (require 'ox-astro-transcode) (let* ((block '(src-block (:language \"user\" :parameters nil :value [org-element-deferred identity \"one---two\"])) ) (out (org-astro-src-block block nil nil))) (princ out)))"=
+- =emacs --batch -Q -L . --eval "(progn (require 'ox-astro-transcode) (let* ((block '(example-block (:switches \"fountain\" :value [org-element-deferred identity \"alpha\\n\"])) ) (out (org-astro-example-block block nil nil))) (princ out)))"=
