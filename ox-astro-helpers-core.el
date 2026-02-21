@@ -279,6 +279,29 @@ Escapes &, <, >, and \" to their entity equivalents."
                  (org-astro--same-image-path-p candidate hero-path))
                candidates))))
 
+(defun org-astro--hero-inline-suppression-enabled-p (info &optional record)
+  "Return non-nil when hero inline suppression should run for INFO/RECORD.
+Suppression only applies when the hero image was explicitly configured and is
+actually shown as a hero. Fallback hero selection from the first inline image
+must stay visible in the body."
+  (let* ((explicit-hero
+          (or (plist-get info :astro-hero-explicit)
+              (let* ((raw (or (plist-get info :hero-image)
+                              (plist-get info :astro-image)
+                              (plist-get info :cover-image)))
+                     (text (and raw (string-trim (format "%s" raw)))))
+                (and text (not (string-empty-p text))))))
+         (repeat-inline (and record (plist-get record :repeat)))
+         (hide-hero-raw (or (plist-get info :hide-hero-image)
+                            (plist-get info :astro-hide-hero-image)))
+         (hide-hero (cond
+                     ((stringp hide-hero-raw)
+                      (org-astro--string-truthy-p hide-hero-raw))
+                     (t hide-hero-raw))))
+    (and explicit-hero
+         (not hide-hero)
+         (not repeat-inline))))
+
 (defun org-astro--format-image-component (var-name alt-text &optional credit caption width height)
   "Return a standardized Image component string for VAR-NAME and ALT-TEXT.
 Includes layout prop based on `org-astro-image-default-layout' config.
@@ -322,12 +345,12 @@ WIDTH/HEIGHT (numbers) populate PhotoSwipe data attributes when available."
       image-tag)))
 
 (defun org-astro--image-component-for-record (record info &optional alt-override img-path)
-  "Render RECORD as an Image component, skipping the hero's first inline usage.
+  "Render RECORD as an Image component, conditionally suppressing hero duplicates.
 
 INFO carries export state. When the record corresponds to the hero image and the
-hero has not yet been suppressed in the body, return an empty string and mark it
-as suppressed so later explicit uses still render. All other records return the
-standard Image component string.
+hero is explicitly configured and visible, the first inline usage is suppressed
+to avoid duplication. Fallback hero selection keeps inline content visible.
+All other records return the standard Image component string.
 IMG-PATH is used to look up credit/caption metadata if provided."
   (when record
     (let* ((entry (plist-get record :entry))
@@ -336,9 +359,10 @@ IMG-PATH is used to look up credit/caption metadata if provided."
            (hero (plist-get info :astro-hero-image))
            (record-hero (plist-get record :hero))
            (already-suppressed (plist-get info :astro-hero-body-suppressed))
+           (suppress-hero-inline (org-astro--hero-inline-suppression-enabled-p info record))
            (is-hero (or record-hero
                         (and hero entry (org-astro--hero-image-entry-p entry hero)))))
-      (if (and is-hero (not already-suppressed))
+      (if (and suppress-hero-inline is-hero (not already-suppressed))
           (progn
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
               (org-astro--dbg-log info "Skipping inline hero image for %s" var-name))
@@ -1508,15 +1532,19 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                            (let ((first-img (car body-images)))
                              (or (plist-get first-img :public-path)
                                  (plist-get first-img :astro-path)))))
+         (explicit-hero-used (and image image-raw))
          (final-image (or image fallback-image))
          (image-alt (or hero-image-alt
                         (plist-get info :astro-image-alt)
                         (plist-get info :cover-image-alt)
                         (and final-image (org-astro--filename-to-alt-text final-image)))))
     (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
-      (org-astro--debug-log-direct "Hero image selection: explicit=%s fallback=%s final=%s" image fallback-image final-image))
+      (org-astro--debug-log-direct "Hero image selection: explicit=%s fallback=%s final=%s explicit-used=%s"
+                                   image fallback-image final-image explicit-hero-used))
     (setf (plist-get info :astro-hero-image)
           (org-astro--normalize-image-path final-image))
+    (setf (plist-get info :astro-hero-explicit)
+          (and explicit-hero-used t))
     (setf (plist-get info :astro-hero-body-suppressed) nil)
     (list final-image image-alt)))
 

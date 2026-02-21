@@ -1,6 +1,60 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-02-21 Jaydocs hero AVIF rendering fix (downstream app resolver)
+
+** Summary
+Fixed missing hero/cover rendering for AVIF images in Jaydocs when frontmatter
+=image:= pointed to a valid =~/assets/images/...avif= path.
+
+** Root Cause
+ox-astro correctly exported AVIF paths, but Jaydocs' image resolver omitted AVIF
+from =import.meta.glob(...)= in =apps/jaydocs/src/utils/images.ts=. As a result,
+=findImage()= returned =null= for hero images while inline MDX images still
+rendered.
+
+** Fix (astro-monorepo)
+- Updated =apps/jaydocs/src/utils/images.ts= glob to include =avif= and =AVIF=.
+
+** Verification
+- Confirmed `/desks` renders AVIF in both places:
+  - hero cover block
+  - inline body image
+- Confirmed OG/Twitter image tags now resolve to the AVIF source path.
+
+* 2026-02-21 Preserve fallback hero image inline when hero is not explicit
+
+** Summary
+Fixed missing first-inline-image output when the image was auto-selected as the
+frontmatter hero via fallback logic (first body image), but no explicit hero
+was configured.
+
+** Root Cause
+Inline hero suppression ran for any hero match, including fallback hero
+selection. In destinations that do not render a hero component, this caused the
+first image to disappear from both hero and body.
+
+** Fix
+- Added =org-astro--hero-inline-suppression-enabled-p= to centralize suppression
+  gating.
+- Track whether hero was explicitly configured via
+  =org-astro--get-cover-image= (= :astro-hero-explicit =).
+- Apply suppression only when hero is explicit and visible (not hidden), while
+  preserving existing =:repeat t= support.
+- Updated body-filter fallback cleanup to use the same suppression gate.
+
+** Files Modified
+- =ox-astro-helpers-core.el=
+- =ox-astro-handlers.el=
+- =test/image-pipeline-test.el=
+- =docs/instructions.org=
+- =docs/codebase-wisdom.org=
+
+** Verification
+- Added regression tests:
+  - =ox-astro-fallback-hero-keeps-inline-image-test=
+  - =ox-astro-explicit-hero-suppresses-matching-inline-image-test=
+
 * 2026-02-21 Fix symlinked path lookup for image render records
 
 ** Summary

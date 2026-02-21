@@ -109,6 +109,20 @@
   - macOS CloudStorage symlinks are a common source of path mismatches
 - *Actionable insight:* Path comparison bugs often manifest as "it works for some images but not others" - check if affected paths go through different symlink routes
 
+** Gotcha: Fallback hero suppression can hide the first body image
+- *Date:* 2026-02-21
+- *Trigger:* First image disappeared from article body even though image import/frontmatter looked correct.
+- *Mechanism:* Hero suppression treated fallback hero selection (first inline image) the same as explicit hero images, so the inline image was removed even on sites that do not render a hero.
+- *Fix:* Added =:astro-hero-explicit= tracking in hero selection and gated suppression logic on explicit hero usage (plus existing =:repeat t= and hide-hero checks).
+- *Actionable insight:* Inline suppression should be driven by rendering intent, not just “this image was chosen for frontmatter.”
+
+** Gotcha: Downstream app image resolver can silently drop AVIF heroes
+- *Date:* 2026-02-21
+- *Trigger:* Frontmatter image path was AVIF and valid, but hero/cover section rendered empty while inline image still appeared.
+- *Mechanism:* App-level =findImage()= resolver used =import.meta.glob= without AVIF extensions, so frontmatter lookups returned =null=.
+- *Fix:* Add =avif= (and uppercase =AVIF=) to the resolver glob in the consuming app (Jaydocs: =apps/jaydocs/src/utils/images.ts=).
+- *Actionable insight:* Exporter format support and app resolver format support must stay in sync; verify both pipelines when adding formats.
+
 ** Gotcha: Export block indentation was converted to blockquotes
 - *Date:* 2025-10-05
 - *Trigger:* MDX export blocks with indented HTML (like `<button>`) were being converted to blockquote syntax (`> `)

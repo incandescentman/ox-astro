@@ -29,6 +29,7 @@
 (declare-function org-astro--slugify "ox-astro-helpers")
 (declare-function org-astro--get-title "ox-astro-helpers")
 (declare-function org-astro--hero-image-entry-p "ox-astro-helpers")
+(declare-function org-astro--hero-inline-suppression-enabled-p "ox-astro-helpers")
 (declare-function org-astro--normalize-image-path "ox-astro-helpers")
 (declare-function org-astro--resolve-destination-config "ox-astro-helpers")
 (declare-function org-astro--youtube-id-from-url "ox-astro-helpers")
@@ -543,8 +544,9 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                      (setq found record)))
                  map))
               found)))
-         ;; Remove hero image from body UNLESS it has :repeat t attribute
-         (_ (when (and hero-record (not (plist-get hero-record :repeat)))
+         ;; Remove hero image from body only when explicit hero suppression is enabled.
+         (_ (when (and hero-record
+                       (org-astro--hero-inline-suppression-enabled-p info hero-record))
               (let* ((hero-var (plist-get hero-record :var-name))
                      (hero-pattern (and hero-var
                                         (format "<Image\\(?:.\\|\\n\\)*?src={%s}\\(?:.\\|\\n\\)*?\\(?:/>\\|>\\(?:.\\|\\n\\)*?</Image>\\)"

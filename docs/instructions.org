@@ -258,9 +258,11 @@ Generated With: Model
 *** Notes
 - IMAGE_* keywords must immediately follow the body image they describe (blank lines ok); HERO_* keywords should appear at document level
 - Underscores and hyphens are interchangeable (e.g., ~IMAGE_CREDIT~ = ~IMAGE-CREDIT~)
-- The hero image is automatically suppressed from the body; its credit/caption only appear in the header area
+- Explicit hero images (=HERO_IMAGE= / =COVER_IMAGE= / =ASTRO_IMAGE=) are suppressed from the body by default; fallback hero selection from the first inline image remains visible inline
 - If =HERO_IMAGE= is not set, ox-astro falls back to =COVER_IMAGE= / =ASTRO_IMAGE= and then the first inline image
+- =HIDE_HERO_IMAGE= hides the page-level hero component; it does not force inline image suppression
 - Public web paths (e.g., =/og/...= or =https://...=) are preserved as-is for hero/cover images
+- If your Astro app resolves frontmatter images through a helper (e.g., =findImage()= + =import.meta.glob=), include all exported formats there (including =avif=) or hero images may render blank.
 
 * Verifying Broken Links
 - Open the generated MDX file and click through the links to confirm navigation
