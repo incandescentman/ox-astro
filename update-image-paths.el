@@ -20,7 +20,7 @@
   (let (images)
     (save-excursion
       (goto-char (point-min))
-      (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+      (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\|avif\\)\\s-*$" nil t)
         (let ((path (string-trim (match-string 0))))
           (when (and path (not (member path images)))
             (push path images)))))

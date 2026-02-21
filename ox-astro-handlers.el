@@ -252,7 +252,7 @@ paragraphs). Keys are normalized with source context to avoid collisions."
                           (lambda (link)
                             (let ((path (org-element-property :path link)))
                               (when (and path
-                                         (string-match-p "\\.\\(png\\|jpe?g\\|webp\\|gif\\)$" path))
+                                         (string-match-p "\\.\\(png\\|jpe?g\\|webp\\|avif\\|gif\\)$" path))
                                 link)))
                           nil 'first-match)))
           (when img-link
@@ -696,7 +696,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     ;; Fix double ! from org inline image syntax (![[...]]) + markdown image (![...])
     (setq s (replace-regexp-in-string "!!\\[" "![" s t t))
     ;; Convert markdown image syntax with absolute paths to Image components
-    (let ((pattern "!\\[\\([^]]*\\)\\](\\([~/][^)]+\\.\\(?:png\\|jpe?g\\|webp\\|gif\\)\\))"))
+    (let ((pattern "!\\[\\([^]]*\\)\\](\\([~/][^)]+\\.\\(?:png\\|jpe?g\\|webp\\|avif\\|gif\\)\\))"))
       (setq s (replace-regexp-in-string
                pattern
                (lambda (match)

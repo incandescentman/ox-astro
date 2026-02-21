@@ -101,7 +101,7 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
           (lambda (link)
             (when (and (string-equal (org-element-property :type link) "file")
                        (let ((path (org-element-property :path link)))
-                         (and path (string-match-p "\\.\\(png\\|jpe?g\\|webp\\)$" path))))
+                         (and path (string-match-p "\\.\\(png\\|jpe?g\\|webp\\|avif\\)$" path))))
               (let* ((path (org-element-property :path link))
                      ;; Try to find the import data by matching the sanitized filename
                      (filename (file-name-nondirectory path))
@@ -128,7 +128,7 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
                 (narrow-to-region beg end)
                 (goto-char (point-min))
                 ;; Look for raw image paths (absolute paths ending in image extensions)
-                (while (re-search-forward "^\\s-*/[^[:space:]]+\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+                (while (re-search-forward "^\\s-*/[^[:space:]]+\\.\\(png\\|jpe?g\\|webp\\|avif\\)\\s-*$" nil t)
                   (let* ((raw-path (string-trim (match-string 0)))
                          ;; Try to find the import data by matching the sanitized filename
                          (filename (file-name-nondirectory raw-path))
@@ -181,7 +181,7 @@ This is more robust for narrowed subtrees than relying on `plain-text` parsing."
           (save-restriction
             (narrow-to-region beg end)
             (goto-char (point-min))
-            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\|avif\\)\\s-*$" nil t)
               (let ((path (string-trim (match-string 0))))
                 (when (file-exists-p path)
                   (push path images))))))))

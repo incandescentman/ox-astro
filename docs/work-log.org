@@ -1,6 +1,34 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-02-21 AVIF image support across export pipeline
+
+** Summary
+Added =.avif= detection across ox-astro image processing paths, including
+manifest collection, paragraph/plain-text image detection, gallery extraction,
+final markdown-image rewrites, and remote-download extension normalization.
+
+** Changes
+- Added AVIF extension matching to:
+  - =ox-astro-image-handlers.el=
+  - =ox-astro-transcode.el=
+  - =ox-astro-export-helpers.el=
+  - =ox-astro-table-handlers.el=
+  - =ox-astro-handlers.el=
+  - =update-image-paths.el=
+- Added AVIF byte-signature detection fallback in
+  =org-astro--detect-image-type-from-bytes= for =ftypavif/ftypavis= brands.
+- Added regression tests in =test/image-pipeline-test.el=:
+  - =ox-astro-avif-signature-detection-test=
+  - =ox-astro-collect-raw-image-paths-includes-avif-test=
+- Added a codebase wisdom note documenting extension matcher duplication and
+  the need to update all matcher sites together.
+
+** Verification
+- =emacs --batch -Q -L . --eval "(setq load-prefer-newer t)" -l ert -l test/image-pipeline-test.el --eval "(ert-run-tests-batch 'ox-astro-avif-signature-detection-test)"=
+- =emacs --batch -Q -L . --eval "(setq load-prefer-newer t)" -l ert -l test/image-pipeline-test.el --eval "(ert-run-tests-batch 'ox-astro-collect-raw-image-paths-includes-avif-test)"=
+- =emacs --batch -Q -L . --eval "(setq load-prefer-newer t)" -l ert -l test/image-pipeline-test.el --eval "(ert-run-tests-batch 'ox-astro-hero-image-keyword-test)"=
+
 * 2026-01-16 Related Thread keyword export (#+RELATED_THREAD)
 
 ** Summary

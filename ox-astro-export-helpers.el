@@ -25,7 +25,7 @@ can share a single discovery pass."
   (let (images)
     (save-excursion
       (goto-char (point-min))
-      (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+      (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\|avif\\)\\s-*$" nil t)
         (let ((path (string-trim (match-string 0))))
           (push path images))))
     images))
@@ -35,7 +35,7 @@ can share a single discovery pass."
 subscript elements."
   (let ((raw-content (org-element-interpret-data paragraph)))
     ;; Look for patterns like /Users/jay/Downloads/file_name.webp that may have been broken by subscripts
-    (when (string-match "/[^[:space:]<>]*\\.\\(webp\\|png\\|jpe?g\\)" raw-content)
+    (when (string-match "/[^[:space:]<>]*\\.\\(webp\\|png\\|jpe?g\\|avif\\)" raw-content)
       (let ((potential-path (match-string 0 raw-content)))
         ;; Clean up any HTML artifacts
         (setq potential-path (replace-regexp-in-string "<[^>]*>" "" potential-path))

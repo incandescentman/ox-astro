@@ -49,6 +49,23 @@
     (set-buffer-multibyte nil)
     (insert (string #x89 ?P ?N ?G ?\r ?\n #x1A ?\n))))
 
+(ert-deftest ox-astro-avif-signature-detection-test ()
+  "AVIF payloads should be recognized and normalized as AVIF."
+  (let* ((data (concat (string 0 0 0 0) "ftypavif")))
+    (should (eq (org-astro--detect-image-type-from-bytes data) 'avif))
+    (should (string= (org-astro--image-type->extension 'avif) "avif"))
+    (should (org-astro--extension-matches-image-type-p "/tmp/pic.avif" 'avif))
+    (should-not (org-astro--extension-matches-image-type-p "/tmp/pic.webp" 'avif))))
+
+(ert-deftest ox-astro-collect-raw-image-paths-includes-avif-test ()
+  "Raw image collection should include AVIF file paths."
+  (with-temp-buffer
+    (insert "/tmp/sample.avif\n")
+    (insert "/tmp/other.webp\n")
+    (let ((paths (org-astro--collect-raw-image-paths)))
+      (should (member "/tmp/sample.avif" paths))
+      (should (member "/tmp/other.webp" paths)))))
+
 (defun ox-astro-test--export-gallery ()
   "Export the gallery test org file and return the produced MDX string.
 The export runs against a temporary copy of the source file and writes

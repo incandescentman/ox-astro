@@ -90,6 +90,12 @@
 - *Mechanism:* =url-copy-file= saves whatever the server returns and can prompt for auth; no validation was performed.
 - *Actionable insight:* Use curl-first downloads and validate magic bytes/HTML before accepting a file; normalize extensions based on detected content.
 
+** Gotcha: Image extension support is duplicated across modules
+- *Date:* 2026-02-21
+- *Trigger:* Adding a new format (like =.avif=) in only one matcher path caused inconsistent behavior between pre-processing, transcoding, galleries, and final output rewrites.
+- *Mechanism:* Extension regexes are intentionally duplicated in multiple files (manifest collection, transcoders, table/gallery handling, and final output filter).
+- *Actionable insight:* When adding image formats, update all extension matchers together and add regression tests for both path matching and byte-signature normalization.
+
 ** Gotcha: Export block indentation was converted to blockquotes
 - *Date:* 2025-10-05
 - *Trigger:* MDX export blocks with indented HTML (like `<button>`) were being converted to blockquote syntax (`> `)

@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defconst org-astro--image-extension-regexp
-  "\\.\\(png\\|jpe?g\\|jpeg\\|gif\\|svg\\|webp\\)"
+  "\\.\\(png\\|jpe?g\\|jpeg\\|gif\\|svg\\|webp\\|avif\\)"
   "Regular expression that matches supported image file extensions.")
 
 (defconst org-astro--audio-extension-regexp
@@ -35,7 +35,7 @@
   "Regular expression that matches supported audio file extensions.")
 
 (defconst org-astro--media-extension-regexp
-  "\\.\\(png\\|jpe?g\\|jpeg\\|gif\\|svg\\|webp\\|mp3\\|wav\\|ogg\\|m4a\\|aac\\|flac\\)"
+  "\\.\\(png\\|jpe?g\\|jpeg\\|gif\\|svg\\|webp\\|avif\\|mp3\\|wav\\|ogg\\|m4a\\|aac\\|flac\\)"
   "Regular expression that matches all supported media file extensions (images + audio).")
 
 (defun org-astro--image-remote-p (path)
@@ -630,7 +630,7 @@ GIFs and other files that should bypass Astro's image optimization go here."
 ;; Preprocessing: wrap raw absolute image paths in org link brackets [[...]]
 (defun org-astro--wrap-raw-image-path-lines-in-region (beg end)
   "Within BEG..END, wrap raw absolute image path lines with Org link brackets.
-               Only wraps lines that are just an absolute image path (png/jpg/jpeg/webp),
+               Only wraps lines that are just an absolute image path (png/jpg/jpeg/webp/avif),
                and are not already an Org link. Returns number of lines changed."
   (let ((count 0))
     (save-excursion
@@ -646,7 +646,7 @@ GIFs and other files that should bypass Astro's image optimization go here."
              ((string-match "\\[\\[.*\\]\\]" line-content)
               (forward-line 1))
              ;; Process lines that are only raw image paths
-             ((string-match "^\\s-*\\(/[^[:space:]]*\\.\\(?:png\\|jpe?g\\|webp\\)\\)\\s-*$" line-content)
+             ((string-match "^\\s-*\\(/[^[:space:]]*\\.\\(?:png\\|jpe?g\\|webp\\|avif\\)\\)\\s-*$" line-content)
               (let ((path (match-string 1 line-content)))
                 (delete-region line-start line-end)
                 (insert (format "[[%s]]" path))
@@ -887,6 +887,9 @@ When USE-ALIAS is non-nil, use :alias paths; otherwise use :new."
        ((and (>= (length data) 12)
              (string= (substring data 0 4) "RIFF")
              (string= (substring data 8 12) "WEBP")) 'webp)
+       ((and (>= (length data) 12)
+             (or (string= (substring data 4 12) "ftypavif")
+                 (string= (substring data 4 12) "ftypavis"))) 'avif)
        ((let ((case-fold-search t))
           (string-match-p "<svg\\b" data)) 'svg)
        (t nil))))
@@ -899,17 +902,19 @@ When USE-ALIAS is non-nil, use :alias paths; otherwise use :new."
     ('png "png")
     ('gif "gif")
     ('webp "webp")
+    ('avif "avif")
     ('svg "svg")
     (_ nil)))
 
 (defun org-astro--extension-matches-image-type-p (path type)
   "Return non-nil when PATH's extension matches TYPE."
-  (let ((ext (downcase (file-name-extension path ""))))
+  (let ((ext (downcase (or (file-name-extension path) ""))))
     (pcase type
       ((or 'jpeg 'jpg) (member ext '("jpg" "jpeg")))
       ('png (string= ext "png"))
       ('gif (string= ext "gif"))
       ('webp (string= ext "webp"))
+      ('avif (string= ext "avif"))
       ('svg (string= ext "svg"))
       (_ t))))
 
@@ -920,7 +925,7 @@ When USE-ALIAS is non-nil, use :alias paths; otherwise use :new."
         (changed t))
     (while changed
       (setq changed nil)
-      (when (string-match "\\.\\(png\\|jpe?g\\|gif\\|webp\\|svg\\)\\'" base)
+      (when (string-match "\\.\\(png\\|jpe?g\\|gif\\|webp\\|avif\\|svg\\)\\'" base)
         (setq base (substring base 0 (match-beginning 0)))
         (setq changed t)))
     base))
@@ -1017,7 +1022,7 @@ Returns the local file path if successful, nil otherwise."
                              "downloaded-image"))
            ;; Ensure we have an image extension
            (case-fold-search t)
-           (filename (if (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp\\|svg)$" raw-filename)
+           (filename (if (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp\\|avif\\|svg)$" raw-filename)
                          raw-filename
                        (concat raw-filename ".jpg")))
            (clean-filename (org-astro--sanitize-filename filename))
@@ -1166,7 +1171,7 @@ This is more robust for narrowed subtrees than relying on `plain-text` parsing."
           (save-restriction
             (narrow-to-region beg end)
             (goto-char (point-min))
-            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\)\\s-*$" nil t)
+            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\|avif\\)\\s-*$" nil t)
               (let ((path (string-trim (match-string 0))))
                 (when (file-exists-p path)
                   (push path images))))))))
