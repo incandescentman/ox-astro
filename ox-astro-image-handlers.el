@@ -394,6 +394,9 @@ Public images (GIFs) get markdown syntax instead of <Image> components."
             (dolist (key (list path
                                original
                                public-path
+                               ;; Add canonical paths (resolves symlinks like CloudStorage/Dropbox)
+                               (and path (file-exists-p path) (file-truename path))
+                               (and original (file-exists-p original) (file-truename original))
                                (and public-path
                                     (org-astro--sanitize-filename
                                      (file-name-sans-extension
@@ -433,6 +436,9 @@ Public images (GIFs) get markdown syntax instead of <Image> components."
             (dolist (key (list path
                                original
                                astro-path
+                               ;; Add canonical paths (resolves symlinks like CloudStorage/Dropbox)
+                               (and path (file-exists-p path) (file-truename path))
+                               (and original (file-exists-p original) (file-truename original))
                                (and astro-path
                                     (org-astro--sanitize-filename
                                      (file-name-sans-extension

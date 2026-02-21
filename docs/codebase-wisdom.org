@@ -96,6 +96,19 @@
 - *Mechanism:* Extension regexes are intentionally duplicated in multiple files (manifest collection, transcoders, table/gallery handling, and final output filter).
 - *Actionable insight:* When adding image formats, update all extension matchers together and add regression tests for both path matching and byte-signature normalization.
 
+** Gotcha: Symlinked paths break image render record lookups
+- *Date:* 2026-02-21
+- *Trigger:* AVIF image was imported but =<Image>= component missing from body, even though record lookup succeeded for JPGs in same file.
+- *Mechanism:* Org file referenced image via symlink path (=/Users/jay/Library/CloudStorage/Dropbox/...=), but manifest stored canonical path (=/Users/jay/Dropbox/...=). String comparison failed.
+- *Fix:* Added =file-truename= canonicalization in two places:
+  1. =org-astro--build-render-map= - Store both original and canonical paths as hash keys
+  2. =org-astro--lookup-render-record= - Try canonical path lookup as fallback
+- *Prevention:*
+  - Always use =file-truename= before storing paths in hash tables
+  - When comparing paths, canonicalize both sides OR store multiple key variants
+  - macOS CloudStorage symlinks are a common source of path mismatches
+- *Actionable insight:* Path comparison bugs often manifest as "it works for some images but not others" - check if affected paths go through different symlink routes
+
 ** Gotcha: Export block indentation was converted to blockquotes
 - *Date:* 2025-10-05
 - *Trigger:* MDX export blocks with indented HTML (like `<button>`) were being converted to blockquote syntax (`> `)

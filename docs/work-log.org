@@ -1,6 +1,33 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-02-21 Fix symlinked path lookup for image render records
+
+** Summary
+Fixed image lookup failures when org files reference images via symlinked paths
+(e.g., =/Users/jay/Library/CloudStorage/Dropbox/...= vs =/Users/jay/Dropbox/...=).
+
+** Root Cause
+The render map stores paths as strings and uses =string-equal= for lookup.
+When an org file contains a path through a symlink, the string comparison
+fails against the resolved canonical path stored in the manifest.
+
+** Fix
+Added =file-truename= canonicalization in two places:
+1. =org-astro--build-render-map= - Store both original and canonical paths as keys
+2. =org-astro--lookup-render-record= - Try canonical path lookup as fallback
+
+** Files Modified
+- =ox-astro-helpers-core.el= (lookup canonicalization)
+- =ox-astro-image-handlers.el= (render map key additions)
+
+** Test Case
+Org file with AVIF image at symlink path:
+: [[/Users/jay/Library/CloudStorage/Dropbox/github/.../image.avif]]
+
+Before fix: Image imported but =<Image>= component missing from body
+After fix: Image correctly rendered (or suppressed if hero image)
+
 * 2026-02-21 AVIF image support across export pipeline
 
 ** Summary

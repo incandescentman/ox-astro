@@ -367,6 +367,8 @@ IMG-PATH is used to look up credit/caption metadata if provided."
 (defun org-astro--lookup-render-record (path info)
   "Return render metadata for PATH from INFO's render map."
   (let* ((clean (and path (substring-no-properties path)))
+         ;; Canonicalize path to resolve symlinks (e.g., CloudStorage/Dropbox -> Dropbox)
+         (canonical (and clean (file-exists-p clean) (file-truename clean)))
          (render-map (plist-get info :astro-render-map))
          (processed (or (plist-get info :astro-body-images-imports)
                         org-astro--current-body-images-imports)))
@@ -384,17 +386,32 @@ IMG-PATH is used to look up credit/caption metadata if provided."
                  :test #'equal)))))
     (when clean
       (or (and render-map (gethash clean render-map))
+          ;; Try canonical path in hash map
+          (and render-map canonical (gethash canonical render-map))
           (let ((sanitized (org-astro--sanitize-filename
                             (file-name-sans-extension
                              (file-name-nondirectory clean)))))
             (and render-map sanitized (gethash sanitized render-map)))
+          ;; Try direct path matches
           (let* ((entry (and processed
                              (or (cl-find clean processed
                                           :key (lambda (item) (plist-get item :path))
                                           :test #'string-equal)
                                  (cl-find clean processed
                                           :key (lambda (item) (plist-get item :original-path))
-                                          :test #'string-equal)))))
+                                          :test #'string-equal)
+                                 ;; Try canonical path matches (resolves symlinks)
+                                 (and canonical
+                                      (or (cl-find canonical processed
+                                                   :key (lambda (item)
+                                                          (let ((p (plist-get item :path)))
+                                                            (and p (file-exists-p p) (file-truename p))))
+                                                   :test #'string-equal)
+                                          (cl-find canonical processed
+                                                   :key (lambda (item)
+                                                          (let ((p (plist-get item :original-path)))
+                                                            (and p (file-exists-p p) (file-truename p))))
+                                                   :test #'string-equal)))))))
             (when entry
               (let* ((astro (plist-get entry :astro-path))
                      (var-name (plist-get entry :var-name))
