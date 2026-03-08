@@ -168,6 +168,20 @@
   - Reattach to info plist after any environment refresh if needed downstream
 - *Fix strategy:* Cache folder resolution results in `let`-bound locals before any `org-export-get-environment` calls
 
+** Gotcha: Excerpt presence checks based only on INFO can duplicate SUBHED
+- *Date:* 2026-03-07
+- *Trigger:* Re-export appends additional =#+SUBHED:= even though excerpt keywords already exist.
+- *Mechanism:* Metadata preflight checked excerpt presence via export =info= plist. In some contexts, =info= may be stale/incomplete relative to the parsed tree.
+- *Fix:* Add tree-level fallback check for non-empty excerpt keywords (=ASTRO_EXCERPT=, =EXCERPT=, =SUBHED=, =DESCRIPTION=) before inserting =SUBHED=.
+- *Actionable insight:* Presence checks that gate source mutation should verify the current parse tree, not only cached export plist values.
+
+** Gotcha: org-roam Links preamble can survive as plain markdown link line
+- *Date:* 2026-03-07
+- *Trigger:* Exported MDX contains a top-of-body line like =[📄 Note](file:///...)= even after existing Links/Source cleanup.
+- *Mechanism:* Depending on Org markdown rendering, =- Links ::= definition list can collapse to a plain markdown link paragraph without literal =Links:= text, bypassing older regexes.
+- *Fix:* In final output filter, strip file-link-only lines in the pre-heading prefix (frontmatter/import area) to catch this converted form safely.
+- *Actionable insight:* Cleanup patterns should account for semantic output variants, not just one textual rendering of the same source structure.
+
 ** Design: Single newlines preserved as Markdown soft breaks
 - *Date:* 2026-01-08 (fixed 2026-01-14)
 - *Context:* AI conversation transcripts often contain meaningful single newlines (not paragraph breaks) that would be lost in standard Markdown rendering.

@@ -323,7 +323,19 @@ generated and added to the Org source file."
             (condition-case err
                 (let* ((tree (org-element-parse-buffer))
                        (title-present (plist-get info :title))
-                       (excerpt-present (or (plist-get info :astro-excerpt) (plist-get info :excerpt)))
+                       ;; Prefer exporter environment, but also inspect TREE directly
+                       ;; so repeated exports stay idempotent even if INFO is stale/narrowed.
+                       (excerpt-keyword-present
+                        (org-element-map tree 'keyword
+                          (lambda (k)
+                            (when (member (org-element-property :key k)
+                                          '("ASTRO_EXCERPT" "EXCERPT" "SUBHED" "DESCRIPTION"))
+                              (let ((v (org-element-property :value k)))
+                                (and (stringp v) (not (string-blank-p v))))))
+                          nil 'first-match))
+                       (excerpt-present (or (plist-get info :astro-excerpt)
+                                            (plist-get info :excerpt)
+                                            excerpt-keyword-present))
                        (date-present (or (plist-get info :astro-publish-date) (plist-get info :publish-date) (plist-get info :date))))
 
                   ;; 1. Handle Title and Slug

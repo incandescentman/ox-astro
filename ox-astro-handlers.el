@@ -688,6 +688,16 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     (setq s (replace-regexp-in-string
              "^[ \t]*\\(Links\\|Source\\):[ \t]*\n?"
              "" s t))
+    ;; Strip converted org-roam Links definition output that can appear as a
+    ;; plain markdown link line before the first heading, e.g.:
+    ;; [📄 Note A](file:///.../note-a.md), [📄 Note B](file:///.../note-b.md)
+    (let* ((first-heading-pos (string-match "^#+[ \t]+" s))
+           (prefix (if first-heading-pos (substring s 0 first-heading-pos) s))
+           (suffix (if first-heading-pos (substring s first-heading-pos) "")))
+      (setq prefix (replace-regexp-in-string
+                    "^[ \t]*\\(?:\\[[^]\n]+\\](file:///[^)\n]+\\.md)\\(?:,[ \t]*\\[[^]\n]+\\](file:///[^)\n]+\\.md)\\)*\\)[ \t]*\n?"
+                    "" prefix t))
+      (setq s (concat prefix suffix)))
     ;; Drop orphan property drawers and ID lines that aren't parsed as drawers
     (setq s (replace-regexp-in-string
              "^:PROPERTIES:\n\\(?:[^\n]*\n\\)*?:END:\n?"

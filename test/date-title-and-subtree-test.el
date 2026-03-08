@@ -84,4 +84,50 @@ When POINT-ADJUST-FN is provided, call it after narrowing to reposition point."
     (should (string-match-p "Details." mdx))
     (should (not (string-match-p "title: Deep" mdx)))))
 
+(ert-deftest org-astro-reexport-does-not-duplicate-subhed ()
+  "Repeated exports must not append extra #+SUBHED when one already exists."
+  (let* ((temp-project (make-temp-file "ox-astro-subhed-idempotent" t))
+         (posts-dir (expand-file-name "src/content/blog" temp-project))
+         (org-file (expand-file-name "subhed-idempotent.org" temp-project))
+         (org-astro-known-posts-folders `(("test" . (:path ,posts-dir))))
+         (org-astro-source-root-folder temp-project)
+         (org-export-show-temporary-export-buffer nil)
+         (org-export-with-toc nil)
+         (org-export-with-section-numbers nil)
+         (content "#+TITLE: Subhed Test\n#+SUBHED: Existing excerpt\n#+DESTINATION_FOLDER: test\n\n* Heading\nParagraph.\n"))
+    (make-directory posts-dir t)
+    (with-temp-file org-file
+      (insert content))
+    (let ((buffer (find-file-noselect org-file)))
+      (unwind-protect
+          (with-current-buffer buffer
+            (org-mode)
+            (goto-char (point-min))
+            (let ((org-astro-debug-images nil)
+                  (org-astro-debug-console nil)
+                  (org-astro-debug-log nil))
+              (org-astro-export-to-mdx)
+              (org-astro-export-to-mdx)))
+        (when (buffer-live-p buffer)
+          (with-current-buffer buffer
+            (set-buffer-modified-p nil))
+          (kill-buffer buffer))))
+    (with-temp-buffer
+      (insert-file-contents org-file)
+      (goto-char (point-min))
+      (let ((count 0))
+        (while (re-search-forward "^#\\+SUBHED:" nil t)
+          (setq count (1+ count)))
+        (should (= count 1))))
+    (delete-directory temp-project t)))
+
+(ert-deftest org-astro-strips-roam-links-source-preamble-from-body ()
+  "Org-roam Links/Source preamble should not appear in exported MDX body."
+  (let* ((content ":PROPERTIES:\n:ID: test-links-source\n:END:\n#+TITLE: Repro Links Source\n#+DESTINATION_FOLDER: test\n- Links :: [[file+emacs:/tmp/a.org][📄 A]], [[file+emacs:/tmp/b.org][📄 B]]\n- Source ::\n\n* Repro Links Source\nBody.\n")
+         (mdx (ox-astro-test--with-temp-export content "links-source.org" "repro-links-source")))
+    (should (string-match-p "^---" mdx))
+    (should (string-match-p "# Repro Links Source" mdx))
+    (should (not (string-match-p "\\[📄 A\\]" mdx)))
+    (should (not (string-match-p "file:///tmp/a\\.md" mdx)))))
+
 (provide 'date-title-and-subtree-test)

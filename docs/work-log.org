@@ -1,6 +1,51 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-03-07 Prevent duplicate SUBHED insertion on re-export
+
+** Summary
+Hardened metadata preflight so repeated exports do not append duplicate
+=#+SUBHED:= lines when excerpt keywords already exist in the parse tree.
+
+** Root Cause
+- Excerpt presence detection relied primarily on the export =info= plist.
+- In some contexts, =info= can be stale/incomplete relative to the current
+  parse tree, so preflight treated excerpt as missing and inserted another
+  =SUBHED=.
+
+** Fix
+- In =ox-astro.el= preflight metadata section, added a tree-level fallback
+  check for non-empty excerpt keywords:
+  - =ASTRO_EXCERPT=
+  - =EXCERPT=
+  - =SUBHED=
+  - =DESCRIPTION=
+- Keep existing =info= checks, but require insertion only when both =info= and
+  tree-level checks report excerpt missing.
+- In =ox-astro-handlers.el= final output filter, added cleanup for converted
+  org-roam Links output that can appear as a plain markdown link paragraph
+  before the first heading (e.g., =[📄 Note](file:///...)=).
+
+** Tests
+- Added ERT regression:
+  - =org-astro-reexport-does-not-duplicate-subhed=
+- Added ERT regression:
+  - =org-astro-strips-roam-links-source-preamble-from-body=
+- Test exports the same file twice and asserts source still has exactly one
+  =#+SUBHED:= line.
+
+** Files Modified
+- =ox-astro.el=
+- =ox-astro-handlers.el=
+- =test/date-title-and-subtree-test.el=
+- =docs/work-log.org=
+- =docs/codebase-wisdom.org=
+
+** Verification
+- =emacs --batch -Q -L . --eval "(progn (find-file \"ox-astro.el\") (check-parens) (kill-buffer) (find-file \"test/date-title-and-subtree-test.el\") (check-parens) (kill-buffer) (princ \"parens-ok\"))"=
+- =emacs --batch -Q -L . -f batch-byte-compile ox-astro.el test/date-title-and-subtree-test.el=
+- =emacs --batch -Q -L . -l ert -l test/date-title-and-subtree-test.el --eval "(ert-run-tests-batch-and-exit)"=
+
 * 2026-02-21 Jaydocs hero AVIF rendering fix (downstream app resolver)
 
 ** Summary

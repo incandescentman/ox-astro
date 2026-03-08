@@ -68,6 +68,7 @@ ox-astro handles org-roam files cleanly:
 - *Template boilerplate* is removed from output:
   - =- **Links:**= and =- **Source:**= list items (with or without content)
   - Standalone =Links:= and =Source:= lines
+  - Converted preamble link lines before the first heading (e.g., =[📄 Note](file:///...)=)
   - Various indentation/formatting variants
 - *ID links* (=[[id:...][Title]]=) resolve to MDX paths using the ID map built from your org-roam directory
 
@@ -77,11 +78,12 @@ The final output filter removes common org-roam template artifacts:
 | Pattern                    | Example                  | Status   |
 |----------------------------+--------------------------+----------|
 | Bold list item (empty)     | =- **Links:**=           | Stripped |
-| Bold list item (content)   | =- **Links:** [[id:...]]= | Preserved (links kept) |
+| Bold list item (content)   | =- **Links:** [[id:...]]= | Stripped when part of org-roam preamble |
 | Standalone label           | =Links:=                 | Stripped |
+| Converted markdown links   | =[📄 Note](file:///...)= | Stripped in pre-heading preamble |
 | Property drawer lines      | =:ID: abc123=            | Stripped |
 
-Note: If you have actual content after =Links:= or =Source:= labels (not just empty placeholders), those links are preserved.
+Note: The exporter strips these patterns specifically in the top pre-heading preamble area used by org-roam templates.
 
 * Debug and Development Options
 
@@ -183,6 +185,18 @@ Quick verification:
 - Count user fences and empty user fences in output; they should match total>0 and empty=0 for normal transcripts.
 - Run the regression test:
   - =emacs --batch -Q -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch 'org-astro-conversation-blocks-survive-hostile-babel-defaults)"=
+
+** Troubleshooting Leaked Links/Source Preamble
+If exported MDX shows a top-of-body line like:
+- =[📄 Some Note](file:///...)=
+
+it means the org-roam preamble was rendered as plain markdown links and bypassed older
+label-based cleanup patterns.
+
+Checklist:
+- Ensure you are running a version that strips converted preamble links before the first heading.
+- Reload ox-astro modules after updating (see =ox-astro-reload= above).
+- Re-export and verify there is no pre-heading =file:///...=.md link line.
 
 * Image Configuration
 
