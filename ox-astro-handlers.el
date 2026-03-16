@@ -544,7 +544,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                      (setq found record)))
                  map))
               found)))
-         ;; Remove hero image from body only when explicit hero suppression is enabled.
+         ;; Remove hero image from body when it will be rendered by the layout hero.
          (_ (when (and hero-record
                        (org-astro--hero-inline-suppression-enabled-p info hero-record))
               (let* ((hero-var (plist-get hero-record :var-name))

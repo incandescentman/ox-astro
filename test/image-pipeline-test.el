@@ -207,8 +207,8 @@ to a temporary destination folder so the real workspace stays untouched."
     (should (string-match-p "imageAlt: .*Cozy hero" output))
     (should (string-match-p "body-image.png" output))))
 
-(ert-deftest ox-astro-fallback-hero-keeps-inline-image-test ()
-  "Fallback hero selection should not suppress the first inline image."
+(ert-deftest ox-astro-fallback-hero-suppresses-inline-image-test ()
+  "Fallback hero selection should suppress the first inline image to avoid duplication."
   (let* ((temp-project (make-temp-file "ox-astro-fallback-hero-project" t))
          (posts-dir (expand-file-name "src/content/blog" temp-project))
          (assets-dir (expand-file-name "src/assets/images/posts" temp-project))
@@ -251,10 +251,56 @@ to a temporary destination folder so the real workspace stays untouched."
       (when (file-exists-p temp-project)
         (delete-directory temp-project t)))
     (should (string-match-p "image: ~/assets/images/posts/fallback-hero-inline-test/fallback-inline.png" output))
-    (let ((var-name (when (string-match "import \\([^ ]+\\) from '~/assets/images/posts/fallback-hero-inline-test/fallback-inline\\.png';" output)
-                      (match-string 1 output))))
-      (should var-name)
-      (should (string-match-p (format "<Image src={%s}" (regexp-quote var-name)) output)))))
+    ;; The inline image should be suppressed since it's now the hero
+    (should-not (string-match-p "<Image src={" output))))
+
+(ert-deftest ox-astro-fallback-hero-repeat-preserves-inline-image-test ()
+  "Fallback hero with #+ATTR_ORG: :repeat t should keep the inline image."
+  (let* ((temp-project (make-temp-file "ox-astro-fallback-repeat-project" t))
+         (posts-dir (expand-file-name "src/content/blog" temp-project))
+         (assets-dir (expand-file-name "src/assets/images/posts" temp-project))
+         (source-dir (expand-file-name "source" temp-project))
+         (inline-path (expand-file-name "repeat-inline.png" source-dir))
+         (temp-org (make-temp-file "ox-astro-fallback-repeat" nil ".org"))
+         (output nil))
+    (make-directory posts-dir t)
+    (make-directory assets-dir t)
+    (make-directory source-dir t)
+    (ox-astro-test--write-minimal-png inline-path)
+    (with-temp-file temp-org
+      (insert (format "#+TITLE: Fallback Hero Repeat Test\n#+SLUG: fallback-hero-repeat-test\n#+DESTINATION_FOLDER: jaydocs\n\n* Body\n#+ATTR_ORG: :repeat t\n[[%s]]\n"
+                      inline-path)))
+    (unwind-protect
+        (let ((org-export-show-temporary-export-buffer nil)
+              (org-export-with-toc nil)
+              (org-export-with-section-numbers nil)
+              (org-astro-debug-images nil)
+              (org-astro-debug-console nil)
+              (org-astro-debug-log nil)
+              (org-astro-known-posts-folders `(("jaydocs" . (:path ,posts-dir))))
+              (org-astro-source-root-folder (file-name-directory temp-org)))
+          (let ((buffer (find-file-noselect temp-org)))
+            (unwind-protect
+                (with-current-buffer buffer
+                  (org-mode)
+                  (let ((inhibit-message t))
+                    (org-astro-export-to-mdx)))
+              (when (buffer-live-p buffer)
+                (with-current-buffer buffer
+                  (set-buffer-modified-p nil))
+                (kill-buffer buffer))))
+          (let ((mdx-path (expand-file-name "fallback-hero-repeat-test.mdx" posts-dir)))
+            (setq output (with-temp-buffer
+                           (insert-file-contents mdx-path)
+                           (buffer-string)))))
+      (when (file-exists-p temp-org)
+        (delete-file temp-org))
+      (when (file-exists-p temp-project)
+        (delete-directory temp-project t)))
+    ;; Hero frontmatter should still exist
+    (should (string-match-p "image: ~/assets/images/posts/fallback-hero-repeat-test/repeat-inline.png" output))
+    ;; But the inline image should be preserved because of :repeat t
+    (should (string-match-p "<Image src={" output))))
 
 (ert-deftest ox-astro-explicit-hero-suppresses-matching-inline-image-test ()
   "Explicit HERO_IMAGE should still suppress duplicate inline rendering."

@@ -281,11 +281,11 @@ Escapes &, <, >, and \" to their entity equivalents."
 
 (defun org-astro--hero-inline-suppression-enabled-p (info &optional record)
   "Return non-nil when hero inline suppression should run for INFO/RECORD.
-Suppression only applies when the hero image was explicitly configured and is
-actually shown as a hero. Fallback hero selection from the first inline image
-must stay visible in the body."
-  (let* ((explicit-hero
-          (or (plist-get info :astro-hero-explicit)
+Suppression applies whenever a hero image exists (explicit or fallback from
+first inline image) and is actually shown as a hero.  The inline copy is
+always removed to avoid duplication with the layout-rendered hero."
+  (let* ((has-hero
+          (or (plist-get info :astro-hero-image)
               (let* ((raw (or (plist-get info :hero-image)
                               (plist-get info :astro-image)
                               (plist-get info :cover-image)))
@@ -298,7 +298,7 @@ must stay visible in the body."
                      ((stringp hide-hero-raw)
                       (org-astro--string-truthy-p hide-hero-raw))
                      (t hide-hero-raw))))
-    (and explicit-hero
+    (and has-hero
          (not hide-hero)
          (not repeat-inline))))
 
@@ -347,10 +347,10 @@ WIDTH/HEIGHT (numbers) populate PhotoSwipe data attributes when available."
 (defun org-astro--image-component-for-record (record info &optional alt-override img-path)
   "Render RECORD as an Image component, conditionally suppressing hero duplicates.
 
-INFO carries export state. When the record corresponds to the hero image and the
-hero is explicitly configured and visible, the first inline usage is suppressed
-to avoid duplication. Fallback hero selection keeps inline content visible.
-All other records return the standard Image component string.
+INFO carries export state. When the record corresponds to the hero image and
+the hero is visible, the first inline usage is suppressed to avoid duplication
+with the layout-rendered hero. All other records return the standard Image
+component string.
 IMG-PATH is used to look up credit/caption metadata if provided."
   (when record
     (let* ((entry (plist-get record :entry))

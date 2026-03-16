@@ -39,8 +39,9 @@ Add support for =#+HERO_IMAGE:= keyword in org frontmatter:
 
 1. If =#+HERO_IMAGE:= is present, use it for frontmatter =image:= field
 2. If =#+HERO_IMAGE_ALT:= is present, use it for =imageAlt:= field
-3. If no =#+HERO_IMAGE:=, fall back to current behavior (first inline image)
+3. If no =#+HERO_IMAGE:=, fall back to first inline image (also suppressed from body)
 4. The hero image should NOT be duplicated in the body content
+5. Use =#+ATTR_ORG: :repeat t= before an image to force it inline even when it is the hero
 
 ** Path Handling
 

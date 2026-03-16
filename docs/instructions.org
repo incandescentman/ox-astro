@@ -272,7 +272,7 @@ Generated With: Model
 *** Notes
 - IMAGE_* keywords must immediately follow the body image they describe (blank lines ok); HERO_* keywords should appear at document level
 - Underscores and hyphens are interchangeable (e.g., ~IMAGE_CREDIT~ = ~IMAGE-CREDIT~)
-- Explicit hero images (=HERO_IMAGE= / =COVER_IMAGE= / =ASTRO_IMAGE=) are suppressed from the body by default; fallback hero selection from the first inline image remains visible inline
+- All hero images (explicit =HERO_IMAGE= / =COVER_IMAGE= / =ASTRO_IMAGE= and fallback first-inline-image) are suppressed from the body by default to avoid duplication with the layout hero; use =#+ATTR_ORG: :repeat t= to force an image to appear inline even when it is the hero
 - If =HERO_IMAGE= is not set, ox-astro falls back to =COVER_IMAGE= / =ASTRO_IMAGE= and then the first inline image
 - =HIDE_HERO_IMAGE= hides the page-level hero component; it does not force inline image suppression
 - Public web paths (e.g., =/og/...= or =https://...=) are preserved as-is for hero/cover images

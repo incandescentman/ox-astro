@@ -109,12 +109,12 @@
   - macOS CloudStorage symlinks are a common source of path mismatches
 - *Actionable insight:* Path comparison bugs often manifest as "it works for some images but not others" - check if affected paths go through different symlink routes
 
-** Gotcha: Fallback hero suppression can hide the first body image
-- *Date:* 2026-02-21
-- *Trigger:* First image disappeared from article body even though image import/frontmatter looked correct.
-- *Mechanism:* Hero suppression treated fallback hero selection (first inline image) the same as explicit hero images, so the inline image was removed even on sites that do not render a hero.
-- *Fix:* Added =:astro-hero-explicit= tracking in hero selection and gated suppression logic on explicit hero usage (plus existing =:repeat t= and hide-hero checks).
-- *Actionable insight:* Inline suppression should be driven by rendering intent, not just “this image was chosen for frontmatter.”
+** Hero images are always suppressed from the body (explicit and fallback)
+- *Date:* 2026-03-16 (updated from 2026-02-21)
+- *Rule:* Whenever an image is promoted to frontmatter =image:=, the inline copy is suppressed from the body to avoid duplication with the layout-rendered hero.
+- *Mechanism:* =org-astro--hero-inline-suppression-enabled-p= checks for any hero (=:astro-hero-image= or explicit keywords), not just explicit ones. Both explicit (=#+HERO_IMAGE:=) and fallback (first inline image) heroes are suppressed.
+- *Escape hatch:* Use =#+ATTR_ORG: :repeat t= before an image to force it to appear inline even when it is the hero.
+- *Actionable insight:* If a user sees a missing first image, check whether =:repeat t= is needed, or whether =#+HIDE_HERO_IMAGE: true= was set (which disables suppression so the inline image stays).
 
 ** Gotcha: Downstream app image resolver can silently drop AVIF heroes
 - *Date:* 2026-02-21

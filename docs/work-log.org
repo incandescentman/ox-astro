@@ -1,6 +1,42 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-03-16 Suppress fallback hero images from body (unify with explicit hero behavior)
+
+** Summary
+Changed hero inline suppression to apply to all hero images, not just explicit
+ones. Previously, fallback hero selection (first inline image auto-promoted to
+frontmatter) kept the inline copy visible in the body, causing duplication when
+the Astro layout also renders the frontmatter =image:= as a hero.
+
+** Rule
+Whenever =image:= exists in frontmatter, the page layout will render it as a
+hero. The exporter should therefore suppress the inline copy. Suppression fires
+when: hero exists AND hero is visible (not =#+HIDE_HERO_IMAGE: true=) AND the
+image does not have =:repeat t=.
+
+** Fix
+- Renamed =explicit-hero= to =has-hero= in
+  =org-astro--hero-inline-suppression-enabled-p= and broadened the check to
+  include =:astro-hero-image= (set during fallback selection), not just explicit
+  keyword properties.
+- Removed =:astro-hero-explicit= from the suppression decision (it remains
+  informational).
+- Updated test expectations and added =:repeat t= escape-hatch test.
+
+** Files Modified
+- =ox-astro-helpers-core.el= — suppression logic
+- =ox-astro-handlers.el= — body filter comment
+- =test/image-pipeline-test.el= — flipped fallback test, added repeat test
+- =docs/instructions.org= — updated hero suppression docs
+- =docs/codebase-wisdom.org= — updated gotcha entry
+- =docs/work-log.org= — this entry
+
+** Verification
+- =ox-astro-fallback-hero-suppresses-inline-image-test= — fallback hero suppressed
+- =ox-astro-fallback-hero-repeat-preserves-inline-image-test= — =:repeat t= escape hatch
+- =ox-astro-explicit-hero-suppresses-matching-inline-image-test= — unchanged, still passes
+
 * 2026-03-07 Prevent duplicate SUBHED insertion on re-export
 
 ** Summary
@@ -87,6 +123,10 @@ first image to disappear from both hero and body.
 - Apply suppression only when hero is explicit and visible (not hidden), while
   preserving existing =:repeat t= support.
 - Updated body-filter fallback cleanup to use the same suppression gate.
+
+** Superseded
+This entry's behavior was reversed on 2026-03-16. All hero images (explicit and
+fallback) are now suppressed from the body by default. See entry below.
 
 ** Files Modified
 - =ox-astro-helpers-core.el=
