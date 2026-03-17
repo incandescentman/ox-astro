@@ -110,7 +110,8 @@
                    (default-alt (plist-get record :alt))
                    (alt (or desc default-alt "Image")))
               (if var-name
-                  (org-astro--image-component-for-record record info alt path)
+                  (org-astro--image-component-for-record
+                   record info alt path (org-element-property :begin link))
                   (plist-get record :jsx)))
             (let ((md (when (fboundp 'org-md-link)
                         (ignore-errors (org-md-link link desc info)))))
@@ -475,7 +476,8 @@ Allows THEME to appear first; marks MODEL keyword as consumed."
   (let* ((path (org-astro--extract-image-path-from-paragraph paragraph))
          (record (and path (org-astro--lookup-render-record path info))))
     (if record
-        (org-astro--image-component-for-record record info nil path)
+        (org-astro--image-component-for-record
+         record info nil path (org-element-property :begin paragraph))
         "")))
 
 
@@ -526,7 +528,8 @@ This preserves single line breaks in the rendered output."
             (message "[ox-astro][img] PARA path=%s record=%s"
                      path (and record (plist-get record :var-name))))
           (if record
-              (org-astro--image-component-for-record record info nil path)
+              (org-astro--image-component-for-record
+               record info nil path (org-element-property :begin paragraph))
               contents))
         ;; Check if this paragraph contains broken image path (subscripts)
         (let ((paragraph-context (org-element-interpret-data paragraph)))

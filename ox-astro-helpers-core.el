@@ -303,6 +303,18 @@ always removed to avoid duplication with the layout-rendered hero."
          (not hide-hero)
          (not repeat-inline))))
 
+(defun org-astro--hero-occurrence-begin-to-suppress (record)
+  "Return the BEGIN position of the hero occurrence that should be suppressed.
+Only the first standalone occurrence is suppressible. If the hero source comes
+from inside a gallery, later standalone reuses should remain visible."
+  (let* ((entry (plist-get record :entry))
+         (occurrences (and entry (plist-get entry :occurrences)))
+         (first-occurrence (car occurrences))
+         (first-begin (and first-occurrence (plist-get first-occurrence :begin))))
+    (when (and first-begin
+               (not (plist-get first-occurrence :in-gallery)))
+      first-begin)))
+
 (defun org-astro--format-image-component (var-name alt-text &optional credit caption width height)
   "Return a standardized Image component string for VAR-NAME and ALT-TEXT.
 Includes layout prop based on `org-astro-image-default-layout' config.
@@ -345,13 +357,14 @@ WIDTH/HEIGHT (numbers) populate PhotoSwipe data attributes when available."
                     "")))
       image-tag)))
 
-(defun org-astro--image-component-for-record (record info &optional alt-override img-path)
+(defun org-astro--image-component-for-record (record info &optional alt-override img-path occurrence-begin)
   "Render RECORD as an Image component, conditionally suppressing hero duplicates.
 
 INFO carries export state. When the record corresponds to the hero image and
 the hero is visible, the first inline usage is suppressed to avoid duplication
 with the layout-rendered hero. All other records return the standard Image
-component string.
+component string. OCCURRENCE-BEGIN identifies the current inline occurrence so
+later intentional repeats of the same image can still render.
 IMG-PATH is used to look up credit/caption metadata if provided."
   (when record
     (let* ((entry (plist-get record :entry))
@@ -360,10 +373,17 @@ IMG-PATH is used to look up credit/caption metadata if provided."
            (hero (plist-get info :astro-hero-image))
            (record-hero (plist-get record :hero))
            (already-suppressed (plist-get info :astro-hero-body-suppressed))
+           (suppress-begin (org-astro--hero-occurrence-begin-to-suppress record))
            (suppress-hero-inline (org-astro--hero-inline-suppression-enabled-p info record))
-           (is-hero (or record-hero
-                        (and hero entry (org-astro--hero-image-entry-p entry hero)))))
-      (if (and suppress-hero-inline is-hero (not already-suppressed))
+            (is-hero (or record-hero
+                        (and hero entry (org-astro--hero-image-entry-p entry hero))))
+           (should-suppress
+            (and suppress-hero-inline
+                 is-hero
+                 (not already-suppressed)
+                 (or (null suppress-begin)
+                     (and occurrence-begin (= occurrence-begin suppress-begin))))))
+      (if should-suppress
           (progn
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
               (org-astro--dbg-log info "Skipping inline hero image for %s" var-name))

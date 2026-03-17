@@ -37,6 +37,53 @@ image does not have =:repeat t=.
 - =ox-astro-fallback-hero-repeat-preserves-inline-image-test= — =:repeat t= escape hatch
 - =ox-astro-explicit-hero-suppresses-matching-inline-image-test= — unchanged, still passes
 
+* 2026-03-17 Fix gallery regression for repeated hero image and hermetic snapshot fixture
+
+** Summary
+Fixed the lingering =ox-astro-gallery-export-test= failure by addressing the
+real regression and the brittle fixture setup. A repeated standalone use of the
+hero image in the gallery fixture was being swallowed by the final body cleanup,
+and the test itself depended on image files existing in =~/Downloads=.
+
+** Root Cause
+- Hero suppression had two layers:
+  1. tree/transcoder suppression via =org-astro--image-component-for-record=
+  2. final body-string cleanup in =ox-astro-handlers.el=
+- The tree-level pass correctly suppressed only the first hero occurrence.
+- The later regex cleanup then removed the first remaining matching =<Image>=
+  in the rendered body, which in the gallery fixture was an intentional later
+  standalone repeat of the same hero image.
+- Separately, the gallery snapshot test copied a real Org fixture containing
+  =/Users/jay/Downloads/...= paths, so test reliability depended on the local
+  machine having those files.
+
+** Fix
+- Made hero suppression occurrence-aware by threading the current element
+  =:begin= through image rendering and suppressing only the first standalone
+  hero occurrence.
+- Tagged manifest occurrences with whether they came from inside a gallery so a
+  gallery-origin hero does not accidentally suppress later standalone reuse.
+- Kept the final body cleanup as a fallback only: it now runs only when
+  suppression is enabled, a suppressible standalone occurrence exists, and the
+  tree-level pass did not already mark =:astro-hero-body-suppressed=.
+- Hardened the gallery export test to rewrite fixture =~/Downloads= links into a
+  temp source directory and seed minimal fixture images there.
+- Normalized =orgPath:= in the snapshot helper and refreshed the expected MDX.
+
+** Files Modified
+- =ox-astro-helpers-core.el= — occurrence-aware hero suppression
+- =ox-astro-image-handlers.el= — track whether an occurrence came from a gallery
+- =ox-astro-transcode.el= — thread occurrence begin positions through image rendering
+- =ox-astro-handlers.el= — narrow regex cleanup into a guarded fallback
+- =test/image-pipeline-test.el= — hermetic gallery fixture setup and normalization
+- =test/gallery_test_rigorous.expected.mdx= — refreshed snapshot
+- =docs/codebase-wisdom.org= — captured the non-obvious suppression/testing insight
+- =docs/work-log.org= — this entry
+
+** Verification
+- =emacs --batch -Q --eval "(setq load-prefer-newer t)" -L /Users/jay/Dropbox/github/ox-astro -l /Users/jay/Dropbox/github/ox-astro/test/image-pipeline-test.el -f ert-run-tests-batch-and-exit=
+- Result: 10 tests passed, 0 unexpected
+
 * 2026-03-07 Prevent duplicate SUBHED insertion on re-export
 
 ** Summary

@@ -30,6 +30,7 @@
 (declare-function org-astro--get-title "ox-astro-helpers")
 (declare-function org-astro--hero-image-entry-p "ox-astro-helpers")
 (declare-function org-astro--hero-inline-suppression-enabled-p "ox-astro-helpers")
+(declare-function org-astro--hero-occurrence-begin-to-suppress "ox-astro-helpers")
 (declare-function org-astro--normalize-image-path "ox-astro-helpers")
 (declare-function org-astro--resolve-destination-config "ox-astro-helpers")
 (declare-function org-astro--youtube-id-from-url "ox-astro-helpers")
@@ -549,9 +550,12 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                      (setq found record)))
                  map))
               found)))
-         ;; Remove hero image from body when it will be rendered by the layout hero.
+         ;; Remove hero image from body when the first standalone occurrence
+         ;; should be consumed by the layout hero. Later repeats should remain.
          (_ (when (and hero-record
-                       (org-astro--hero-inline-suppression-enabled-p info hero-record))
+                       (org-astro--hero-inline-suppression-enabled-p info hero-record)
+                       (org-astro--hero-occurrence-begin-to-suppress hero-record)
+                       (not (plist-get info :astro-hero-body-suppressed)))
               (let* ((hero-var (plist-get hero-record :var-name))
                      (hero-pattern (and hero-var
                                         (format "<Image\\(?:.\\|\\n\\)*?src={%s}\\(?:.\\|\\n\\)*?\\(?:/>\\|>\\(?:.\\|\\n\\)*?</Image>\\)"

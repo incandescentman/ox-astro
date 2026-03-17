@@ -128,6 +128,17 @@ Returns non-nil if the image should be repeated inline even when used as hero."
       (let ((attr-string (mapconcat #'identity attr-org " ")))
         (and (string-match-p ":repeat\\s-+t\\b" attr-string) t)))))
 
+(defun org-astro--link-inside-gallery-p (link)
+  "Return non-nil when LINK is nested inside a GALLERY special block."
+  (let ((node (org-element-property :parent link))
+        (inside-gallery nil))
+    (while (and node (not inside-gallery))
+      (when (and (eq (org-element-type node) 'special-block)
+                 (string-equal (org-element-property :type node) "GALLERY"))
+        (setq inside-gallery t))
+      (setq node (org-element-property :parent node)))
+    inside-gallery))
+
 (defun org-astro--build-image-manifest (tree info)
   "Collect all image references for TREE/INFO into a manifest.
 Each manifest entry is a plist with keys:
@@ -170,6 +181,7 @@ Each manifest entry is a plist with keys:
                           (if (org-astro--image-remote-p path) 'remote-link 'link)
                           :link-type type
                           :description (org-astro--image-manifest--link-description link)
+                          :in-gallery (org-astro--link-inside-gallery-p link)
                           :begin (org-element-property :begin link)
                           :end (org-element-property :end link)
                           :line (org-astro--image-manifest--line-number (org-element-property :begin link))

@@ -20,7 +20,8 @@
 (defun ox-astro-test--normalize-string (s)
   "Normalize S by removing generated comment metadata and unstable tokens."
   (let* ((no-comment (replace-regexp-in-string "{/\\* Source org: [^}]* \\*/}\n" "" s))
-         (lines (split-string no-comment "\n"))
+         (no-org-path (replace-regexp-in-string "^orgPath: .*\n" "" no-comment))
+         (lines (split-string no-org-path "\n"))
          (filtered-lines (cl-remove-if
                           (lambda (line)
                             (let ((trimmed (string-trim-right line)))
@@ -49,6 +50,36 @@
     (set-buffer-multibyte nil)
     (insert (string #x89 ?P ?N ?G ?\r ?\n #x1A ?\n))))
 
+(defun ox-astro-test--seed-gallery-image (path)
+  "Create a fixture image at PATH for gallery export tests."
+  (let* ((ext (downcase (or (file-name-extension path) "")))
+         (source
+          (pcase ext
+            ((or "jpg" "jpeg")
+             (expand-file-name "test-files/image-rendering/images/space name image.jpg"
+                               ox-astro-test--repo-root))
+            (_
+             (expand-file-name "test-files/image-rendering/images/local-photo.png"
+                               ox-astro-test--repo-root)))))
+    (make-directory (file-name-directory path) t)
+    (copy-file source path t)))
+
+(defun ox-astro-test--prepare-gallery-org (destination temp-source-dir)
+  "Write a hermetic gallery fixture to DESTINATION using TEMP-SOURCE-DIR assets."
+  (let (seed-paths)
+    (with-temp-buffer
+      (insert-file-contents ox-astro-test--gallery-org)
+      (goto-char (point-min))
+      (while (re-search-forward "\\[\\[\\(/Users/jay/Downloads/[^]]+\\)\\]\\]" nil t)
+        (let* ((original (match-string 1))
+               (filename (file-name-nondirectory original))
+               (replacement (expand-file-name filename temp-source-dir)))
+          (push replacement seed-paths)
+          (replace-match replacement t t nil 1)))
+      (write-region (point-min) (point-max) destination nil 'silent))
+    (dolist (path (delete-dups seed-paths))
+      (ox-astro-test--seed-gallery-image path))))
+
 (ert-deftest ox-astro-avif-signature-detection-test ()
   "AVIF payloads should be recognized and normalized as AVIF."
   (let* ((data (concat (string 0 0 0 0) "ftypavif")))
@@ -73,6 +104,7 @@ to a temporary destination folder so the real workspace stays untouched."
   (let* ((temp-project (make-temp-file "ox-astro-gallery-project" t))
          (posts-dir (expand-file-name "src/content/blog" temp-project))
          (assets-dir (expand-file-name "src/assets/images/posts" temp-project))
+         (temp-source-dir (expand-file-name "source-images" temp-project))
          (temp-org (make-temp-file "ox-astro-gallery" nil ".org"))
          (org-export-show-temporary-export-buffer nil)
          (org-export-with-toc nil)
@@ -85,7 +117,8 @@ to a temporary destination folder so the real workspace stays untouched."
          (org-astro-source-root-folder (file-name-directory temp-org)))
     (make-directory posts-dir t)
     (make-directory assets-dir t)
-    (copy-file ox-astro-test--gallery-org temp-org t)
+    (make-directory temp-source-dir t)
+    (ox-astro-test--prepare-gallery-org temp-org temp-source-dir)
     (let ((buffer (find-file-noselect temp-org)))
       (unwind-protect
           (with-current-buffer buffer

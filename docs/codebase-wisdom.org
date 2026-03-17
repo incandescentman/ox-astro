@@ -116,6 +116,13 @@
 - *Escape hatch:* Use =#+ATTR_ORG: :repeat t= before an image to force it to appear inline even when it is the hero.
 - *Actionable insight:* If a user sees a missing first image, check whether =:repeat t= is needed, or whether =#+HIDE_HERO_IMAGE: true= was set (which disables suppression so the inline image stays).
 
+** Gotcha: Hero suppression must target a specific occurrence, not just a matching image variable
+- *Date:* 2026-03-17
+- *Trigger:* A post reused the same image first as a gallery/hero source and later as a standalone body image; the later standalone image disappeared.
+- *Mechanism:* We had two suppression passes. Tree-level rendering correctly suppressed the first hero duplicate, but a later regex cleanup removed the first matching =<Image src={heroVar} ...>= still present in the rendered string. If the original hero occurrence was inside a gallery, that "first remaining match" could actually be a later intentional repeat.
+- *Fix:* Track occurrence metadata (including =:begin= and whether the occurrence came from inside a gallery) and suppress only the first standalone hero occurrence. Keep the string-level cleanup only as a fallback when tree-level suppression never fired.
+- *Actionable insight:* When the same image file can appear multiple times, suppression/removal logic should key off parse-tree occurrence identity, not path equality or "first regex match" in the final output.
+
 ** Gotcha: Downstream app image resolver can silently drop AVIF heroes
 - *Date:* 2026-02-21
 - *Trigger:* Frontmatter image path was AVIF and valid, but hero/cover section rendered empty while inline image still appeared.
