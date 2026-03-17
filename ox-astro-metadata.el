@@ -28,6 +28,19 @@ empty or whitespace-only values."
    ((numberp tag) (number-to-string tag))
    (t nil)))
 
+(defconst org-astro--theme-reset-aliases '("default" "jay" "author" "human")
+  "Theme keyword values that reset to regular blog styling.")
+
+(defun org-astro--normalize-theme-name (theme)
+  "Normalize THEME keyword values to canonical exported names.
+AI themes are lowercased. Reset aliases collapse to \"default\"."
+  (when theme
+    (let ((clean (downcase (string-trim (format "%s" theme)))))
+      (cond
+       ((string-empty-p clean) nil)
+       ((member clean org-astro--theme-reset-aliases) "default")
+       (t clean)))))
+
 (defun org-astro--split-quoted-list (s)
   "Split S by commas/whitespace; preserve items wrapped in quotes.
 

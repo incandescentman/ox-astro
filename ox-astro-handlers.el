@@ -34,6 +34,7 @@
 (declare-function org-astro--resolve-destination-config "ox-astro-helpers")
 (declare-function org-astro--youtube-id-from-url "ox-astro-helpers")
 (declare-function org-astro--youtube-embed "ox-astro-helpers")
+(declare-function org-astro--normalize-theme-name "ox-astro-metadata")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Babel Language Handlers for Conversation Blocks
@@ -200,13 +201,15 @@ Other keywords defer to the markdown backend."
      ;; #+THEME: → JSX comment marker
      ((string-equal key "THEME")
       (if (or body-level (and doc-level multi-theme))
-          (let* ((theme-marker (format "{/* theme: %s */}\n\n" (downcase value)))
+          (let* ((theme-value (org-astro--normalize-theme-name value))
+                 (theme-marker (and theme-value
+                                    (format "{/* theme: %s */}\n\n" theme-value)))
                  (parent (org-element-parent keyword))
                  (siblings (and parent (org-element-contents parent)))
                  (idx (and siblings (cl-position keyword siblings :test #'eq)))
                  (model-node nil)
                  (model-banner ""))
-            (when idx
+            (when (and theme-value idx)
               (cl-loop for sib in (nthcdr (1+ idx) siblings)
                        do (cond
                            ((and (eq (org-element-type sib) 'paragraph)
@@ -225,7 +228,9 @@ Other keywords defer to the markdown backend."
                   (org-element-put-property model-node :astro-consumed t)
                   (plist-put info :astro-inline-model-emitted t)
                   (setq model-banner (format "<div class=\"model-banner\">%s</div>\n\n" model-value))))))
-            (concat theme-marker model-banner))
+            (if theme-value
+                (concat theme-marker model-banner)
+              ""))
         ""))
      ;; #+MODEL: → visible banner div
      ((string-equal key "MODEL")
@@ -483,7 +488,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
 (defun org-astro--theme-keyword-before-first-heading-p (tree page-theme)
   "Return non-nil if a THEME keyword appears before the first heading with a different value than PAGE-THEME."
   (when page-theme
-    (let ((page-theme (downcase (string-trim page-theme)))
+    (let ((page-theme (org-astro--normalize-theme-name page-theme))
           (first-headline-pos (org-element-map tree 'headline
                                   (lambda (h) (org-element-property :begin h))
                                   nil 'first-match)))
@@ -491,9 +496,9 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
         (lambda (k)
           (when (string-equal (org-element-property :key k) "THEME")
             (let* ((pos (org-element-property :begin k))
-                   (raw (string-trim (or (org-element-property :value k) "")))
-                   (value (downcase raw)))
-              (when (and (not (string-empty-p raw))
+                   (value (org-astro--normalize-theme-name
+                           (org-element-property :value k))))
+              (when (and value
                          (and pos first-headline-pos (< pos first-headline-pos))
                          (not (string-equal value page-theme)))
                 t))))

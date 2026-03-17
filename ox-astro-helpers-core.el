@@ -143,6 +143,7 @@ indicator/value pairs.  Returns the updated plist."
 (declare-function org-astro--image-entry-alt "ox-astro-image-handlers")
 (declare-function org-astro--update-source-buffer-image-path "ox-astro-image-handlers")
 (declare-function org-astro--clean-tag "ox-astro-metadata")
+(declare-function org-astro--normalize-theme-name "ox-astro-metadata")
 (declare-function org-astro--parse-tags "ox-astro-metadata")
 (declare-function org-astro--parse-categories "ox-astro-metadata")
 (declare-function org-astro--parse-places "ox-astro-metadata")
@@ -1654,8 +1655,9 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
     (org-element-map tree 'keyword
       (lambda (k)
         (when (string-equal (org-element-property :key k) "THEME")
-          (let ((value (downcase (string-trim (or (org-element-property :value k) "")))))
-            (when (not (string-empty-p value))
+          (let ((value (org-astro--normalize-theme-name
+                        (org-element-property :value k))))
+            (when value
               (puthash value t seen)))))
       nil)
     (hash-table-count seen)))
@@ -1773,7 +1775,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                          (org-trim v))))
          (theme
           (let* ((doc-theme (org-astro--doc-level-keyword-value tree "THEME"))
-                 (theme-clean (and doc-theme (org-trim doc-theme)))
+                 (theme-clean (org-astro--normalize-theme-name doc-theme))
                  (theme-count (org-astro--theme-keyword-count tree)))
             ;; Only promote THEME to frontmatter when it is doc-level and the
             ;; post uses a single theme.

@@ -10,6 +10,8 @@
 (require 'ox-astro-helpers-core)
 (require 'ox-astro-export-helpers)
 
+(declare-function org-astro--normalize-theme-name "ox-astro-metadata")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transcode Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -408,8 +410,10 @@ Otherwise, output as a plain fenced code block."
                (model-prefix (org-astro--model-prefix-for-heading heading info))
                (prefix (concat (or theme-prefix "") (or model-prefix ""))))
           ;; If we hoisted a theme marker, drop the original from contents to avoid duplication.
-          (when (and theme-prefix contents (string-prefix-p theme-prefix contents))
-            (setq contents (substring contents (length theme-prefix))))
+          (when (and theme-prefix contents)
+            (let ((theme-marker-re "\\`{\\/\\* theme: [^*]+ \\*\\/}[[:space:]]*"))
+              (when (string-match theme-marker-re contents)
+                (setq contents (replace-match "" t t contents)))))
           ;; If we hoisted a model banner, drop the original from contents to avoid duplication.
           (when (and model-prefix contents (string-prefix-p model-prefix contents))
             (setq contents (substring contents (length model-prefix))))
@@ -425,10 +429,10 @@ Marks the keyword as consumed so it won't render twice."
                (eq (org-element-type first-child) 'keyword)
                (string-equal (org-element-property :key first-child) "THEME"))
       (let* ((raw (org-element-property :value first-child))
-             (value (and raw (string-trim raw))))
-        (when (and value (not (string-empty-p value)))
+             (value (org-astro--normalize-theme-name raw)))
+        (when value
           (org-element-put-property first-child :astro-consumed t)
-          (format "{/* theme: %s */}\n\n" (downcase value)))))))
+          (format "{/* theme: %s */}\n\n" value))))))
 
 (defun org-astro--model-prefix-for-heading (heading _info)
   "Emit a model banner if HEADING section starts with a MODEL keyword.

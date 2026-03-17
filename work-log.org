@@ -92,6 +92,20 @@ before processing images (ox-astro-handlers.el line 623).
 ** Tests
 - `emacs -Q --batch -L . -l test/theme-reorder-test.el -f ert-run-tests-batch-and-exit`
 
+* 2026-03-17 - Reset theme aliases for author commentary
+
+** Summary
+- Normalized `#+THEME:` reset aliases so `default`, `jay`, `author`, and `human` all export as the canonical `default` reset.
+- Applied the normalization consistently to inline theme markers, doc-level frontmatter, and unique theme counting.
+- Added regression coverage for inline `human` and doc-level `jay` usage.
+
+** Impact
+- Author-facing reset themes now read more naturally in Org files without changing downstream Astro behavior.
+- Frontmatter and inline markers stay canonical, so the rendering pipeline remains predictable.
+
+** Tests
+- `emacs -Q --batch -L . -l test/theme-reorder-test.el -f ert-run-tests-batch-and-exit`
+
 * 2025-12-03 - Remote image URL replacement in source files
 
 ** Summary

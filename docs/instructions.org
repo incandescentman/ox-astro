@@ -360,7 +360,7 @@ AI response here...
 ** Common Patterns
 - Single-AI post: Put ~#+THEME:~ at document level for page-wide styling
 - Multi-AI post: Put ~#+THEME:~ + ~#+MODEL:~ after each section heading
-- Author commentary: Use ~#+THEME: default~ to reset styling
+- Author commentary: Use ~#+THEME: default~, ~jay~, ~author~, or ~human~ to reset styling
 
 * Reference
 - Architecture: [[file:design-architecture.org]]

@@ -305,7 +305,7 @@ By default, posts appear in the main blog list. This happens when ~#+VISIBILITY~
 
 | Keyword      | Purpose                                                        |
 |--------------+----------------------------------------------------------------|
-| ~#+THEME:~   | Sets the visual theme for a section (~chatgpt~, ~gemini~, ~claude~, ~default~) |
+| ~#+THEME:~   | Sets the visual theme for a section (~chatgpt~, ~gemini~, ~claude~, ~default/jay/author/human~) |
 | ~#+MODEL:~   | Displays a model banner with the AI name (e.g., "Claude Sonnet 4.5") |
 
 ** Placement Rules
@@ -369,12 +369,13 @@ Claude's answer...
 Result: Each section wrapped in themed div with model banner showing the AI name and logo.
 
 *** Resetting to Default Styling
-Use ~#+THEME: default~ to return to unthemed (author commentary) sections:
+Use ~#+THEME: default~, ~#+THEME: jay~, ~#+THEME: author~, or ~#+THEME: human~
+to return to unthemed (regular blog / author commentary) sections:
 
 #+begin_src org
 * My Analysis
 
-#+THEME: default
+#+THEME: author
 
 This section uses the site's default styling, not any AI theme.
 #+end_src
