@@ -353,7 +353,7 @@ or double quotes retain internal spacing; quotes are stripped in the result."
                             (plist-get info :story-type))))
     (when story-type-raw
       (let* ((trimmed (org-trim story-type-raw))
-             (valid '("full-story" "vignette" "snapshot" "fragment" "conversation")))
+             (valid '("full-story" "vignette" "snapshot" "fragment" "conversation" "interview" "profile")))
         (cond
          ((string-empty-p trimmed) nil)
          ((member trimmed valid) trimmed)

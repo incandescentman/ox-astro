@@ -183,13 +183,15 @@ categories:
   - ~snapshot~
   - ~fragment~
   - ~conversation~
-- Practical rule: If you want labels like ~interview~ or ~profile~, keep those in ~#+TAGS~ rather than forcing them into ~#+STORY_TYPE~.
+  - ~interview~
+  - ~profile~
+- Practical rule: Use ~#+STORY_TYPE~ for content shape values like ~interview~, ~profile~, or ~conversation~. Use ~#+TAGS~ for topical labels like ~dad~, ~childhood~, or ~physics~.
 
 Example:
 
 #+begin_src org
-#+STORY_TYPE: conversation
-#+TAGS: interview, dad, childhood
+#+STORY_TYPE: interview
+#+TAGS: dad, childhood
 #+end_src
 
 **Automatic Front Matter Generation:**
