@@ -125,6 +125,8 @@ You can export individual subtrees as standalone blog posts. This is especially 
 
 The exporter automatically generates YAML front matter based on keywords in your Org file.
 
+For the shared multi-repo metadata standard used by ~astro-roam~, ~life-web~, and ~parents-web~, prefer keeping canonical metadata in the Org source file headers.
+
 **Supported Keys:**
 | Org Keyword          | YAML Key    | Description                                     |
 |----------------------+-------------+-------------------------------------------------|
@@ -170,6 +172,24 @@ tags:
 categories:
   - tutorials
   - long form
+#+end_src
+
+** Story Type
+
+- Sources: Use ~#+ASTRO_STORY_TYPE~ or ~#+STORY_TYPE~. The ~ASTRO_*~ variant takes precedence.
+- Validation: ~STORY_TYPE~ is constrained. The exporter currently accepts:
+  - ~full-story~
+  - ~vignette~
+  - ~snapshot~
+  - ~fragment~
+  - ~conversation~
+- Practical rule: If you want labels like ~interview~ or ~profile~, keep those in ~#+TAGS~ rather than forcing them into ~#+STORY_TYPE~.
+
+Example:
+
+#+begin_src org
+#+STORY_TYPE: conversation
+#+TAGS: interview, dad, childhood
 #+end_src
 
 **Automatic Front Matter Generation:**

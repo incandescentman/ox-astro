@@ -14,6 +14,7 @@ Canonical system map:
 |----------------------+-----------+-----------------+----------------------------+----------------|
 | ~astro-roam~         | =~/Dropbox/github/astro-roam/src/content/notes= | =~/Dropbox/roam= | Yes | Main knowledge base |
 | ~roam-life~          | =~/Dropbox/github/life-web/src/content/notes=   | =~/Dropbox/roam-life= | Yes | Life stories |
+| ~roam-parents~       | =~/Dropbox/github/parents-web/src/content/notes= | =~/Dropbox/roam-parents= | Yes | Parents archive |
 
 * Notes
 
@@ -27,9 +28,15 @@ Canonical system map:
 ** roam-life / life-web
 
 - Viewer repo: =~/Dropbox/github/life-web=
-- Current verified workflow is per-note export from Emacs
-- No verified repo-local batch-export shell script yet as of 2026-03-23
+- Current verified workflows include Emacs export and repo-local batch export
 - Viewer depends on path-derived IDs and folder-aware routing
+
+** roam-parents / parents-web
+
+- Viewer repo: =~/Dropbox/github/parents-web=
+- Repo-local batch exporter exists:
+  =~/Dropbox/github/parents-web/scripts/export-roam.sh=
+- Intended for interviews, conversations, profiles, and family archive material
 
 * When Updating Destination Config
 
