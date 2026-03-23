@@ -1,5 +1,11 @@
 * ox-astro: An Org Mode Exporter for Astro MDX
 
+For the cross-repo publishing map, start here:
+=~/Dropbox/github/docs/org-roam-web-publishing-system.org=
+
+For destination nickname mapping, see:
+=~/Dropbox/github/ox-astro/docs/destinations.org=
+
 ~ox-astro.el~ is a specialized back-end for the Org export engine, designed to convert Org mode files into Astro-compatible MDX (~.mdx~) files. It streamlines the process of writing blog posts in Org mode for publication on an Astro website.
 
 The exporter automates many of the tedious parts of content creation, including automatic front-matter generation (written back to your .org source file), advanced image handling, and Markdown-specific formatting, allowing you to focus on writing.

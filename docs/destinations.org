@@ -1,0 +1,45 @@
+#+TITLE: ox-astro Destinations
+#+DATE: 2026-03-23
+
+* Purpose
+
+This file maps exporter destination names to their viewer repos and intended use.
+
+Canonical system map:
+=~/Dropbox/github/docs/org-roam-web-publishing-system.org=
+
+* Destination Map
+
+| Destination Nickname | Writes To | Source Database | Preserves Folder Structure | Viewer Purpose |
+|----------------------+-----------+-----------------+----------------------------+----------------|
+| ~astro-roam~         | =~/Dropbox/github/astro-roam/src/content/notes= | =~/Dropbox/roam= | Yes | Main knowledge base |
+| ~roam-life~          | =~/Dropbox/github/life-web/src/content/notes=   | =~/Dropbox/roam-life= | Yes | Life stories |
+
+* Notes
+
+** astro-roam
+
+- Viewer repo: =~/Dropbox/github/astro-roam=
+- Verified repo-local batch exporter exists:
+  =~/Dropbox/github/astro-roam/scripts/export-roam.sh=
+- Current viewer routes are filename-derived rather than full folder-path-derived
+
+** roam-life / life-web
+
+- Viewer repo: =~/Dropbox/github/life-web=
+- Current verified workflow is per-note export from Emacs
+- No verified repo-local batch-export shell script yet as of 2026-03-23
+- Viewer depends on path-derived IDs and folder-aware routing
+
+* When Updating Destination Config
+
+If you add or change destination nicknames, update:
+- this file
+- =~/Dropbox/github/docs/org-roam-web-publishing-system.org=
+- the viewer repo's operations doc
+
+* Related Files
+
+- =~/Dropbox/github/ox-astro/README.org=
+- =~/Dropbox/github/astro-roam/docs/operations.org=
+- =~/Dropbox/github/life-web/docs/operations.org=
