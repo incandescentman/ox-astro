@@ -54,6 +54,20 @@
 - *Actionable insight:* When modifying slug behavior, check ALL three locations to ensure consistency
 - Question: Is this OK? should we consolidate slug generation logic to one place?
 
+** Behavior: Export rewrites image paths in the Org source
+- *Date:* 2026-03-27
+- *Mechanism:* When ox-astro copies an image from its original location (e.g.
+  =~/Downloads/=) into =src/assets/images/posts/{slug}/=, it also rewrites the
+  =[[...]]= link in the Org source buffer to point to the new assets path. This
+  happens via =org-astro--rewrite-org-image-path= → =org-astro--update-source-buffer-image-path=
+  at ox-astro-image-handlers.el:551. The rewrite only fires when =:rewrite-path=
+  is non-nil in the materialize result.
+- *Actionable insight:* If image paths in an Org file still point to Downloads or
+  another external location after export, don't manually fix them — diagnose why
+  the rewrite didn't fire. Common causes: =:rewrite-path= set to nil, source
+  buffer not open during export, or the image hitting the "already inside assets"
+  branch (which skips rewriting since the path is already correct).
+
 ** Gotcha: Raw `#+SLUG` values can drift from the app's canonical route
 - *Date:* 2026-03-27
 - *Trigger:* A post exported with =#+SLUG: should-vinh-move-to-singapore-or-hong-Kong=
