@@ -719,6 +719,7 @@ Note: Uses &rest _args for compatibility with both old (3-arg) and new (2-arg) O
   :filters-alist
   '((:filter-parse-tree . (org-astro-auto-wrap-image-paths-filter
                            org-astro--ensure-inline-theme-markers
+                           org-astro--pre-mark-heading-theme-model
                            org-astro--collect-image-metadata-filter
                            org-astro-prepare-images-filter))
     (:filter-body . org-astro-body-filter)

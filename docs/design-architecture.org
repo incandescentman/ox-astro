@@ -60,6 +60,8 @@ The export process happens in three distinct phases:
 - =org-astro--collect-images-from-tree= — Image detection
 - =org-astro--collect-pdfs-from-tree= — PDF detection
 - =org-astro--process-image-path= — Asset copying and import generation
+- =org-astro--ensure-inline-theme-markers= — Inject THEME keywords for Claude/ChatGPT headings
+- =org-astro--pre-mark-heading-theme-model= — Mark section-leading THEME/MODEL keywords as consumed so the keyword transcoder skips them (prevents duplicate banners)
 
 *Why this matters*: Asset processing must happen before transcoding because we need to update the source file and collect import data that will be used in later phases.
 

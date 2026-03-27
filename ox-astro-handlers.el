@@ -397,6 +397,58 @@ marker placement in Org."
       (org-element-set-contents tree (nreverse result)))
     tree))
 
+(defun org-astro--pre-mark-heading-theme-model (tree _backend _info)
+  "Pre-mark section-leading THEME/MODEL keywords as :astro-consumed.
+This runs as a parse-tree filter before transcoding.  It ensures the
+keyword transcoder (which runs before the headline transcoder) does
+not emit theme markers or model banners that the headline transcoder
+will later hoist as heading prefixes.  Without this, the keyword
+handler emits them into section contents AND the headline handler
+re-emits them as a prefix, producing duplicates."
+  (org-element-map tree 'headline
+    (lambda (heading)
+      (let* ((section (car (org-element-contents heading)))
+             (children (when (and section (eq 'section (org-element-type section)))
+                         (org-element-contents section))))
+        (when children
+          ;; Mark THEME if it is the literal first section child.
+          ;; This mirrors the detection logic in theme-prefix-for-heading.
+          (let ((first-child (car children)))
+            (when (and first-child
+                       (eq (org-element-type first-child) 'keyword)
+                       (string-equal (org-element-property :key first-child) "THEME"))
+              (org-element-put-property first-child :astro-consumed t)))
+          ;; Mark MODEL, skipping blank paragraphs.
+          ;; This mirrors the detection logic in model-prefix-for-heading.
+          (cl-labels
+              ((blank-p (n)
+                 (and (eq (org-element-type n) 'paragraph)
+                      (string-blank-p (org-element-interpret-data n))))
+               (next-meaningful (nodes)
+                 (cl-loop for node in nodes
+                          unless (blank-p node)
+                          return node)))
+            (let* ((first (next-meaningful children))
+                   (rest (and first (cdr (member first children))))
+                   (second (and rest (next-meaningful rest)))
+                   (model-node
+                    (cond
+                     ;; MODEL as first meaningful child
+                     ((and first
+                           (eq (org-element-type first) 'keyword)
+                           (string-equal (org-element-property :key first) "MODEL"))
+                      first)
+                     ;; THEME then MODEL as first two meaningful children
+                     ((and first second
+                           (eq (org-element-type first) 'keyword)
+                           (string-equal (org-element-property :key first) "THEME")
+                           (eq (org-element-type second) 'keyword)
+                           (string-equal (org-element-property :key second) "MODEL"))
+                      second))))
+              (when model-node
+                (org-element-put-property model-node :astro-consumed t))))))))
+  tree)
+
 (defun org-astro-auto-wrap-image-paths-filter (tree _backend info)
   "Pre-processing filter that automatically wraps raw image paths in [[ ]] brackets.
 This runs FIRST, before all other processing, to simulate manual bracket addition."

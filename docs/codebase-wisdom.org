@@ -38,6 +38,20 @@
   Fix the cleanup or path-resolution bug without changing the source-rewrite
   contract.
 
+** Trap: Org transcodes section children before calling the headline transcoder
+- *Date:* 2026-03-27
+- *Mechanism:* In Org export, a headline's section contents (keywords,
+  paragraphs, etc.) are transcoded into strings /before/ the headline
+  transcoder receives them as =contents=.  This means a keyword transcoder
+  cannot rely on the headline transcoder having set =:astro-consumed= yet.
+- *Actionable insight:* If you need to suppress a keyword inside a heading
+  section (to hoist it as a heading prefix), do the suppression in a
+  parse-tree filter that runs before transcoding — not in the headline
+  transcoder.  The current solution is =org-astro--pre-mark-heading-theme-model=.
+  Never use "emit then strip from contents" as the primary defense; it is
+  fragile because whitespace in the rendered string may differ between
+  emission paths.
+
 ** Pattern: Keyword insertion uses `org-astro--upsert-keyword-after-roam`
 - *Mechanism:* This function intelligently places keywords after org-roam properties
 - *Actionable insight:* Always use this helper instead of manual insertion to maintain consistent formatting

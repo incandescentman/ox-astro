@@ -26,6 +26,22 @@
         (setq start (match-end 0)))
       (should (= 1 count)))))
 
+(ert-deftest org-astro-empty-theme-section-does-not-duplicate-model-banner ()
+  "An empty themed heading should hoist its MODEL banner only once."
+  (let* ((content
+          "#+TITLE: Should Vinh move?\n#+SLUG: should-vinh-move\n#+DESTINATION_FOLDER: test\n\n[[/tmp/a.png]]\n* Claude\n#+THEME: claude\n#+MODEL: Claude Sonnet 4.5\n\n* Should Vinh move?\nBody text.\n")
+         (mdx (ox-astro-test--with-temp-export content "empty-theme-section.org" "should-vinh-move")))
+    (should (string-match-p
+             (regexp-quote "![img](/tmp/a.png)  \n\n{/* theme: claude */}\n\n<div class=\"model-banner\">Claude Sonnet 4.5</div>\n\n# Claude\n\n# Should Vinh move?")
+             mdx))
+    (let ((count 0)
+          (start 0)
+          (banner (regexp-quote "<div class=\"model-banner\">Claude Sonnet 4.5</div>")))
+      (while (string-match banner mdx start)
+        (setq count (1+ count))
+        (setq start (match-end 0)))
+      (should (= 1 count)))))
+
 (ert-deftest org-astro-respects-already-prefixed-theme ()
   "When THEME appears before the first heading, treat it as page theme (no inline marker)."
   (let* ((content "#+DESTINATION_FOLDER: test\n\n#+THEME: claude\n* Claude\nBody text.\n")

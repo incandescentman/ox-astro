@@ -1,6 +1,39 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-03-27 Fix duplicate model banner for section-leading THEME/MODEL keywords
+
+** Summary
+Heading-scoped =#+THEME:= and =#+MODEL:= keywords (e.g., inside =* Claude=)
+produced duplicate =<div class="model-banner">= output.  Fixed by moving the
+"consumed" decision from transcode time to a parse-tree filter.
+
+** Root cause
+Org transcodes section children /before/ calling the headline transcoder.  So
+the keyword handler in =ox-astro-handlers.el= emitted the banner into the
+section body first, and then the headline handler in =ox-astro-transcode.el=
+re-emitted it as a hoisted prefix.  The "strip from contents" fallback failed
+because trailing whitespace differed between the two emission paths (=\n= vs
+=\n\n=).
+
+** Fix
+- Added =org-astro--pre-mark-heading-theme-model= parse-tree filter that runs
+  before transcoding and marks section-leading THEME/MODEL keywords as
+  =:astro-consumed=.
+- The keyword transcoder already checks =:astro-consumed= and returns ="="=,
+  so it no longer emits into section contents.
+- The headline transcoder remains the sole emitter via its existing
+  =theme-prefix-for-heading= / =model-prefix-for-heading= functions.
+- Kept the strip-from-contents logic as a safety net with a more forgiving
+  regex for model banners.
+- Added regression test =org-astro-empty-theme-section-does-not-duplicate-model-banner=.
+
+** Files changed
+- =ox-astro-handlers.el= — new =org-astro--pre-mark-heading-theme-model= filter
+- =ox-astro-transcode.el= — removed debug instrumentation, relaxed safety-net regex
+- =ox-astro.el= — registered new filter in =:filters-alist=
+- =test/theme-reorder-test.el= — regression test for the exact failing pattern
+
 * 2026-03-27 Remove misleading source-rewrite comments from image handlers
 
 ** Summary

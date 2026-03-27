@@ -410,14 +410,18 @@ Otherwise, output as a plain fenced code block."
                (theme-prefix (org-astro--theme-prefix-for-heading heading info))
                (model-prefix (org-astro--model-prefix-for-heading heading info))
                (prefix (concat (or theme-prefix "") (or model-prefix ""))))
-          ;; If we hoisted a theme marker, drop the original from contents to avoid duplication.
+          ;; Safety net: if a theme/model marker leaked into contents despite
+          ;; pre-marking (org-astro--pre-mark-heading-theme-model), strip it.
           (when (and theme-prefix contents)
-            (let ((theme-marker-re "\\`{\\/\\* theme: [^*]+ \\*\\/}[[:space:]]*"))
-              (when (string-match theme-marker-re contents)
+            (let ((re "\\`{\\/\\* theme: [^*]+ \\*\\/}[[:space:]]*"))
+              (when (string-match re contents)
                 (setq contents (replace-match "" t t contents)))))
-          ;; If we hoisted a model banner, drop the original from contents to avoid duplication.
-          (when (and model-prefix contents (string-prefix-p model-prefix contents))
-            (setq contents (substring contents (length model-prefix))))
+          (when (and model-prefix contents)
+            (let ((re (concat "\\`[[:space:]]*"
+                              (regexp-quote "<div class=\"model-banner\">")
+                              "[^<]*</div>[[:space:]]*")))
+              (when (string-match re contents)
+                (setq contents (replace-match "" t t contents)))))
           (concat prefix header "\n\n" (or contents ""))))))
 
 (defun org-astro--theme-prefix-for-heading (heading _info)
