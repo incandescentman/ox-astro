@@ -309,7 +309,7 @@ Astro's Sharp image optimization which fails on animated GIFs."
               (message "[ox-astro][img] GIF copied to public: %s" web-path)
               (list :public-path web-path
                     :target-path target-path
-                    :rewrite-path nil  ;; Don't rewrite org file - keep original path
+                    :rewrite-path nil
                     :is-public t
                     :status 'public-gif))))
 
@@ -354,7 +354,7 @@ Astro's Sharp image optimization which fails on animated GIFs."
                       (rename-file downloaded public-target t)
                       (list :public-path web-path
                             :target-path public-target
-                            :rewrite-path nil  ;; Don't rewrite org file for GIFs
+                            :rewrite-path nil
                             :is-public t
                             :status 'public-gif))
                   (list :astro-path astro-path

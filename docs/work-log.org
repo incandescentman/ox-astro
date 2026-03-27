@@ -1,6 +1,24 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-03-27 Remove misleading source-rewrite comments from image handlers
+
+** Summary
+Removed the misleading =Don't rewrite org file= comments from the public/GIF
+branches in =ox-astro-image-handlers.el=.
+
+** Why
+- Those comments read like a general pipeline rule even though ox-astro's
+  documented contract is the opposite for normal copied/downloaded images:
+  export writes canonical asset paths back into the Org source.
+- Leaving that wording in place made the recent regression easier to justify
+  and harder to catch quickly.
+
+** Fix
+- Deleted the misleading inline comments and left the code behavior itself
+  unchanged for the public/GIF branches.
+- Kept the normal copied/downloaded image branches rewriting the Org source.
+
 * 2026-03-27 Restore Org image source rewriting after copied/downloaded asset export
 
 ** Summary

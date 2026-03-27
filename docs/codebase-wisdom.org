@@ -28,6 +28,16 @@
 
 * ox-astro Specific Patterns
 
+** Contract: Export writes canonical metadata and canonical copied asset paths back into Org
+- *Date:* 2026-03-27
+- *Mechanism:* ox-astro does not just generate MDX. It also updates the source
+  Org file with canonical export state like =#+SLUG:= and rewritten paths for
+  normal copied/downloaded assets.
+- *Actionable insight:* If a fix proposal preserves original image paths in Org
+  to avoid some downstream cleanup bug, that is probably fighting the pipeline.
+  Fix the cleanup or path-resolution bug without changing the source-rewrite
+  contract.
+
 ** Pattern: Keyword insertion uses `org-astro--upsert-keyword-after-roam`
 - *Mechanism:* This function intelligently places keywords after org-roam properties
 - *Actionable insight:* Always use this helper instead of manual insertion to maintain consistent formatting
