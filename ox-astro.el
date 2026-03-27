@@ -278,9 +278,7 @@ generated and added to the Org source file."
               (setq info (plist-put info :destination-folder posts-folder-raw)))
             (when posts-folder
               (let* ((title (org-astro--get-title tree info))
-                     (slug (or (plist-get info :slug)
-                               (when title
-                                 (org-astro--slugify title))))
+                     (slug (org-astro--resolve-slug tree info))
                      (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
                      (image-manifest (org-astro--build-image-manifest tree info))
                      (process-result (org-astro--process-image-manifest image-manifest posts-folder sub-dir))
@@ -352,10 +350,11 @@ generated and added to the Org source file."
                                      (lambda (k)
                                        (when (string-equal "TITLE" (org-element-property :key k)) k))
                                      nil 'first-match))
-                         (slug-kw (org-element-map tree 'keyword
-                                    (lambda (k)
-                                      (when (string-equal "SLUG" (org-element-property :key k)) k))
-                                    nil 'first-match))
+                         (slug-keywords (org-element-map tree 'keyword
+                                          (lambda (k)
+                                            (when (string-equal "SLUG" (org-element-property :key k)) k))))
+                         (slug-kw (car slug-keywords))
+                         (duplicate-slug-kw (> (length slug-keywords) 1))
                          (title-from-headline (not title-kw))
                          (title-val (or non-date-title first-title))
                          (input-file (or (plist-get info :input-file) (buffer-file-name)))
@@ -363,6 +362,8 @@ generated and added to the Org source file."
                          (headline (org-element-map tree 'headline 'identity nil 'first-match))
                          (headline-title (when headline
                                            (org-astro--safe-export (org-element-property :title headline) info)))
+                         (slug-value (when slug-kw
+                                       (org-trim (org-element-property :value slug-kw))))
                          (date-only-title (and (null non-date-title)
                                                (or (and first-title (org-astro--date-string-p first-title))
                                                    (and filename-base (org-astro--date-string-p filename-base)))))
@@ -387,15 +388,18 @@ generated and added to the Org source file."
                           (org-astro--upsert-keyword-after-roam "TITLE" title)
                           (setq buffer-modified-p t))))
 
-                    ;; ALWAYS add slug if missing (whether title comes from keyword or headline)
-                    (unless slug-kw
-                      (let* ((title (or effective-title
-                                        (plist-get info :title)
-                                        (org-astro--get-title tree info)))
-                             (slug (when title (org-astro--slugify title))))
-                        (when (and slug (not (string-blank-p slug)))
-                          (org-astro--upsert-keyword-after-roam "SLUG" slug)
-                          (setq buffer-modified-p t)))))
+                    ;; Keep SLUG canonical even when the source keyword already exists.
+                    (let* ((title (or effective-title
+                                      (plist-get info :title)
+                                      (org-astro--get-title tree info)))
+                           (slug (or (and slug-value (org-astro--normalize-slug slug-value))
+                                     (and title (org-astro--slugify title)))))
+                      (when (and slug (not (string-blank-p slug))
+                                 (or duplicate-slug-kw
+                                     (not slug-kw)
+                                     (not (string= slug-value slug))))
+                        (org-astro--upsert-keyword-after-roam "SLUG" slug)
+                        (setq buffer-modified-p t))))
 
                   ;; 2. Handle Excerpt (only if missing), placed after org-roam preamble
                   ;; Insert as SUBHED (alias for excerpt) to match legacy convention
@@ -549,7 +553,8 @@ generated and added to the Org source file."
                                       (slug-in-info (let ((val (plist-get info :slug)))
                                                       (when (and val (stringp val))
                                                         (org-trim val)))))
-                                  (or slug-in-narrow slug-in-full slug-in-info)))
+                                  (org-astro--normalize-slug
+                                   (or slug-in-narrow slug-in-full slug-in-info))))
                  (final-filename
                   ;; Prefer slug-based filenames whenever we have a usable slug,
                   ;; regardless of whether we're exporting a subtree or full file.

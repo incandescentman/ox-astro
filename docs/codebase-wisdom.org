@@ -44,6 +44,23 @@
 - *Actionable insight:* When modifying slug behavior, check ALL three locations to ensure consistency
 - Question: Is this OK? should we consolidate slug generation logic to one place?
 
+** Gotcha: Raw `#+SLUG` values can drift from the app's canonical route
+- *Date:* 2026-03-27
+- *Trigger:* A post exported with =#+SLUG: should-vinh-move-to-singapore-or-hong-Kong=
+  while the Astro app canonicalized the actual route to
+  =/should-vinh-move-to-singapore-or-hong-kong/=.
+- *Mechanism:* Some exporter paths trusted =:slug= verbatim, while others
+  slugified from title. Duplicate =#+SLUG:= lines in the Org preamble made the
+  problem worse because a stale later slug could survive even after a new
+  normalized slug was inserted near the top.
+- *The Fix:* Centralize slug resolution in =org-astro--resolve-slug=, normalize
+  existing slug keywords with =org-astro--normalize-slug=, and make
+  =org-astro--upsert-keyword-after-roam= replace/remove duplicate preamble
+  keywords instead of only inserting.
+- *Actionable insight:* Treat slug normalization and slug deduplication as the
+  same problem. If a slug bug appears in routes, also inspect the Org preamble
+  for duplicate =#+SLUG:= lines before debugging Astro.
+
 ** Gotcha: Whitespace in config folder nicknames causes lookup failures
 - *Date:* 2025-10-05
 - *Trigger:* `#+DESTINATION_FOLDER: socratic` failed with "not found" error even though "socratic " existed in config
@@ -122,6 +139,13 @@
 - *Mechanism:* We had two suppression passes. Tree-level rendering correctly suppressed the first hero duplicate, but a later regex cleanup removed the first matching =<Image src={heroVar} ...>= still present in the rendered string. If the original hero occurrence was inside a gallery, that "first remaining match" could actually be a later intentional repeat.
 - *Fix:* Track occurrence metadata (including =:begin= and whether the occurrence came from inside a gallery) and suppress only the first standalone hero occurrence. Keep the string-level cleanup only as a fallback when tree-level suppression never fired.
 - *Actionable insight:* When the same image file can appear multiple times, suppression/removal logic should key off parse-tree occurrence identity, not path equality or "first regex match" in the final output.
+
+** Gotcha: Broken-image paragraph fallback could silently delete image links
+- *Date:* 2026-03-27
+- *Trigger:* Standalone Org image paragraphs vanished from exported MDX when their render record was missing, even though the source links were still present in the Org file.
+- *Mechanism:* =org-astro-paragraph= routed any paragraph whose interpreted text looked image-like through =org-astro--handle-broken-image-paragraph=. That helper returned an empty string when no render record was found, so valid image-link paragraphs were dropped instead of falling back to normal Markdown export.
+- *Fix:* When broken-image recovery fails, fall back to =org-md-paragraph= (with soft-break preservation) instead of returning =\"\"=.
+- *Actionable insight:* Recovery code for malformed image paragraphs must never be lossy. If repair fails, preserve the original content rather than deleting it.
 
 ** Gotcha: Downstream app image resolver can silently drop AVIF heroes
 - *Date:* 2026-02-21

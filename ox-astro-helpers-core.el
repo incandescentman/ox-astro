@@ -1119,20 +1119,49 @@ Respects narrowing - works within the current narrowed region."
 Otherwise, use normal keyword placement."
   (save-excursion
     (goto-char (point-min))
-    (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
-           (anchor (save-excursion
-                     (save-restriction
-                       (narrow-to-region (point-min) limit)
-                       (goto-char (point-min))
-                       (let ((last-pos nil))
-                         (while (re-search-forward "^-[ \t]+\\(Links\\|Source\\) ::[ \t]*$" nil t)
-                           (setq last-pos (line-end-position)))
-                         (when last-pos (goto-char last-pos) (forward-line 1) (point)))))))
-      (if anchor
-          (progn (goto-char anchor)
-                 (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
-                 (insert (format "#+%s: %s\n" (upcase key) value)))
-          (org-astro--upsert-keyword key value)))))
+    (let* ((ukey (upcase key))
+           (limit (save-excursion
+                    (or (re-search-forward "^\\*" nil t) (point-max))))
+           (anchor
+            (save-excursion
+              (save-restriction
+                (narrow-to-region (point-min) limit)
+                (goto-char (point-min))
+                (let ((last-pos nil))
+                  (while (re-search-forward "^-[ \t]+\\(Links\\|Source\\) ::[ \t]*$" nil t)
+                    (setq last-pos (line-end-position)))
+                  (when last-pos
+                    (goto-char last-pos)
+                    (forward-line 1)
+                    (point))))))
+           (keyword-ranges
+            (save-excursion
+              (save-restriction
+                (narrow-to-region (point-min) limit)
+                (goto-char (point-min))
+                (let ((ranges nil)
+                      (pattern (format "^#\\+%s:[ \t]*.*$" (regexp-quote ukey))))
+                  (while (re-search-forward pattern nil t)
+                    (push (cons (line-beginning-position)
+                                (save-excursion
+                                  (forward-line 1)
+                                  (point)))
+                          ranges))
+                  (nreverse ranges))))))
+      (cond
+       (keyword-ranges
+        (goto-char (caar keyword-ranges))
+        (delete-region (caar keyword-ranges) (cdar keyword-ranges))
+        (insert (format "#+%s: %s\n" ukey value))
+        (dolist (range (reverse (cdr keyword-ranges)))
+          (delete-region (car range) (cdr range))))
+       (anchor
+        (goto-char anchor)
+        (unless (or (bobp) (looking-at-p "^\\s-*$"))
+          (insert "\n"))
+        (insert (format "#+%s: %s\n" ukey value)))
+       (t
+        (org-astro--upsert-keyword key value))))))
 
 (defun org-astro--normalize-user-blocks ()
   "Convert org headings to markdown inside user/prompt/quote blocks.
@@ -1223,6 +1252,23 @@ Strips leading/trailing dashes that result from punctuation like question marks.
            (s (replace-regexp-in-string "^-+" "" s))
            (s (replace-regexp-in-string "-+$" "" s)))
       s)))
+
+(defun org-astro--normalize-slug (s)
+  "Normalize slug or slash-separated slug path S."
+  (when (stringp s)
+    (let* ((segments (split-string (org-trim s) "/" t "[[:space:]\n\r\t]+"))
+           (normalized (delq nil (mapcar #'org-astro--slugify segments))))
+      (when normalized
+        (mapconcat #'identity normalized "/")))))
+
+(defun org-astro--resolve-slug (tree info)
+  "Return the canonical slug for TREE and INFO."
+  (let* ((raw-slug (or (plist-get info :slug)
+                       (and tree (org-astro--keyword-value tree '("SLUG")))))
+         (title (or (plist-get info :title)
+                    (and tree (org-astro--get-title tree info)))))
+    (or (and raw-slug (org-astro--normalize-slug raw-slug))
+        (and title (org-astro--slugify title)))))
 
 ;; Detect whether TEXT contains Markdown link syntax that should be preserved
 ;; as-is. We check for inline links [text](url) and reference-style links
@@ -1533,10 +1579,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
 (defun org-astro--get-cover-image (info posts-folder)
   "Get the cover image path and alt text from INFO.
   If no explicit cover image is specified, use the first body image as hero."
-  (let* ((slug (or (plist-get info :slug)
-                   (let ((title (or (plist-get info :title)
-                                    (org-astro--get-title (plist-get info :parse-tree) info))))
-                     (and title (org-astro--slugify title)))))
+  (let* ((slug (org-astro--resolve-slug (plist-get info :parse-tree) info))
          (hero-image-raw (plist-get info :hero-image))
          (hero-image-alt (and hero-image-raw (plist-get info :hero-image-alt)))
          (image-raw (or hero-image-raw
@@ -1694,8 +1737,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
 (defun org-astro--get-study-front-matter-data (tree info)
   "Build front matter for study exports."
   (let* ((title (org-astro--get-title tree info))
-         (slug (or (plist-get info :slug)
-                   (when title (org-astro--slugify title))))
+         (slug (org-astro--resolve-slug tree info))
          (study-id (or (org-astro--keyword-value tree '("STUDY_ID" "STUDY-ID" "ID"))
                        slug))
          (authors (or (org-astro--keyword-value tree '("AUTHORS" "AUTHOR"))
@@ -1741,9 +1783,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
          (destination-info (org-astro--resolve-destination-config posts-folder))
          (frontmatter-mode (plist-get destination-info :frontmatter))
          (title (org-astro--get-title tree info))
-         ;; Always use slug from info or generate from title
-         (slug (or (plist-get info :slug)
-                   (when title (org-astro--slugify title))))
+         (slug (org-astro--resolve-slug tree info))
          (author (or (plist-get info :author) "Jay Dixit"))
          (excerpt (org-astro--get-excerpt tree info))
          (publish-date (org-astro--get-publish-date info))

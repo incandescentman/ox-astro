@@ -98,15 +98,32 @@ Returns the path string or nil if not found."
                 (setq found t)))))))
     found))
 
-(defun org-astro--cleanup-stale-asset-dirs (output-dir slugs)
-  "Delete assets directories for SLUGS when they are unreferenced."
+(defun org-astro--slug-assets-referenced-in-file-p (file slug)
+  "Return non-nil if FILE references SLUG assets."
+  (when (and file slug (file-exists-p file) (file-regular-p file))
+    (let ((needle-assets (concat "assets/images/posts/" slug "/"))
+          (needle-public (concat "/images/posts/" slug "/"))
+          (found nil))
+      (with-temp-buffer
+        (insert-file-contents file)
+        (goto-char (point-min))
+        (when (or (search-forward needle-assets nil t)
+                  (search-forward needle-public nil t))
+          (setq found t)))
+      found)))
+
+(defun org-astro--cleanup-stale-asset-dirs (output-dir slugs &optional source-file)
+  "Delete assets directories for SLUGS when they are unreferenced.
+SOURCE-FILE, when provided, is also checked so asset cleanup does not delete
+paths still referenced by the external Org source of truth."
   (let* ((app-root (org-astro--resolve-app-root-from-output output-dir)))
     (if (not app-root)
         (message "[ox-astro] Skipping asset cleanup: could not resolve app root for %s" output-dir)
       (dolist (slug slugs)
         (let ((assets-dir (org-astro--slug-assets-dir app-root slug)))
           (when (and assets-dir (file-directory-p assets-dir))
-            (if (org-astro--slug-assets-referenced-p app-root slug)
+            (if (or (org-astro--slug-assets-referenced-p app-root slug)
+                    (org-astro--slug-assets-referenced-in-file-p source-file slug))
                 (message "[ox-astro] Keeping assets for %s (still referenced)" slug)
               (condition-case err
                   (progn
@@ -141,7 +158,7 @@ Returns a list of deleted file paths."
                 (error
                  (message "[ox-astro] Failed to delete %s: %s" mdx-file err)))))))
       (when deleted-slugs
-        (org-astro--cleanup-stale-asset-dirs output-dir (delete-dups deleted-slugs)))
+        (org-astro--cleanup-stale-asset-dirs output-dir (delete-dups deleted-slugs) source-file))
       (nreverse deleted-files))))
 
 (provide 'ox-astro-export-helpers)

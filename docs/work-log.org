@@ -1,6 +1,45 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-03-27 Normalize canonical slugs and dedupe preamble SLUG keywords
+
+** Summary
+Fixed a slug drift regression where exported Org/MDX metadata, image folders, and
+Astro routes could disagree about casing. A mixed-case =#+SLUG:= like
+=should-vinh-move-to-singapore-or-hong-Kong= could leak into frontmatter and
+asset paths even though the Astro app canonicalized the route to lowercase.
+
+** Root Cause
+- Slug handling was split across multiple places, and they did not all treat
+  =:slug= the same way.
+- Some paths trusted =:slug= verbatim, while others re-slugified from title.
+- The helper that writes keywords after the org-roam preamble inserted new
+  keywords but did not remove duplicate later =#+SLUG:= lines that were already
+  present in the preamble.
+- That meant a stale mixed-case slug could survive in the Org source and keep
+  affecting later export steps.
+
+** Fix
+- Added =org-astro--normalize-slug= and =org-astro--resolve-slug= to centralize
+  canonical slug resolution.
+- Updated filename generation, frontmatter assembly, hero/asset folder
+  selection, and image manifest processing to use the centralized canonical slug.
+- Updated preflight metadata generation so existing =#+SLUG:= values are
+  normalized, not just missing ones.
+- Detect duplicate =#+SLUG:= keywords and force a rewrite when duplicates are
+  present.
+- Reworked =org-astro--upsert-keyword-after-roam= so it replaces an existing
+  preamble keyword and deletes duplicates instead of blindly inserting a new one.
+
+** Verification
+- Source Org now has one lowercase =#+SLUG:= for the Vinh post.
+- Export now writes
+  =should-vinh-move-to-singapore-or-hong-kong.mdx= with lowercase
+  =slug:= and lowercase image import paths.
+- Stale mixed-case MDX and asset folder were deleted automatically on re-export.
+- =npm run build= passes in =apps/socratic= and generates
+  =/should-vinh-move-to-singapore-or-hong-kong/=.
+
 * 2026-03-16 Suppress fallback hero images from body (unify with explicit hero behavior)
 
 ** Summary
@@ -1755,6 +1794,23 @@ languages (=user=, =assistant=, etc.).
 - Re-exported real target file:
   - =/Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/what-we-carry-with-us.mdx=
   - Verified no empty conversation fences.
+
+* 2026-03-27 Preserve missing image links during export
+
+** Summary
+Fixed an exporter regression where standalone image paragraphs could disappear from MDX entirely when ox-astro failed to build a render record for them.
+
+** Changes
+- Updated =ox-astro-transcode.el=
+  - Changed =org-astro--handle-broken-image-paragraph= to fall back to normal Markdown paragraph export when image recovery fails, instead of returning an empty string
+  - Passed paragraph =contents= into the broken-image fallback helper so normal export output is preserved
+- Added regression test in =test-image-rendering.el=
+  - =org-astro-missing-local-image-link-is-preserved=
+- Re-exported the Vinh post and confirmed both image references now remain in the generated MDX
+
+** Verification
+- =emacs --batch -Q -L . --eval "(setq load-prefer-newer t)" -l ert -l test-image-rendering.el --eval "(ert-run-tests-batch 'org-astro-missing-local-image-link-is-preserved)"=
+- =emacs --batch -Q -L . --eval "(setq load-prefer-newer t)" -l ert -l test-image-rendering.el --eval "(ert-run-tests-batch 'org-astro-image-rendering-produces-render-map)"=
 
 * 2026-02-16 Conversation export regression test and cleanup
 

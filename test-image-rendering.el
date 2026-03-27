@@ -110,6 +110,48 @@
                   (should (= (length image-import-lines)
                              (length (cl-remove-duplicates image-import-lines :test #'string=)))))))
           (delete-directory source-root t)
+          (delete-directory posts-root t)))))
+
+(ert-deftest org-astro-export-preserves-original-image-sources-in-org ()
+  "Export should not rewrite original local or remote image sources in Org."
+  (pcase-let* ((`(:source-root ,source-root
+                 :posts-root ,posts-root
+                 :org-file ,org-file
+                 :remote-source ,remote-source)
+                (test-image-rendering--setup))
+               (abs-local (replace-regexp-in-string "\\\\" "/"
+                                                    (convert-standard-filename
+                                                     (expand-file-name "images/local-photo.png"
+                                                                       source-root))))
+               (abs-space (replace-regexp-in-string "\\\\" "/"
+                                                    (convert-standard-filename
+                                                     (expand-file-name "images/space name image.jpg"
+                                                                       source-root))))
+               (remote-url "https://example.com/assets/remote-fixture.png"))
+    (let ((org-astro-source-root-folder source-root)
+          (org-astro-known-posts-folders `(("test-export" . (:path ,posts-root)))))
+      (cl-letf* (((symbol-function 'org-astro--download-remote-image)
+                  (lambda (_url posts-folder sub-dir)
+                    (let* ((assets-folder (org-astro--get-assets-folder posts-folder sub-dir))
+                           (target (expand-file-name "remote-fixture.png" assets-folder)))
+                      (make-directory assets-folder t)
+                      (copy-file remote-source target t)
+                      target))))
+        (unwind-protect
+            (progn
+              (with-current-buffer (find-file-noselect org-file)
+                (unwind-protect
+                    (org-astro-export-to-mdx)
+                  (kill-buffer)))
+              (let ((source-output
+                     (with-temp-buffer
+                       (insert-file-contents org-file)
+                       (buffer-string))))
+                (should (string-match-p (regexp-quote abs-local) source-output))
+                (should (string-match-p (regexp-quote abs-space) source-output))
+                (should (string-match-p (regexp-quote remote-url) source-output))
+                (should-not (string-match-p "src/assets/images/posts/image-rendering-test/" source-output)))))
+          (delete-directory source-root t)
           (delete-directory posts-root t))))))
 
 (ert-deftest org-astro-image-layout-disabled-produces-no-layout-prop ()
@@ -185,6 +227,103 @@
                 (should (string-match "<Image src={[^}]+} alt=\"Local Photo Described\" />" output))))
           (delete-directory source-root t)
           (delete-directory posts-root t))))))
+
+(ert-deftest org-astro-missing-local-image-link-is-preserved ()
+  "Missing local image links should survive export as content, not disappear."
+  (let* ((temp-project (make-temp-file "ox-astro-missing-image-project" t))
+         (posts-dir (expand-file-name "src/content/blog" temp-project))
+         (assets-dir (expand-file-name "src/assets/images/posts" temp-project))
+         (source-dir (expand-file-name "source" temp-project))
+         (missing-path (expand-file-name "missing-inline.png" source-dir))
+         (temp-org (make-temp-file "ox-astro-missing-image" nil ".org"))
+         (output nil))
+    (make-directory posts-dir t)
+    (make-directory assets-dir t)
+    (make-directory source-dir t)
+    (with-temp-file temp-org
+      (insert (format "#+TITLE: Missing Image Preservation Test\n#+SLUG: missing-image-preservation-test\n#+DESTINATION_FOLDER: jaydocs\n\n* Body\n[[%s]]\n"
+                      missing-path)))
+    (unwind-protect
+        (let ((org-export-show-temporary-export-buffer nil)
+              (org-export-with-toc nil)
+              (org-export-with-section-numbers nil)
+              (org-persist-directory (expand-file-name "org-persist" temp-project))
+              (org-astro-debug-images nil)
+              (org-astro-debug-console nil)
+              (org-astro-debug-log nil)
+              (org-astro-known-posts-folders `(("jaydocs" . (:path ,posts-dir))))
+              (org-astro-source-root-folder (file-name-directory temp-org)))
+          (make-directory org-persist-directory t)
+          (let ((buffer (find-file-noselect temp-org)))
+            (unwind-protect
+                (with-current-buffer buffer
+                  (org-mode)
+                  (let ((inhibit-message t))
+                    (org-astro-export-to-mdx)))
+              (when (buffer-live-p buffer)
+                (with-current-buffer buffer
+                  (set-buffer-modified-p nil))
+                (kill-buffer buffer))))
+          (let ((mdx-path (expand-file-name "missing-image-preservation-test.mdx" posts-dir)))
+            (setq output
+                  (with-temp-buffer
+                    (insert-file-contents mdx-path)
+                    (buffer-string)))))
+      (when (file-exists-p temp-org)
+        (delete-file temp-org))
+      (when (file-exists-p temp-project)
+        (delete-directory temp-project t)))
+    (should output)
+    (should (string-match-p "missing-inline\\.png" output))
+    (should-not (string-match-p "<Image src={" output))))
+
+(ert-deftest org-astro-missing-current-app-asset-path-still-exports-image ()
+  "Missing paths already inside the current app assets tree should export as Astro images."
+  (let* ((temp-project (make-temp-file "ox-astro-missing-app-asset-project" t))
+         (posts-dir (expand-file-name "src/content/blog" temp-project))
+         (assets-dir (expand-file-name "src/assets/images/posts/lowercase-slug" temp-project))
+         (missing-path (expand-file-name "missing-inline.png" assets-dir))
+         (temp-org (make-temp-file "ox-astro-missing-app-asset" nil ".org"))
+         (output nil))
+    (make-directory posts-dir t)
+    (make-directory assets-dir t)
+    (with-temp-file temp-org
+      (insert (format "#+TITLE: Missing Current App Asset Test\n#+SLUG: Mixed-Case-Slug\n#+DESTINATION_FOLDER: jaydocs\n\n* Body\n[[%s]]\n"
+                      missing-path)))
+    (unwind-protect
+        (let ((org-export-show-temporary-export-buffer nil)
+              (org-export-with-toc nil)
+              (org-export-with-section-numbers nil)
+              (org-persist-directory (expand-file-name "org-persist" temp-project))
+              (org-astro-debug-images nil)
+              (org-astro-debug-console nil)
+              (org-astro-debug-log nil)
+              (org-astro-known-posts-folders `(("jaydocs" . (:path ,posts-dir))))
+              (org-astro-source-root-folder (file-name-directory temp-org)))
+          (make-directory org-persist-directory t)
+          (let ((buffer (find-file-noselect temp-org)))
+            (unwind-protect
+                (with-current-buffer buffer
+                  (org-mode)
+                  (let ((inhibit-message t))
+                    (org-astro-export-to-mdx)))
+              (when (buffer-live-p buffer)
+                (with-current-buffer buffer
+                  (set-buffer-modified-p nil))
+                (kill-buffer buffer))))
+          (let ((mdx-path (expand-file-name "Mixed-Case-Slug.mdx" posts-dir)))
+            (setq output
+                  (with-temp-buffer
+                    (insert-file-contents mdx-path)
+                    (buffer-string)))))
+      (when (file-exists-p temp-org)
+        (delete-file temp-org))
+      (when (file-exists-p temp-project)
+        (delete-directory temp-project t)))
+    (should output)
+    (should (string-match-p "import { Image } from 'astro:assets';" output))
+    (should (string-match-p "~/assets/images/posts/lowercase-slug/missing-inline\\.png" output))
+    (should (string-match-p "<Image src={[^}]+} alt=\"Missing inline\"" output))))
 
 (ert-deftest org-astro-format-image-component-includes-layout ()
   "Unit test for org-astro--format-image-component with layout prop."

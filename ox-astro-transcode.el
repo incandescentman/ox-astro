@@ -471,14 +471,17 @@ Allows THEME to appear first; marks MODEL keyword as consumed."
                 (org-element-put-property model-node :astro-consumed t)
                 (format "<div class=\"model-banner\">%s</div>\n\n" value)))))))))
 
-(defun org-astro--handle-broken-image-paragraph (paragraph info)
-  "Handle a paragraph containing a broken image path with subscripts."
+(defun org-astro--handle-broken-image-paragraph (paragraph contents info)
+  "Handle a paragraph containing a broken image path with subscripts.
+If no render record can be recovered, preserve the exported paragraph
+instead of dropping the content."
   (let* ((path (org-astro--extract-image-path-from-paragraph paragraph))
          (record (and path (org-astro--lookup-render-record path info))))
     (if record
         (org-astro--image-component-for-record
          record info nil path (org-element-property :begin paragraph))
-        "")))
+        (org-astro--add-soft-breaks
+         (org-md-paragraph paragraph contents info)))))
 
 
 (defun org-astro--add-soft-breaks (text)
@@ -535,7 +538,7 @@ This preserves single line breaks in the rendered output."
         (let ((paragraph-context (org-element-interpret-data paragraph)))
           (if (string-match-p "/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\|avif\\)" paragraph-context)
               ;; This paragraph contains a broken image path - try to handle it
-              (org-astro--handle-broken-image-paragraph paragraph info)
+              (org-astro--handle-broken-image-paragraph paragraph contents info)
               ;; Regular paragraph - add soft breaks for single newlines
               (org-astro--add-soft-breaks
                (org-md-paragraph paragraph contents info)))))))

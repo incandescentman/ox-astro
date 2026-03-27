@@ -257,7 +257,22 @@ Astro's Sharp image optimization which fails on animated GIFs."
          (assets-folder (and posts-folder
                              (org-astro--get-assets-folder posts-folder sub-dir)))
          (public-folder (and posts-folder is-gif
-                             (org-astro--get-public-folder posts-folder sub-dir))))
+                             (org-astro--get-public-folder posts-folder sub-dir)))
+         (posts-dir (and posts-folder
+                         (file-name-as-directory (expand-file-name posts-folder))))
+         (src-dir (and posts-dir
+                       (file-name-directory
+                        (directory-file-name
+                         (file-name-directory
+                          (directory-file-name posts-dir))))))
+         (app-root (and src-dir
+                        (file-name-directory (directory-file-name src-dir))))
+         (current-assets-root (and src-dir
+                                   (file-name-as-directory
+                                    (expand-file-name "assets" src-dir))))
+         (current-public-root (and app-root
+                                   (file-name-as-directory
+                                    (expand-file-name "public" app-root)))))
     (when (and original (not (string-empty-p original)) (or assets-folder public-folder))
       (let* ((expanded-original (when (and original (not (org-astro--image-remote-p original)))
                                   (expand-file-name (substring-no-properties original))))
@@ -299,10 +314,23 @@ Astro's Sharp image optimization which fails on animated GIFs."
                     :status 'public-gif))))
 
          ;; Already inside the assets directory – reuse as-is.
+         ;; Use case-insensitive comparison to handle slug/directory case mismatches
+         ;; (e.g., slug "hong-Kong" vs directory "hong-kong" on case-insensitive macOS).
          ((and expanded-original
-               (string-prefix-p assets-root (file-name-directory (expand-file-name expanded-original))))
+               (let ((dir (downcase (file-name-directory (expand-file-name expanded-original)))))
+                 (string-prefix-p (downcase assets-root) dir)))
           (let* ((filename (file-name-nondirectory expanded-original))
-                 (astro-path (concat "~/assets/images/" sub-dir filename)))
+                 ;; Derive sub-dir from the actual image path to preserve its casing
+                 (actual-dir (file-name-directory (expand-file-name expanded-original)))
+                 (src-assets-root (expand-file-name "assets/images/"
+                                   (file-name-directory
+                                    (directory-file-name
+                                     (file-name-directory
+                                      (directory-file-name (expand-file-name posts-folder)))))))
+                 (actual-sub-dir (if (string-prefix-p (file-name-as-directory src-assets-root) actual-dir)
+                                     (substring actual-dir (length (file-name-as-directory src-assets-root)))
+                                   sub-dir))
+                 (astro-path (concat "~/assets/images/" actual-sub-dir filename)))
             (list :astro-path astro-path
                   :target-path expanded-original
                   :rewrite-path nil
@@ -331,22 +359,47 @@ Astro's Sharp image optimization which fails on animated GIFs."
                             :status 'public-gif))
                   (list :astro-path astro-path
                         :target-path downloaded
-                        :rewrite-path downloaded
+                        :rewrite-path nil
                         :status 'remote))))))
 
          ;; Local file – copy into assets directory with sanitized filename.
          (t
-         (let* ((source-path expanded-original)
+          (let* ((source-path expanded-original)
                  (original-filename (and source-path (file-name-nondirectory source-path)))
                  (clean-filename (and original-filename (org-astro--sanitize-filename original-filename)))
-                 (target-path (and clean-filename (expand-file-name clean-filename assets-folder))))
+                 (target-path (and clean-filename (expand-file-name clean-filename assets-folder)))
+                 (declared-astro-path
+                  (and source-path src-dir current-assets-root
+                       (string-prefix-p current-assets-root source-path)
+                       (concat "~/"
+                               (file-relative-name source-path src-dir))))
+                 (declared-public-path
+                  (and source-path current-public-root
+                       (string-prefix-p current-public-root source-path)
+                       (concat "/"
+                               (file-relative-name source-path current-public-root)))))
             (cond
              ((not source-path)
               (message "[ox-astro][img] Skipping image without resolvable path: %s" original)
               nil)
              ((not (file-exists-p source-path))
-              (message "[ox-astro][img] Source image missing: %s" source-path)
-              nil)
+              (cond
+               (declared-astro-path
+                (message "[ox-astro][img] Reusing in-app asset path despite missing file: %s" source-path)
+                (list :astro-path declared-astro-path
+                      :target-path source-path
+                      :rewrite-path nil
+                      :status 'declared-asset))
+               (declared-public-path
+                (message "[ox-astro][img] Reusing in-app public path despite missing file: %s" source-path)
+                (list :public-path declared-public-path
+                      :target-path source-path
+                      :rewrite-path nil
+                      :is-public t
+                      :status 'declared-public))
+               (t
+                (message "[ox-astro][img] Source image missing: %s" source-path)
+                nil)))
              ;; Source and target resolve to the same file (e.g., symlinked Dropbox paths)
              ((and target-path (file-exists-p target-path) (file-equal-p source-path target-path))
               (let ((astro-path (concat "~/assets/images/" sub-dir clean-filename)))
@@ -365,7 +418,7 @@ Astro's Sharp image optimization which fails on animated GIFs."
                 (let ((astro-path (concat "~/assets/images/" sub-dir clean-filename)))
                   (list :astro-path astro-path
                         :target-path target-path
-                        :rewrite-path target-path
+                        :rewrite-path nil
                         :status 'copied))))))))))))
 
 (defun org-astro--build-render-map (processed &optional hero-path)

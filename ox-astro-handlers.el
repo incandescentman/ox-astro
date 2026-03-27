@@ -438,14 +438,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
              (manifest (or (plist-get info :astro-image-manifest)
                            (org-astro--build-image-manifest tree info)))
              (title (org-astro--get-title tree info))
-             (slug (or (plist-get info :slug)
-                       (let* ((title-kw (org-element-map tree 'keyword
-                                          (lambda (k)
-                                            (when (string-equal "TITLE" (org-element-property :key k)) k))
-                                          nil 'first-match))
-                              (title-from-headline (not title-kw)))
-                         (when title-from-headline
-                           (org-astro--slugify title)))))
+             (slug (org-astro--resolve-slug tree info))
              (sub-dir (if slug (concat "posts/" slug "/") "posts/"))
              (result (when posts-folder
                        (org-astro--process-image-manifest manifest posts-folder sub-dir)))
