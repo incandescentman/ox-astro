@@ -359,7 +359,7 @@ Astro's Sharp image optimization which fails on animated GIFs."
                             :status 'public-gif))
                   (list :astro-path astro-path
                         :target-path downloaded
-                        :rewrite-path nil
+                        :rewrite-path downloaded
                         :status 'remote))))))
 
          ;; Local file – copy into assets directory with sanitized filename.
@@ -418,7 +418,7 @@ Astro's Sharp image optimization which fails on animated GIFs."
                 (let ((astro-path (concat "~/assets/images/" sub-dir clean-filename)))
                   (list :astro-path astro-path
                         :target-path target-path
-                        :rewrite-path nil
+                        :rewrite-path target-path
                         :status 'copied))))))))))))
 
 (defun org-astro--build-render-map (processed &optional hero-path)

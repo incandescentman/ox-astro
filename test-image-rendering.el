@@ -112,22 +112,37 @@
           (delete-directory source-root t)
           (delete-directory posts-root t)))))
 
-(ert-deftest org-astro-export-preserves-original-image-sources-in-org ()
-  "Export should not rewrite original local or remote image sources in Org."
+(ert-deftest org-astro-export-rewrites-image-sources-in-org ()
+  "Export should rewrite copied local and remote image sources in Org."
   (pcase-let* ((`(:source-root ,source-root
                  :posts-root ,posts-root
                  :org-file ,org-file
                  :remote-source ,remote-source)
                 (test-image-rendering--setup))
-               (abs-local (replace-regexp-in-string "\\\\" "/"
-                                                    (convert-standard-filename
-                                                     (expand-file-name "images/local-photo.png"
-                                                                       source-root))))
-               (abs-space (replace-regexp-in-string "\\\\" "/"
-                                                    (convert-standard-filename
-                                                     (expand-file-name "images/space name image.jpg"
-                                                                       source-root))))
-               (remote-url "https://example.com/assets/remote-fixture.png"))
+               (expected-local (replace-regexp-in-string "\\\\" "/"
+                                                         (convert-standard-filename
+                                                          (expand-file-name
+                                                           "src/assets/images/posts/image-rendering-test/local-photo.png"
+                                                           (file-name-directory
+                                                            (directory-file-name
+                                                             (file-name-directory
+                                                              (directory-file-name posts-root))))))))
+               (expected-space (replace-regexp-in-string "\\\\" "/"
+                                                         (convert-standard-filename
+                                                          (expand-file-name
+                                                           "src/assets/images/posts/image-rendering-test/space-name-image.jpg"
+                                                           (file-name-directory
+                                                            (directory-file-name
+                                                             (file-name-directory
+                                                              (directory-file-name posts-root))))))))
+               (expected-remote (replace-regexp-in-string "\\\\" "/"
+                                                          (convert-standard-filename
+                                                           (expand-file-name
+                                                            "src/assets/images/posts/image-rendering-test/remote-fixture.png"
+                                                            (file-name-directory
+                                                             (directory-file-name
+                                                              (file-name-directory
+                                                               (directory-file-name posts-root)))))))))
     (let ((org-astro-source-root-folder source-root)
           (org-astro-known-posts-folders `(("test-export" . (:path ,posts-root)))))
       (cl-letf* (((symbol-function 'org-astro--download-remote-image)
@@ -147,10 +162,10 @@
                      (with-temp-buffer
                        (insert-file-contents org-file)
                        (buffer-string))))
-                (should (string-match-p (regexp-quote abs-local) source-output))
-                (should (string-match-p (regexp-quote abs-space) source-output))
-                (should (string-match-p (regexp-quote remote-url) source-output))
-                (should-not (string-match-p "src/assets/images/posts/image-rendering-test/" source-output)))))
+                (should (string-match-p (regexp-quote expected-local) source-output))
+                (should (string-match-p (regexp-quote expected-space) source-output))
+                (should (string-match-p (regexp-quote expected-remote) source-output))
+                (should-not (string-match-p "https://example.com/assets/remote-fixture.png" source-output)))))
           (delete-directory source-root t)
           (delete-directory posts-root t))))))
 

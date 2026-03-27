@@ -1,6 +1,31 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-03-27 Restore Org image source rewriting after copied/downloaded asset export
+
+** Summary
+Restored the intended image pipeline behavior: when ox-astro copies a local
+image or downloads a remote image into the app asset tree, it also rewrites the
+Org source link to that new canonical in-app path.
+
+** Why
+- ox-astro's documented contract is to keep canonical metadata and canonical
+  exported asset paths in the Org source.
+- A temporary regression disabled source rewriting for normal copied/remote
+  images, which contradicted the docs and prior implementation history.
+- That behavior was appropriate only for specific public/GIF cases, not the
+  normal asset-copy flow.
+
+** Fix
+- Restored =:rewrite-path downloaded= for normal remote images.
+- Restored =:rewrite-path target-path= for normal copied local images.
+- Replaced the incorrect regression test with one that verifies Org source
+  rewriting after export.
+
+** Verification
+- Re-exported the Vinh post and confirmed the Org image link was rewritten from
+  =/Users/jay/Downloads/...= to the copied app asset path.
+
 * 2026-03-27 Normalize canonical slugs and dedupe preamble SLUG keywords
 
 ** Summary
