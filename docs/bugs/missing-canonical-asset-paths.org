@@ -1,0 +1,49 @@
+#+TITLE: Missing Canonical Asset Paths Should Not Produce Broken Imports
+#+DATE: 2026-03-28
+
+* Summary
+
+If an Org file already points at a canonical in-app asset path like
+[[file+emacs:/Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/assets/images/posts/a-theory-of-mind-test-for-llms][📁 /Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/assets/images/posts/a-theory-of-mind-test-for-llms]]
+but the underlying files are gone, =ox-astro= must not emit Astro imports as if
+the assets still exist.
+
+* Failure Mode
+
+The broken behavior looked like this:
+
+- Source Org:
+  [[file+emacs:/Users/jay/Dropbox/roam/journal/2025-11-23.org][📄 /Users/jay/Dropbox/roam/journal/2025-11-23.org]]
+  already contained absolute paths into the Socratic assets folder.
+- Export output:
+  [[file+emacs:/Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/a-theory-of-mind-test-for-llms.mdx][📄 /Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/a-theory-of-mind-test-for-llms.mdx]]
+  emitted imports from =~/assets/images/posts/a-theory-of-mind-test-for-llms/...=
+- Real state:
+  the destination asset folder was missing, so Astro failed during module
+  resolution.
+
+* Cause
+
+Two image-handler branches treated "already inside the app assets tree" as
+sufficient proof that the image was valid.
+
+- One branch reused a path inside =src/assets/images/posts/...= without checking
+  whether the file still existed.
+- Another fallback explicitly reused a declared in-app asset/public path even
+  when the file was missing.
+
+* Fix
+
+In [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-image-handlers.el][📄 /Users/jay/Dropbox/github/ox-astro/ox-astro-image-handlers.el]]:
+
+- only reuse an existing in-app asset path when the file actually exists
+- if a canonical in-app path is missing, preserve the source content instead of
+  manufacturing a broken Astro import
+
+Regression coverage lives in
+[[file+emacs:/Users/jay/Dropbox/github/ox-astro/test-image-rendering.el][📄 /Users/jay/Dropbox/github/ox-astro/test-image-rendering.el]].
+
+* Actionable Insight
+
+Canonicalized asset paths in the source Org are not enough by themselves. The
+exporter must treat path location and file existence as separate checks.

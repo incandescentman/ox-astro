@@ -292,8 +292,8 @@
     (should (string-match-p "missing-inline\\.png" output))
     (should-not (string-match-p "<Image src={" output))))
 
-(ert-deftest org-astro-missing-current-app-asset-path-still-exports-image ()
-  "Missing paths already inside the current app assets tree should export as Astro images."
+(ert-deftest org-astro-missing-current-app-asset-path-is-preserved ()
+  "Missing paths already inside the current app assets tree should not become broken Astro imports."
   (let* ((temp-project (make-temp-file "ox-astro-missing-app-asset-project" t))
          (posts-dir (expand-file-name "src/content/blog" temp-project))
          (assets-dir (expand-file-name "src/assets/images/posts/lowercase-slug" temp-project))
@@ -336,9 +336,10 @@
       (when (file-exists-p temp-project)
         (delete-directory temp-project t)))
     (should output)
-    (should (string-match-p "import { Image } from 'astro:assets';" output))
-    (should (string-match-p "~/assets/images/posts/lowercase-slug/missing-inline\\.png" output))
-    (should (string-match-p "<Image src={[^}]+} alt=\"Missing inline\"" output))))
+    (should-not (string-match-p "import { Image } from 'astro:assets';" output))
+    (should (string-match-p "missing-inline\\.png" output))
+    (should-not (string-match-p "~/assets/images/posts/lowercase-slug/missing-inline\\.png" output))
+    (should-not (string-match-p "<Image src={[^}]+} alt=\"Missing inline\"" output))))
 
 (ert-deftest org-astro-format-image-component-includes-layout ()
   "Unit test for org-astro--format-image-component with layout prop."

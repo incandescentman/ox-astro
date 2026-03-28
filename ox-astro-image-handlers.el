@@ -313,10 +313,13 @@ Astro's Sharp image optimization which fails on animated GIFs."
                     :is-public t
                     :status 'public-gif))))
 
-         ;; Already inside the assets directory – reuse as-is.
+         ;; Already inside the assets directory – reuse as-is only when the
+         ;; file still exists. If the canonicalized source path points at a
+         ;; missing asset, do not emit a broken Astro import.
          ;; Use case-insensitive comparison to handle slug/directory case mismatches
          ;; (e.g., slug "hong-Kong" vs directory "hong-kong" on case-insensitive macOS).
          ((and expanded-original
+               (file-exists-p expanded-original)
                (let ((dir (downcase (file-name-directory (expand-file-name expanded-original)))))
                  (string-prefix-p (downcase assets-root) dir)))
           (let* ((filename (file-name-nondirectory expanded-original))
@@ -385,18 +388,13 @@ Astro's Sharp image optimization which fails on animated GIFs."
              ((not (file-exists-p source-path))
               (cond
                (declared-astro-path
-                (message "[ox-astro][img] Reusing in-app asset path despite missing file: %s" source-path)
-                (list :astro-path declared-astro-path
-                      :target-path source-path
-                      :rewrite-path nil
-                      :status 'declared-asset))
+                (message "[ox-astro][img] In-app asset path is missing; preserving source content instead of emitting a broken import: %s"
+                         source-path)
+                nil)
                (declared-public-path
-                (message "[ox-astro][img] Reusing in-app public path despite missing file: %s" source-path)
-                (list :public-path declared-public-path
-                      :target-path source-path
-                      :rewrite-path nil
-                      :is-public t
-                      :status 'declared-public))
+                (message "[ox-astro][img] In-app public path is missing; preserving source content instead of emitting a broken URL: %s"
+                         source-path)
+                nil)
                (t
                 (message "[ox-astro][img] Source image missing: %s" source-path)
                 nil)))
