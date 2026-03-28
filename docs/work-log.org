@@ -34,6 +34,17 @@ because trailing whitespace differed between the two emission paths (=\n= vs
 - =ox-astro.el= — registered new filter in =:filters-alist=
 - =test/theme-reorder-test.el= — regression test for the exact failing pattern
 
+** Verification
+- =emacs --batch -Q -L . -l ert -l test/theme-reorder-test.el --eval "(ert-run-tests-batch 'org-astro-empty-theme-section-does-not-duplicate-model-banner)"=
+- Re-exported:
+  =/Users/jay/Dropbox/roam/chatgpt-outputs/20260326235900-should_vinh_move_to_singapore_or_hong_kong.org=
+- Verified output:
+  =/Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/should-vinh-move-to-singapore-or-hong-kong.mdx=
+- Confirmed top-of-file output now shows exactly:
+  - one ={/* theme: claude */}= marker
+  - one =<div class="model-banner">Claude Opus 4.6</div>=
+  - one =# Claude= heading
+
 * 2026-03-27 Remove misleading source-rewrite comments from image handlers
 
 ** Summary

@@ -1,7 +1,31 @@
 #+TITLE: Theme and Model Banner Issues for Multi-AI Posts
 #+DATE: 2025-12-26
-#+UPDATED: 2025-12-31
-#+STATUS: Open
+#+UPDATED: 2026-03-27
+#+STATUS: Partially Resolved
+
+* 2026-03-27 Update
+
+The specific duplicate banner bug for section-leading heading metadata is now
+fixed.
+
+- Real verification target:
+  - Source:
+    =/Users/jay/Dropbox/roam/chatgpt-outputs/20260326235900-should_vinh_move_to_singapore_or_hong_kong.org=
+  - Output:
+    =/Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/should-vinh-move-to-singapore-or-hong-kong.mdx=
+- Verified output shape:
+  - one ={/* theme: claude */}= marker
+  - one =<div class="model-banner">Claude Opus 4.6</div>=
+  - one =# Claude= heading
+- Fix direction that worked:
+  - pre-mark section-leading =#+THEME:= / =#+MODEL:= keywords as
+    =:astro-consumed= in a parse-tree filter before transcoding
+  - keep the headline handler as the sole emitter for hoisted theme/model
+    prefixes
+
+The analysis below remains useful historical context for older theme/model
+failures, especially the distinction between document-level metadata and
+heading-scoped metadata.
 
 * Problem Summary
 

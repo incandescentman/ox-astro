@@ -185,6 +185,22 @@
 - *Fix:* When broken-image recovery fails, fall back to =org-md-paragraph= (with soft-break preservation) instead of returning =\"\"=.
 - *Actionable insight:* Recovery code for malformed image paragraphs must never be lossy. If repair fails, preserve the original content rather than deleting it.
 
+** Gotcha: Heading-level THEME/MODEL emission must be decided before transcoding
+- *Date:* 2026-03-27
+- *Trigger:* A section like =* Claude= followed by =#+THEME:= and =#+MODEL:=
+  emitted duplicate model banners in MDX.
+- *Mechanism:* Org transcodes section children before it calls the headline
+  transcoder. If heading-scoped metadata is only marked as consumed during
+  headline transcoding, the keyword transcoder can already have emitted the
+  model banner into section contents; the headline path then hoists and emits
+  it again.
+- *Fix:* Pre-mark section-leading =#+THEME:= / =#+MODEL:= keywords as
+  =:astro-consumed= in a parse-tree filter, then let the headline transcoder be
+  the sole emitter for hoisted theme/model prefixes.
+- *Actionable insight:* For heading-scoped metadata, prefer deciding ownership
+  in parse-tree preprocessing rather than trying to "emit then strip" during
+  later transcoding stages.
+
 ** Gotcha: Downstream app image resolver can silently drop AVIF heroes
 - *Date:* 2026-02-21
 - *Trigger:* Frontmatter image path was AVIF and valid, but hero/cover section rendered empty while inline image still appeared.
