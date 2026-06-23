@@ -38,6 +38,19 @@
   Fix the cleanup or path-resolution bug without changing the source-rewrite
   contract.
 
+** Gotcha: Root-relative site links parse as Org file links
+- *Date:* 2026-06-23
+- *Trigger:* An Org link like =[[/media/posts/file.md][Download]]= exported to
+  MDX as =[Download](file:///media/posts/file.md)=.
+- *Mechanism:* Org parses a slash-leading link as =type="file"= with
+  =path="/media/posts/file.md"=. If =org-astro-link= lets that fall through to
+  =org-md-link=, Org treats it as a local absolute filesystem path and prefixes
+  =file://=.
+- *Actionable insight:* Keep site-root URL handling inside =org-astro-link= and
+  run it before the generic Markdown fallback. Use
+  =org-astro--site-root-relative-path-p= for slash-leading Astro/public links
+  that should stay root-relative in MDX.
+
 ** Trap: Org transcodes section children before calling the headline transcoder
 - *Date:* 2026-03-27
 - *Mechanism:* In Org export, a headline's section contents (keywords,

@@ -1,6 +1,22 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-06-23 Preserve root-relative site links in MDX
+
+** Summary
+Fixed root-relative Astro/public links like =[[/media/posts/...][label]]= so Org export preserves them as =/media/posts/...= instead of converting them to =file:///media/posts/...=.
+
+** Root cause
+Org parses links beginning with a slash as =type="file"= links, even when the author intends a site-root URL. The fallback Markdown exporter then runs those through =org-export-file-uri=, producing broken MDX links such as =file:///media/posts/how-to-build-tidy-habits/jay-30-day-tidy-sprint.md=.
+
+** Fix
+- Added =org-astro--site-root-relative-path-p= in [[file:../ox-astro-transcode.el][ox-astro-transcode.el]] to distinguish site-root URLs from common local filesystem roots.
+- Added an =org-astro-link= branch that emits site-root file links directly as Markdown links before the generic =org-md-link= fallback.
+- Added a regression test for the exact Socratic tidy-habits sprint download link.
+
+** Verification
+- Ran =emacs --batch -Q -L . -l ert -l test/date-title-and-subtree-test.el --eval "(ert-run-tests-batch 'org-astro-preserves-site-root-file-links)"=.
+
 * 2026-03-27 Fix duplicate model banner for section-leading THEME/MODEL keywords
 
 ** Summary

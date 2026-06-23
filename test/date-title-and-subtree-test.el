@@ -130,4 +130,13 @@ When POINT-ADJUST-FN is provided, call it after narrowing to reposition point."
     (should (not (string-match-p "\\[📄 A\\]" mdx)))
     (should (not (string-match-p "file:///tmp/a\\.md" mdx)))))
 
+(ert-deftest org-astro-preserves-site-root-file-links ()
+  "Root-relative site links should not become file:// URLs."
+  (let* ((content "#+TITLE: Root Link Test\n#+DESTINATION_FOLDER: test\n\n* Root Link Test\n[[/media/posts/how-to-build-tidy-habits/jay-30-day-tidy-sprint.md][📄 Jay 30 Day Tidy Sprint]]\n")
+         (mdx (ox-astro-test--with-temp-export content "root-link.org" "root-link-test")))
+    (should (string-match-p
+             "\\[📄 Jay 30 Day Tidy Sprint\\](/media/posts/how-to-build-tidy-habits/jay-30-day-tidy-sprint\\.md)"
+             mdx))
+    (should (not (string-match-p "file:///media/posts/how-to-build-tidy-habits" mdx)))))
+
 (provide 'date-title-and-subtree-test)

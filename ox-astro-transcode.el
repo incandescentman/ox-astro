@@ -16,6 +16,16 @@
 ;;; Transcode Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun org-astro--site-root-relative-path-p (path)
+  "Return non-nil when PATH is a site-root URL path, not a local file path.
+Org parses root-relative URL links like [[/media/file.md]] as file links,
+so ox-astro has to distinguish them before falling back to `org-md-link'."
+  (and (stringp path)
+       (string-prefix-p "/" path)
+       (not (string-match-p
+             "\\`/\\(?:Users\\|Volumes\\|Applications\\|System\\|Library\\|private\\|tmp\\|var\\|opt\\|usr\\|bin\\|sbin\\|etc\\|dev\\)\\(?:/\\|\\'\\)"
+             path))))
+
 (defun org-astro-underline (underline contents _info)
   "Transcode UNDERLINE without producing MDX spans.
 - If the underline is just placeholder underscores (3+), emit the underscores.
@@ -154,15 +164,22 @@
      ((member type '("file+emacs" "file+sys"))
       (let* ((raw (or (org-element-property :raw-link link) path ""))
              (url (cond
-                    ((string-prefix-p "file+emacs:" raw)
-                     (concat "file://" (string-remove-prefix "file+emacs:" raw)))
-                    ((string-prefix-p "file+sys:" raw)
-                     (concat "file://" (string-remove-prefix "file+sys:" raw)))
-                    ((string-prefix-p "file:" raw)
-                     (concat "file://" (string-remove-prefix "file:" raw)))
-                    (t raw)))
+                   ((string-prefix-p "file+emacs:" raw)
+                    (concat "file://" (string-remove-prefix "file+emacs:" raw)))
+                   ((string-prefix-p "file+sys:" raw)
+                    (concat "file://" (string-remove-prefix "file+sys:" raw)))
+                   ((string-prefix-p "file:" raw)
+                    (concat "file://" (string-remove-prefix "file:" raw)))
+                   (t raw)))
              (label (or desc (file-name-nondirectory path) url)))
         (format "[%s](%s)" label url)))
+
+     ;; Site-root links like [[/media/file.md][Download]] are parsed by Org as
+     ;; file links, but in Astro MDX they must stay root-relative URLs.
+     ((and (string= type "file")
+           (org-astro--site-root-relative-path-p path))
+      (let ((label (or desc (file-name-nondirectory path) path)))
+        (format "[%s](%s)" label path)))
 
      ;; If the description is already a Markdown link, preserve it unchanged.
      ((and desc (org-astro--contains-markdown-link-p desc))
