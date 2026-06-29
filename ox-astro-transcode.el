@@ -243,6 +243,14 @@ so ox-astro has to distinguish them before falling back to `org-md-link'."
                    (text (or desc raw)))
               (format "[%s](%s)" text raw))))))))
 
+(defconst org-astro--line-trimmed-source-block-languages
+  '("user" "prompt" "quote" "poetry" "verse")
+  "Source block languages whose line-ending whitespace is export noise.")
+
+(defun org-astro--trim-source-block-line-ends (code)
+  "Trim trailing whitespace from each line in source block CODE."
+  (mapconcat #'string-trim-right (split-string code "\n" nil) "\n"))
+
 (defun org-astro-src-block (src-block _contents _info)
   "Transcode a SRC-BLOCK element into fenced Markdown format.
 For user, prompt, quote, poetry, verse, and pullquote blocks, preserve
@@ -320,7 +328,9 @@ For coding-agent blocks, supports :collapsible header arg:
                       "\n\n</div>\n"))
             (progn
               ;; For user/prompt/quote blocks, convert org-mode syntax to markdown
-              (when (member lang '("user" "prompt" "quote" "poetry" "verse"))
+              ;; and discard accidental line-ending whitespace copied from chat.
+              (when (member lang org-astro--line-trimmed-source-block-languages)
+                (setq code (org-astro--trim-source-block-line-ends code))
                 ;; Convert em dashes
                 (when (string-match-p "---" code)
                   (setq code (replace-regexp-in-string "---" "—" code)))

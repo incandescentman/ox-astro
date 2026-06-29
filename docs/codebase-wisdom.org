@@ -295,6 +295,13 @@
 - *Gotcha:* This must happen at the paragraph level, NOT in =org-astro-plain-text=. The plain-text transcoder only sees text fragments between other elements (bold, links, etc.), not whole paragraphs. If you have =*bold*\nmore text=, plain-text gets ="\nmore text"=, not the full paragraph.
 - *Actionable insight:* This is intentional behavior for preserving formatting in AI transcripts. If a user reports "extra line breaks," explain this is by design.
 
+** Gotcha: Conversation source blocks should not preserve accidental line-end spaces
+- *Date:* 2026-06-29
+- *Trigger:* =git diff --check= reports trailing whitespace inside generated =```user= / =```prompt= / =```quote= fences after exporting copied chat transcripts.
+- *Mechanism:* Paragraphs intentionally use two trailing spaces for Markdown line breaks, but conversation-style source block lines do not need line-ending spaces. Whole-block trimming removes only final block whitespace, so interior source lines can leak copied prompt whitespace into MDX.
+- *Fix:* Trim trailing whitespace per line inside =org-astro-src-block= only for =user=, =prompt=, =quote=, =poetry=, and =verse= blocks.
+- *Actionable insight:* Do not add a global final-output trailing-space cleanup. It would erase intentional paragraph soft breaks; keep whitespace normalization scoped to block types where line-ending spaces are export noise.
+
 ** Design: Stale assets cleanup is reference-guarded
 - *Date:* 2026-01-14
 - *Context:* Slug changes create new asset folders under =src/assets/images/posts/{slug}/= and leave the old ones behind.

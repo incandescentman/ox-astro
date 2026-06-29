@@ -2024,3 +2024,26 @@ conversation-block export again.
   with pre-existing warnings about obsolete/free Org variables, but no hard
   failure.
 - Removed generated =.elc= files after verification.
+
+* 2026-06-29 Trim conversation block line-ending whitespace
+
+** Summary
+Fixed an exporter hygiene issue where copied chat prompt whitespace could survive
+inside generated Markdown fences and trip =git diff --check=.
+
+** Changes
+- Updated [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.el][📄 ox-astro-transcode.el]]:
+  - Added a helper that trims trailing whitespace from each source-block line.
+  - Applied it only to =user=, =prompt=, =quote=, =poetry=, and =verse= blocks.
+  - Left paragraph soft-break generation untouched because two trailing spaces
+    are intentional Markdown syntax there.
+- Updated [[file+emacs:/Users/jay/Dropbox/github/ox-astro/test/conversation-export-test.el][📄 conversation-export-test.el]]
+  with a regression test covering block trimming and preserved paragraph soft
+  breaks.
+- Updated [[file+emacs:/Users/jay/Dropbox/github/ox-astro/docs/codebase-wisdom.org][📄 codebase-wisdom.org]]
+  with the scoped-whitespace lesson.
+
+** Verification
+- =emacs --batch -Q -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch 'org-astro-conversation-blocks-trim-line-ending-whitespace)"=
+- =emacs --batch -Q -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch t)"=
+- =emacs --batch -Q -L /Users/jay/.emacs.d/elpa/develop/org-9.8.6 -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch t)"=

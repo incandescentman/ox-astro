@@ -67,4 +67,23 @@
     (should (= 0 (ox-astro-test--count-regexp "```assistant\\s-*\\n\\s-*\\n```" mdx)))
     (should (= 0 (ox-astro-test--count-regexp "```verse\\s-*\\n\\s-*\\n```" mdx)))))
 
+(ert-deftest org-astro-conversation-blocks-trim-line-ending-whitespace ()
+  "Conversation-style blocks should drop copied line-end spaces without touching paragraphs."
+  (let* ((org-export-with-toc nil)
+         (org-export-with-section-numbers nil)
+         (source
+          "#+TITLE: Conversation Whitespace\n\n* Test\n\n#+begin_src user\nuser line   \n  user indented\t \n#+end_src\n\n#+begin_src prompt\nprompt line   \n#+end_src\n\n#+begin_src quote\nquote line   \n#+end_src\n\n#+begin_src poetry\npoetry line   \n#+end_src\n\n#+begin_src verse\nverse line   \n#+end_src\n\nParagraph one\nParagraph two\n")
+         (mdx (org-export-string-as source 'astro t)))
+    (should (string-match-p "```user\nuser line\n  user indented\n```" mdx))
+    (should (string-match-p "```prompt\nprompt line\n```" mdx))
+    (should (string-match-p "```quote\nquote line\n```" mdx))
+    (should (string-match-p "```poetry\npoetry line\n```" mdx))
+    (should (string-match-p "```verse\nverse line\n```" mdx))
+    (should-not (string-match-p "user line[ \t]+\n" mdx))
+    (should-not (string-match-p "prompt line[ \t]+\n" mdx))
+    (should-not (string-match-p "quote line[ \t]+\n" mdx))
+    (should-not (string-match-p "poetry line[ \t]+\n" mdx))
+    (should-not (string-match-p "verse line[ \t]+\n" mdx))
+    (should (string-match-p "Paragraph one  \nParagraph two" mdx))))
+
 (provide 'conversation-export-test)
