@@ -89,21 +89,35 @@ Note: The exporter strips these patterns specifically in the top pre-heading pre
 
 ** Reloading ox-astro without restarting Emacs
 If you iterate on ox-astro code, prefer a clean reload to avoid stale function
-definitions (especially when =.elc= files are present). This snippet unloads
-modules, reloads from the repo, and verifies core helpers are present:
+definitions. Repo-local =.elc= files are ignored by Git but still affect
+runtime loading, so the reload must delete them before requiring modules. This
+snippet unloads modules, removes bytecode, and reloads from the repo:
 
 #+begin_src emacs-lisp
+(defconst ox-astro-repo "/Users/jay/Dropbox/github/ox-astro")
+
+(defun ox-astro-delete-bytecode ()
+  "Delete repo-local ox-astro bytecode so Emacs loads source files."
+  (when (file-directory-p ox-astro-repo)
+    (dolist (file (directory-files-recursively ox-astro-repo "\\.elc\\'"))
+      (when (file-regular-p file)
+        (delete-file file)))))
+
 (defun ox-astro-reload ()
   "Reload ox-astro and its modules."
   (interactive)
-  (let ((repo "/Users/jay/Dropbox/github/ox-astro"))
+  (let ((repo ox-astro-repo))
     (add-to-list 'load-path repo)
     (setq load-prefer-newer t)
+    (ox-astro-delete-bytecode)
     (dolist (feat '(ox-astro-table-handlers
                     ox-astro-image-handlers
                     ox-astro-pdf-handlers
                     ox-astro-handlers
                     ox-astro-helpers
+                    ox-astro-transcode
+                    ox-astro-export-helpers
+                    ox-astro-helpers-core
                     ox-astro-metadata
                     ox-astro-config
                     ox-astro))
@@ -111,6 +125,9 @@ modules, reloads from the repo, and verifies core helpers are present:
         (ignore-errors (unload-feature feat t))))
     (load-file (expand-file-name "ox-astro.el" repo))
     (dolist (feat '(ox-astro-config
+                    ox-astro-helpers-core
+                    ox-astro-export-helpers
+                    ox-astro-transcode
                     ox-astro-helpers
                     ox-astro-metadata
                     ox-astro-image-handlers
@@ -126,7 +143,11 @@ If Emacs logs this during export/load:
 
 then your runtime may still be using stale bytecode. In that case:
 - Re-run =ox-astro-reload=
-- If behavior still does not change, remove stale =.elc= files in the repo and reload again
+- Check =(symbol-file 'org-astro-src-block)=; it should resolve to
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.el][📄 ox-astro-transcode.el]],
+  not =ox-astro-transcode.elc=
+- If behavior still does not change, remove stale =.elc= files in the repo and
+  reload again
 
 ** Clipboard Copying (macOS)
 By default, clipboard copying is disabled. To enable copying of source/output/debug paths to macOS clipboard after export:

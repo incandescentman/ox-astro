@@ -1947,3 +1947,80 @@ cleaning stale local bytecode artifacts.
 ** Verification
 - =emacs --batch -Q -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch 'org-astro-conversation-blocks-survive-hostile-babel-defaults)"=
 - Confirmed test passes with non-empty =user=, =assistant=, and =verse= fences.
+
+* 2026-06-29 Remove stale transcode bytecode after empty user prompt export
+
+** Summary
+Diagnosed an interactive Org 9.8 export regression where =#+begin_src user=
+blocks exported as empty =```user= fences even though the source Org blocks still
+contained prompt text.
+
+** Root Cause
+The live Org 9.8 daemon was loading ignored local bytecode:
+=/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.elc=.
+Loading =/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.el= directly
+restored non-empty conversation fences, confirming stale bytecode rather than
+source content or frontmatter as the culprit.
+
+** Changes
+- Removed ignored local bytecode artifacts:
+  - =/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.elc=
+  - =/Users/jay/Dropbox/github/ox-astro/test/date-title-and-subtree-test.elc=
+- Re-exported:
+  - Source: =/Users/jay/Dropbox/roam/chatgpt-outputs/20260629151922-sundowners_voice_vibe_coding.org=
+  - Output: =/Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/sundowners-voice-vibe-coding.mdx=
+- Updated =docs/codebase-wisdom.org= with the Org 9.8 stale-bytecode recurrence.
+
+** Verification
+- Fresh source resolution:
+  - =emacs --batch -Q -L . --eval "(progn (require 'ox-astro) (princ (format \"src-block-file=%S org-version=%s\\n\" (symbol-file 'org-astro-src-block) (org-version))))"=
+  - =emacs --batch -Q -L /Users/jay/.emacs.d/elpa/develop/org-9.8.6 -L . --eval "(progn (require 'ox-astro) (princ (format \"src-block-file=%S org-version=%s\\n\" (symbol-file 'org-astro-src-block) (org-version))))"=
+- Regression tests:
+  - =emacs --batch -Q -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch 'org-astro-conversation-blocks-survive-hostile-babel-defaults)"=
+  - =emacs --batch -Q -L /Users/jay/.emacs.d/elpa/develop/org-9.8.6 -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch 'org-astro-conversation-blocks-survive-hostile-babel-defaults)"=
+- Real export verification:
+  - =user_total=15=
+  - =user_empty=0=
+
+* 2026-06-29 Add bytecode guardrails for ox-astro reload/export
+
+** Summary
+Added prevention so stale ignored =.elc= files cannot silently break
+conversation-block export again.
+
+** Changes
+- Updated =/Users/jay/Dropbox/github/ox-astro/ox-astro.el=:
+  - Added =org-astro--ensure-transcode-source-loaded=.
+  - Export entry points now reload
+    [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.el][📄 ox-astro-transcode.el]]
+    from source when critical transcoders were loaded from =.elc= bytecode.
+- Updated Jay's Emacs reload helper in
+  [[file+emacs:/Users/jay/emacs/emacs-settings/shared-functions.org][📄 shared-functions.org]]:
+  - Added =jay/ox-astro-delete-bytecode=.
+  - Startup and =ox-astro-reload= now delete repo-local =.elc= files before
+    loading ox-astro.
+- Kept the generated local file
+  [[file+emacs:/Users/jay/emacs/emacs-settings/shared-functions.el][📄 shared-functions.el]]
+  in sync on disk.
+- Updated [[file+emacs:/Users/jay/Dropbox/github/ox-astro/docs/instructions.org][📄 instructions.org]]
+  and [[file+emacs:/Users/jay/Dropbox/github/ox-astro/docs/codebase-wisdom.org][📄 codebase-wisdom.org]].
+
+** Verification
+- Deliberately recreated
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.elc][📄 ox-astro-transcode.elc]]
+  and confirmed Org 9.8 reloads
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.el][📄 ox-astro-transcode.el]]
+  from source:
+  - =src-block-file="/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.el"=
+- Regression tests passed under both Org versions:
+  - =emacs --batch -Q -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch 'org-astro-conversation-blocks-survive-hostile-babel-defaults)"=
+  - =emacs --batch -Q -L /Users/jay/.emacs.d/elpa/develop/org-9.8.6 -L . -l ert -l test/conversation-export-test.el --eval "(ert-run-tests-batch 'org-astro-conversation-blocks-survive-hostile-babel-defaults)"=
+- Real export still preserved all prompt bodies:
+  - Source: [[file+emacs:/Users/jay/Dropbox/roam/chatgpt-outputs/20260629151922-sundowners_voice_vibe_coding.org][📄 20260629151922-sundowners_voice_vibe_coding.org]]
+  - Output: [[file+emacs:/Users/jay/Dropbox/github/astro-monorepo/apps/socratic/src/content/blog/sundowners-voice-vibe-coding.mdx][📄 sundowners-voice-vibe-coding.mdx]]
+  - =user_total=15=
+  - =user_empty=0=
+- Byte-compiling =/Users/jay/Dropbox/github/ox-astro/ox-astro.el= succeeded
+  with pre-existing warnings about obsolete/free Org variables, but no hard
+  failure.
+- Removed generated =.elc= files after verification.

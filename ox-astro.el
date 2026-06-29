@@ -55,6 +55,39 @@
 (require 'ox-astro-image-handlers)
 (require 'ox-astro-pdf-handlers)
 
+(defun org-astro--module-source-file (filename)
+  "Return the source path for FILENAME next to ox-astro."
+  (let* ((anchor (or load-file-name
+                     (locate-library "ox-astro")
+                     buffer-file-name))
+         (dir (and anchor (file-name-directory anchor))))
+    (and dir (expand-file-name filename dir))))
+
+(defun org-astro--loaded-from-bytecode-p (symbol)
+  "Return non-nil when SYMBOL's function definition came from .elc bytecode."
+  (let ((file (and (fboundp symbol) (symbol-file symbol 'defun))))
+    (and (stringp file)
+         (string-match-p "\\.elc\\'" file))))
+
+(defun org-astro--ensure-source-module-loaded (feature filename symbols)
+  "Reload FEATURE from source FILENAME if any SYMBOLS came from bytecode."
+  (let ((source (org-astro--module-source-file filename)))
+    (when (and source
+               (file-readable-p source)
+               (cl-some #'org-astro--loaded-from-bytecode-p symbols))
+      (message "ox-astro: reloading %s from source for %s because bytecode was active"
+               source feature)
+      (load source nil t t))))
+
+(defun org-astro--ensure-transcode-source-loaded ()
+  "Ensure critical transcoders are running from source, not stale bytecode."
+  (org-astro--ensure-source-module-loaded
+   'ox-astro-transcode
+   "ox-astro-transcode.el"
+   '(org-astro-src-block org-astro-example-block org-astro-export-block)))
+
+(org-astro--ensure-transcode-source-loaded)
+
 ;; Fallback to prevent void-variable errors if config isn't loaded early enough.
 (defvar org-astro-date-format "%Y-%m-%dT%H:%M:%SZ")
 
@@ -189,6 +222,7 @@ functions filtered out."
 (defun org-astro-export-as-mdx (&optional async subtreep visible-only body-only)
   "Export current buffer to an Astro-compatible MDX buffer."
   (interactive)
+  (org-astro--ensure-transcode-source-loaded)
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
       (org-astro--with-export-sanitization
@@ -205,6 +239,7 @@ functions filtered out."
 If title, excerpt, or publish date are missing, they will be
 generated and added to the Org source file."
   (interactive)
+  (org-astro--ensure-transcode-source-loaded)
   (if (string-equal ".mdx" (file-name-extension (buffer-file-name)))
       (message "Cannot export from an .mdx file. Run this from the source .org file.")
       (if org-astro--mdx-export-active
