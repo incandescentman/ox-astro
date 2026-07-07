@@ -202,11 +202,11 @@ Accepts t/true/yes/y/on/1 (case-insensitive)."
 Supports youtu.be short links, watch URLs, embed URLs, or bare 11-character IDs."
   (let ((s (string-trim (or url ""))))
     (cond
-     ((string-match "youtu\.be/\\([^?&#/]+\\)" s)
+     ((string-match "youtu\\.be/\\([^?&#/]+\\)" s)
       (match-string 1 s))
-     ((string-match "youtube\.com/watch[^?]*[?&]v=\\([^&?#/]+\\)" s)
+     ((string-match "youtube\\.com/watch[^?]*[?&]v=\\([^&?#/]+\\)" s)
       (match-string 1 s))
-     ((string-match "youtube\.com/embed/\\([^?&#/]+\\)" s)
+     ((string-match "youtube\\.com/embed/\\([^?&#/]+\\)" s)
       (match-string 1 s))
      ((string-match "^[A-Za-z0-9_-]\\{11\\}$" s)
       s)
@@ -1090,7 +1090,7 @@ Respects narrowing - works within the current narrowed region."
                                          (save-restriction
                                            (narrow-to-region (point-min) limit)
                                            (goto-char (point-min))
-                                           (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+                                           (while (re-search-forward "^-[ \t]+\\(Links\\|Source\\) ::[ \t]*$" nil t)
                                              (setq last-pos (line-end-position))))
                                          (when last-pos
                                            (goto-char last-pos)

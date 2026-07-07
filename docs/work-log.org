@@ -1,6 +1,46 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-07-07 Fix verified regex escaping findings from Claude Fable review
+
+** Summary
+Triaged Claude Fable's repo review against the current working tree and fixed
+only the verified low-risk correctness issues.  Left the larger repo-hygiene and
+image-pipeline refactor recommendations untouched because the exporter is
+currently working and those changes have higher blast radius.
+
+** Changes
+- Fixed single-backslash Elisp regex metacharacters in
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-helpers-core.el][ox-astro-helpers-core.el]],
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-image-handlers.el][ox-astro-image-handlers.el]],
+  and
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.el][ox-astro-transcode.el]].
+- Moved the raw plain-text image manifest registration back inside its =let=
+  binding in
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-image-handlers.el][ox-astro-image-handlers.el]].
+- Made the full-buffer slug lookup in
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro.el][ox-astro.el]]
+  use a real =save-restriction= body.
+- Removed the duplicate in-function =org-astro-debug-log-file= defcustom from
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro.el][ox-astro.el]].
+- Added regression tests in
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/test/image-pipeline-test.el][test/image-pipeline-test.el]]
+  for raw plain-text image paths, generated image-suggestion parsing,
+  org-roam keyword anchor insertion, and strict YouTube host matching.
+- Added cleanup for two existing hero-image tests that were leaving generated
+  files under
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/assets/images/posts/][assets/images/posts/]].
+
+** Verification
+- Default macOS temp location reproduced a pre-existing test-environment
+  problem: image tests tried to recurse through =/var/folders/.../AppTranslocation/...=
+  and failed with =Result too large= before any code changes were accepted.
+- Hermetic temp-dir test run passed:
+  =mkdir -p tmp-test && TMPDIR=/Users/jay/Dropbox/github/ox-astro/tmp-test/ emacs --batch -Q -L . -l ert -l test/conversation-export-test.el -l test/date-title-and-subtree-test.el -l test/image-pipeline-test.el -l test/theme-reorder-test.el --eval "(ert-run-tests-batch t)"; status=$?; rm -rf tmp-test; exit $status=
+- Result: =30/30= tests passed.
+- =emacs --batch -Q -L . --eval "(progn (require 'ox-astro) (princ \"loaded ox-astro\n\"))"=
+- =git diff --check=
+
 * 2026-06-23 Preserve root-relative site links in MDX
 
 ** Summary

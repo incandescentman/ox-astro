@@ -110,7 +110,7 @@ so ox-astro has to distinguish them before falling back to `org-md-link'."
                (and (null type) path (string-prefix-p "/" path)))
            path
            (or (string-match-p "\\.\\(png\\|jpe?g\\|webp\\|avif\\|gif\\)$" path)
-               (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp\\|avif\\|gif)$" path)))
+               (string-match-p "assets/images/.*\\.\\(png\\|jpe?g\\|jpeg\\|webp\\|avif\\|gif\\)$" path)))
       (let* ((record (org-astro--lookup-render-record path info))
              (_ (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
                   (message "[ox-astro][img] LINK path=%s record=%s"
@@ -543,7 +543,7 @@ This preserves single line breaks in the rendered output."
       (when (and child (eq 'plain-text (org-element-type child)))
         (let* ((raw-text (org-element-property :value child))
                (text (when (stringp raw-text) (org-trim raw-text))))
-          (when (and text (string-match-p "^/.*\\.(png\\|jpe?g\\|webp\\|avif)$" text))
+          (when (and text (string-match-p "^/.*\\.\\(png\\|jpe?g\\|webp\\|avif\\)$" text))
             (org-astro--dbg-log info "PARAGRAPH processing raw image path: %s" text))))))
   (let* ((children (org-element-contents paragraph))
          (child (and (= 1 (length children)) (car children)))
@@ -553,7 +553,7 @@ This preserves single line breaks in the rendered output."
       (let* ((raw-text (org-element-property :value child))
              (text (when (stringp raw-text) (org-trim raw-text))))
         (when (and text
-                   (string-match-p "^/.*\\.(png\\|jpe?g\\|webp\\|avif)$" text))
+                   (string-match-p "^/.*\\.\\(png\\|jpe?g\\|webp\\|avif\\)$" text))
           (setq is-image-path t)
           (setq path text))))
     (if is-image-path
@@ -592,15 +592,15 @@ to LinkPeek components."
                    (cond
                     ;; Raw image path (trust precomputed render map)
                     ((and trimmed-line
-                          (or (string-match-p "^/.*\\.(png\\|jpe?g\\|webp\\|avif)$" trimmed-line)
-                              (string-match-p "assets/images/.*\\.(png\\|jpe?g\\|jpeg\\|webp\\|avif)$" trimmed-line)))
+                          (or (string-match-p "^/.*\\.\\(png\\|jpe?g\\|webp\\|avif\\)$" trimmed-line)
+                              (string-match-p "assets/images/.*\\.\\(png\\|jpe?g\\|jpeg\\|webp\\|avif\\)$" trimmed-line)))
                      (let ((record (org-astro--lookup-render-record trimmed-line info)))
                        (if record
                            (org-astro--image-component-for-record record info nil trimmed-line)
                            line)))
                     ;; Remote image URL
                     ((and trimmed-line
-                          (string-match-p "^https?://.*\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp\\|avif)\\(\\?.*\\)?$" trimmed-line))
+                          (string-match-p "^https?://.*\\.\\(png\\|jpe?g\\|jpeg\\|gif\\|webp\\|avif\\)\\(\\?.*\\)?$" trimmed-line))
                      (let ((record (org-astro--lookup-render-record trimmed-line info)))
                        (if record
                            (org-astro--image-component-for-record record info nil trimmed-line)

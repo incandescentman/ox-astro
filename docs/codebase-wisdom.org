@@ -363,6 +363,28 @@
   - Resolve deferred wrappers before calling =string-match-p=, =replace-regexp-in-string=, =org-trim=, etc.
   - Reuse the shared helper for any future property reads that are fed into string-only APIs.
 
+** Gotcha: Elisp regex metacharacters require double escaping inside strings
+- *Date:* 2026-07-07
+- *Trigger:* A review found patterns like ="\(Links\|Source\)"=,
+  ="\\.(png\\|jpe?g\\|webp)"=, and ="youtu\.be"= in
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-helpers-core.el][ox-astro-helpers-core.el]],
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-image-handlers.el][ox-astro-image-handlers.el]],
+  and
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/ox-astro-transcode.el][ox-astro-transcode.el]].
+- *Mechanism:* The Elisp reader consumes a single backslash before many
+  characters.  By the time the regex engine sees the pattern, ="\("= has become
+  a literal =(=, and ="\\.(png\\|webp)"= behaves like =\\.png= OR =webp=
+  instead of an anchored extension group.
+- *Fix:* Use doubled regex escapes inside strings, e.g. ="\\(Links\\|Source\\)"=,
+  ="\\.\\(png\\|jpe?g\\|webp\\)"=, and ="youtu\\.be"=.
+- *Prevention:*
+  - For any new image/path/keyword regex, add or update an ERT case that proves
+    the intended sample string matches.
+  - Prefer shared extension constants like =org-astro--media-extension-regexp=
+    where possible.
+  - When in doubt, run a tiny =string-match-p= repro in =emacs --batch= before
+    trusting visual regex inspection.
+
 * CSS Animation Patterns (astro-utils)
 
 ** Gotcha: animation: none on hover causes blipping when hovering off

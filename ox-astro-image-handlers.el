@@ -203,12 +203,12 @@ Each manifest entry is a plist with keys:
                      (let ((path (or (match-string 1 raw)
                                      (match-string 2 raw)
                                      (match-string 3 raw)
-                                     (match-string 4 raw)))))
+                                     (match-string 4 raw))))
                        (funcall register-entry-fn path 'plain-text
                                 :begin begin
                                 :line line
                                 :context raw)
-                       (setq start (match-end 0))))))))
+                       (setq start (match-end 0)))))))))
          ;; Paragraph repair (paths broken by subscript parsing)
          (org-element-map tree 'paragraph
            (lambda (paragraph)
@@ -784,7 +784,7 @@ GIFs and other files that should bypass Astro's image optimization go here."
                                      (save-restriction
                                        (narrow-to-region (point-min) limit)
                                        (goto-char (point-min))
-                                       (while (re-search-forward "^-[ \t]+\(Links\|Source\) ::[ \t]*$" nil t)
+                                       (while (re-search-forward "^-[ \t]+\\(Links\\|Source\\) ::[ \t]*$" nil t)
                                          (setq last-pos (line-end-position))))
                                      (when last-pos
                                        (goto-char last-pos)
@@ -862,11 +862,11 @@ GIFs and other files that should bypass Astro's image optimization go here."
           (narrow-to-region begin end)
           (goto-char (point-min))
           (let (items current-old current-new current-alias)
-            (while (re-search-forward "^# - old: \(.*\)$" nil t)
+            (while (re-search-forward "^# - old: \\(.*\\)$" nil t)
               (setq current-old (org-trim (match-string 1)))
-              (when (re-search-forward "^#   new: \(.*\)$" nil t)
+              (when (re-search-forward "^#   new: \\(.*\\)$" nil t)
                 (setq current-new (org-trim (match-string 1))))
-              (when (re-search-forward "^#   alias: \(.*\)$" nil t)
+              (when (re-search-forward "^#   alias: \\(.*\\)$" nil t)
                 (setq current-alias (org-trim (match-string 1))))
               (when (and current-old (or current-new current-alias))
                 (push (list :old current-old :new current-new :alias current-alias) items))
@@ -1091,7 +1091,7 @@ Returns the local file path if successful, nil otherwise."
                              "downloaded-image"))
            ;; Ensure we have an image extension
            (case-fold-search t)
-           (filename (if (string-match-p "\\.(png\\|jpe?g\\|jpeg\\|gif\\|webp\\|avif\\|svg)$" raw-filename)
+           (filename (if (string-match-p "\\.\\(png\\|jpe?g\\|jpeg\\|gif\\|webp\\|avif\\|svg\\)$" raw-filename)
                          raw-filename
                        (concat raw-filename ".jpg")))
            (clean-filename (org-astro--sanitize-filename filename))

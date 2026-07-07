@@ -580,11 +580,11 @@ generated and added to the Org source file."
                                            (org-trim (match-string 1)))))
                                       (slug-in-full
                                        (save-excursion
-                                         (save-restriction)
-                                         (widen)
-                                         (goto-char (point-min))
-                                         (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" nil t)
-                                           (org-trim (match-string 1)))))
+                                         (save-restriction
+                                           (widen)
+                                           (goto-char (point-min))
+                                           (when (re-search-forward "^#\\+SLUG:\\s-*\\(.+\\)$" nil t)
+                                             (org-trim (match-string 1))))))
                                       (slug-in-info (let ((val (plist-get info :slug)))
                                                       (when (and val (stringp val))
                                                         (org-trim val)))))
@@ -600,11 +600,6 @@ generated and added to the Org source file."
                        "_" "-"
                        (replace-regexp-in-string "^[0-9]+-" "" out-filename))))
                  (outfile (expand-file-name final-filename out-dir)))
-
-(defcustom org-astro-debug-log-file (expand-file-name "ox-astro-debug.log" temporary-file-directory)
-  "File path for writing debug logs when `org-astro-debug-images` is non-nil."
-  :group 'org-export-astro
-  :type 'file)
 
             ;; Update debug system with actual output file path now that we know it
             (when (and (boundp 'org-astro-debug-images) org-astro-debug-images)
