@@ -621,16 +621,6 @@ Returns a plist with keys:
 
       changes-made)))
 
-(defun org-astro--update-image-path-in-file (file old-path new-path)
-  "Open FILE, replace OLD-PATH with NEW-PATH using the same rules as buffer updater, and save.
-               Returns non-nil if any changes were made."
-  (when (and (stringp file) (file-exists-p file)
-             (stringp old-path) (stringp new-path))
-    (with-current-buffer (find-file-noselect file)
-      (let ((changed (org-astro--update-image-path-in-buffer old-path new-path)))
-        (when changed (save-buffer))
-        changed))))
-
 (defun org-astro--update-source-buffer-image-path (old-path new-path)
   "Update image path in the original source buffer, not the export copy.
                This function finds the source buffer and modifies it directly."
@@ -692,10 +682,6 @@ GIFs and other files that should bypass Astro's image optimization go here."
            (app-root (file-name-directory (directory-file-name src-dir))))
       (expand-file-name (concat "public/images/" sub-dir) app-root))))
 
-;; ------------------------------------------------------------------
-;; Image path suggestions block (for manual replacement workflow)
-;; ------------------------------------------------------------------
-
 ;; Preprocessing: wrap raw absolute image paths in org link brackets [[...]]
 (defun org-astro--wrap-raw-image-path-lines-in-region (beg end)
   "Within BEG..END, wrap raw absolute image path lines with Org link brackets.
@@ -734,116 +720,6 @@ GIFs and other files that should bypass Astro's image optimization go here."
           (when (> cnt 0)
             (save-buffer))
           cnt)))))
-
-
-(defun org-astro--generate-image-paths-comment-block (items)
-  "Generate a comment block with suggested image path replacements.
-               ITEMS is a list of plists containing :path (old), :target-path (abs new), :astro-path (alias)."
-  (let ((lines (list "# BEGIN ASTRO IMAGE PATH SUGGESTIONS"
-                     "# Suggested replacements (old → new). Use alias for MDX."
-                     (format "# Generated: %s" (format-time-string "%Y-%m-%d %H:%M:%S"))
-                     "#")))
-    (dolist (it items)
-      (let* ((old (plist-get it :path))
-             (new (or (plist-get it :target-path) ""))
-             (alias (or (plist-get it :astro-path) "")))
-        (push (format "# - old: %s" old) lines)
-        (push (format "#   new: %s" new) lines)
-        (push (format "#   alias: %s" alias) lines)
-        (push "#" lines)))
-    (setq lines (nreverse lines))
-    (mapconcat #'identity (append lines (list "# END ASTRO IMAGE PATH SUGGESTIONS")) "\n")))
-
-(defun org-astro--insert-or-replace-suggestions-block (block-text)
-  "Insert or replace the image suggestions comment BLOCK-TEXT near the top."
-  (save-excursion
-    (goto-char (point-min))
-    (let* ((limit (save-excursion (or (re-search-forward "^\\*" nil t) (point-max))))
-           (begin-marker (progn
-                           (save-restriction
-                             (narrow-to-region (point-min) limit)
-                             (goto-char (point-min))
-                             (re-search-forward "^# BEGIN ASTRO IMAGE PATH SUGGESTIONS$" nil t))))
-           (end-marker (when begin-marker
-                         (save-excursion
-                           (re-search-forward "^# END ASTRO IMAGE PATH SUGGESTIONS$" nil t))))
-           (insert-point
-            (unless begin-marker
-              ;; Compute where to insert: after roam preamble and keyword/comment block
-              (goto-char (point-min))
-              ;; Skip properties block
-              (when (looking-at-p "^:PROPERTIES:")
-                (forward-line 1)
-                (while (and (< (point) limit)
-                            (not (looking-at-p "^:END:")))
-                  (forward-line 1))
-                (when (looking-at-p "^:END:") (forward-line 1)))
-              ;; Skip roam preamble lines
-              (let ((roam-anchor (save-excursion
-                                   (let ((last-pos nil))
-                                     (save-restriction
-                                       (narrow-to-region (point-min) limit)
-                                       (goto-char (point-min))
-                                       (while (re-search-forward "^-[ \t]+\\(Links\\|Source\\) ::[ \t]*$" nil t)
-                                         (setq last-pos (line-end-position))))
-                                     (when last-pos
-                                       (goto-char last-pos)
-                                       (forward-line 1)
-                                       (point))))))
-                (if roam-anchor
-                    (goto-char roam-anchor)
-                    ;; Else skip existing keywords/comments/blank
-                    (while (and (< (point) limit)
-                                (or (looking-at-p "^#\\+") (looking-at-p "^#\\s-") (looking-at-p "^\\s-*$")))
-                      (forward-line 1))))
-              (point))))
-      (if begin-marker
-          (progn
-            (goto-char begin-marker)
-            (beginning-of-line)
-            (let ((start (point)))
-              (when end-marker
-                (goto-char end-marker)
-                (end-of-line)
-                (forward-char 1))
-              (delete-region start (point)))
-            (insert block-text "\n"))
-          ;; Insert new block
-          (goto-char insert-point)
-          (unless (or (bobp) (looking-at-p "^\\s-*$")) (insert "\n"))
-          (insert block-text "\n")))))
-
-(defun org-astro--upsert-image-paths-comment-in-current-buffer (items)
-  "Create or update the suggestions comment block in the current buffer."
-  (let ((block (org-astro--generate-image-paths-comment-block items)))
-    (org-astro--insert-or-replace-suggestions-block block)))
-
-(defun org-astro--upsert-image-paths-comment (items)
-  "Find the source Org buffer and upsert the suggestions comment block."
-  (let ((source-buffer nil))
-    (cond
-     ((and (buffer-file-name) (not buffer-read-only))
-      (setq source-buffer (current-buffer)))
-     (t
-      (catch 'found-buffer
-        (dolist (buf (buffer-list))
-          (with-current-buffer buf
-            (let ((bf (buffer-file-name)))
-              (when (and bf (not buffer-read-only)
-                         (string-match-p "\\.org$" bf))
-                (setq source-buffer buf)
-                (throw 'found-buffer nil))))))))
-    (when source-buffer
-      (with-current-buffer source-buffer
-        (org-astro--upsert-image-paths-comment-in-current-buffer items)
-        (save-buffer)))))
-
-(defun org-astro--upsert-image-paths-comment-into-file (file items)
-  "Open FILE and upsert the image suggestions comment block, then save."
-  (when (and file (file-exists-p file))
-    (with-current-buffer (find-file-noselect file)
-      (org-astro--upsert-image-paths-comment-in-current-buffer items)
-      (save-buffer))))
 
 ;; ------------------------------------------------------------------
 ;; Apply suggested image path replacements (manual, explicit action)
@@ -1228,23 +1104,6 @@ If UPDATE-BUFFER is non-nil, updates the current buffer to point to the new path
               (when (file-exists-p final-path)
                 (concat "~/assets/images/" sub-dir (file-name-nondirectory final-path)))))))))))
 
-
-(defun org-astro--collect-raw-images-from-tree-region (tree)
-  "Collect raw image paths by scanning the buffer region of a parse TREE.
-This is more robust for narrowed subtrees than relying on `plain-text` parsing."
-  (let (images)
-    (let ((beg (org-element-property :begin tree))
-          (end (org-element-property :end tree)))
-      (when (and beg end)
-        (save-excursion
-          (save-restriction
-            (narrow-to-region beg end)
-            (goto-char (point-min))
-            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\|avif\\)\\s-*$" nil t)
-              (let ((path (string-trim (match-string 0))))
-                (when (file-exists-p path)
-                  (push path images))))))))
-    (nreverse images)))
 (provide 'ox-astro-image-handlers)
 
 ;;; ox-astro-image-handlers.el ends here

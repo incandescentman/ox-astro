@@ -170,22 +170,6 @@ Handle GALLERY blocks specially by converting them to ImageGallery components."
      ;; Default: use standard markdown export
      (t (org-md-special-block special-block contents info)))))
 
-(defun org-astro--collect-raw-images-from-tree-region (tree)
-  "Collect raw image paths by scanning the buffer region of a parse TREE.
-This is more robust for narrowed subtrees than relying on `plain-text` parsing."
-  (let (images)
-    (let ((beg (org-element-property :begin tree))
-          (end (org-element-property :end tree)))
-      (when (and beg end)
-        (save-excursion
-          (save-restriction
-            (narrow-to-region beg end)
-            (goto-char (point-min))
-            (while (re-search-forward "^\\s-*/[^[:space:]]*\\.\\(png\\|jpe?g\\|webp\\|avif\\)\\s-*$" nil t)
-              (let ((path (string-trim (match-string 0))))
-                (when (file-exists-p path)
-                  (push path images))))))))
-    (nreverse images)))
 (provide 'ox-astro-table-handlers)
 
 ;;; ox-astro-table-handlers.el ends here

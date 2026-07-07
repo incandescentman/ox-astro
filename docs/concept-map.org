@@ -133,7 +133,7 @@ Implementation: See [[file:../ox-astro-handlers.el::org-astro-final-output-filte
 Absolute image paths appearing as standalone text in Org documents (e.g., =/Users/jay/image.png=). Automatically detected and converted to proper Astro Image components.
 
 Related: [[*Image Import]], [[*Asset Management]]
-Implementation: See [[file:../ox-astro-image-handlers.el::org-astro--collect-raw-images-from-tree-region][org-astro--collect-raw-images-from-tree-region]]
+Implementation: See [[file:../ox-astro-image-handlers.el::org-astro--build-image-manifest][org-astro--build-image-manifest]]
 
 * Integration
 

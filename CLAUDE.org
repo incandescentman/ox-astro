@@ -79,6 +79,31 @@ This repo uses the following documentation structure:
 - All documentation must remain link-consistent (no dangling references)
 - Export happens in three phases: parse-tree filter → element transcoding → final output filter
 
+** Known Duplication — Dedup It When You're Already In There
+
+A few spots carry deliberate duplication. It's left alone not because it's
+invisible but because this is the subtlest, least-forgiving code in the repo —
+the git log shows recurring regressions here ("Fix duplicate model banner,"
+"Fix gallery hero suppression regression," "Restore Org image path rewriting")
+and =codebase-wisdom.org= has multiple warnings about
+parse-tree-filter-vs-transcoder timing. The test suite is good but not thick
+enough to catch a quiet regression from merging it cold.
+
+So: *the next time you change one of these areas for a feature or bug fix, dedup
+it as part of that work* — when you already have a reason to be in the code and
+tests exercising the new behavior. That's when the merge is cheap and safe.
+
+The spots:
+- The two parallel image pipelines: =org-astro--materialize-image= and
+  =org-astro--process-image-path= in =ox-astro-image-handlers.el=.
+- The triplicated THEME/MODEL heading detection across
+  =ox-astro-handlers.el= (=org-astro--pre-mark-heading-theme-model=) and
+  =ox-astro-transcode.el= (=org-astro--model-prefix-for-heading=,
+  =org-astro--theme-prefix-for-heading=).
+- The duplicated posts-folder resolution in =ox-astro.el= (preprocessing pass
+  and main export pass).
+- The 360-line =org-astro-export-to-mdx= in =ox-astro.el=.
+
 ** Common LLM Anti-Patterns in This Codebase
 
 *** Pattern: Forgetting Dual-Phase Slug Logic
@@ -95,6 +120,17 @@ This repo uses the following documentation structure:
 - Problem: Using =assoc= for config lookups without handling whitespace
 - Fix: Use =cl-find= with custom =:test= function and =string-trim=
 - Prevention: Load this file's "Whitespace in config" wisdom entry before config changes
+
+*** Pattern: Single-Backslash Regex Metacharacters in String Literals
+- Problem: In an Elisp string, =\(=, =\|=, =\.= collapse to literal =(=, =|=, =.= —
+  the reader strips the lone backslash, so the pattern silently matches
+  nonsense and never fires. A whole cluster of these (roam anchors, image-extension
+  detectors, the suggestions parser, YouTube URL dots) shipped broken and masked
+  until 2026-07-07.
+- Fix: Regex groups/alternation/escaped-dots in a string need DOUBLE backslashes:
+  =\\(=, =\\|=, =\\.=. The corrected sibling is usually right next to the broken one.
+- Prevention: Before editing or adding any =string-match= / =re-search-forward=
+  pattern, grep for =\\(= vs =\(= drift; see =codebase-wisdom.org=.
 
 ** Session Handoff Template
 When ending a session, provide:
@@ -115,4 +151,4 @@ When ending a session, provide:
 - Known unknowns: [questions that arose]
 - Recommendations: Load these docs first: [[file:docs/relevant.org][relevant.org]]
 
-Last Updated: 2025-10-05
+Last Updated: 2026-07-07

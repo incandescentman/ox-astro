@@ -279,7 +279,7 @@ org-astro-export-to-mdx triggered
      ↓
 Phase 1: Parse tree processing
   - org-astro--collect-images-from-tree
-  - org-astro--collect-raw-images-from-tree-region
+  - org-astro--build-image-manifest
   - org-astro--process-image-path
     → Copy to src/assets/images/posts/{slug}/
     → Generate variable name (camelCase)

@@ -109,7 +109,6 @@
 ;; Declare functions from handler modules
 (declare-function org-astro--collect-images-from-tree "ox-astro-image-handlers")
 (declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
-(declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
 (declare-function org-astro--process-image-path "ox-astro-image-handlers")
 (declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
 (declare-function org-astro--process-pdf-path "ox-astro-pdf-handlers")

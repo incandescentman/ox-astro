@@ -136,7 +136,6 @@ indicator/value pairs.  Returns the updated plist."
 (declare-function org-astro--process-pdf-path "ox-astro-pdf-handlers")
 (declare-function org-astro--collect-pdfs-from-tree "ox-astro-pdf-handlers")
 (declare-function org-astro--build-image-manifest "ox-astro-image-handlers")
-(declare-function org-astro--collect-raw-images-from-tree-region "ox-astro-image-handlers")
 (declare-function org-astro--image-remote-p "ox-astro-image-handlers")
 (declare-function org-astro--sanitize-filename "ox-astro-image-handlers")
 (declare-function org-astro--build-render-map "ox-astro-image-handlers")
@@ -1108,11 +1107,6 @@ Respects narrowing - works within the current narrowed region."
             (unless (or (bobp) (looking-at-p "^\\s-*$"))
               (insert "\n"))
             (insert (format "#+%s: %s\n" ukey (or value ""))))))))
-
-;; Back-compat alias for existing calls
-(defun org-astro--insert-keyword-at-end-of-block (key value)
-  "Alias for `org-astro--upsert-keyword'."
-  (org-astro--upsert-keyword key value))
 
 (defun org-astro--upsert-keyword-after-roam (key value)
   "Insert #+KEY: VALUE after the org-roam preamble if present.

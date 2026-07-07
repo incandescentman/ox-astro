@@ -1,6 +1,46 @@
 #+TITLE: ox-astro Work Log
 #+DATE: 2025-10-07
 
+* 2026-07-07 Untrack scratch artifacts and remove verified dead code
+
+** Summary
+Followed up on the low-risk review items after the regex correctness fix:
+untracked local scratch/large artifacts and removed verified zero-caller helper
+code.
+
+** Changes
+- Added exact ignore entries in
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/.gitignore][.gitignore]]
+  for root scratch exports/debug files, the large Astro docs dump, and the
+  local debug JPG.
+- Removed these tracked artifacts from the Git index while leaving the local
+  files on disk:
+  - root scratch files such as =test.org=, =example-post.org=,
+    =linkpeek-test.org=, =debug.log=, and =diagnosis.md=
+  - [[file+emacs:/Users/jay/Dropbox/github/ox-astro/llms-full-astro-documentation.txt][llms-full-astro-documentation.txt]]
+  - [[file+emacs:/Users/jay/Dropbox/github/ox-astro/debug/assets/images/posts/QR1-0941.jpg][QR1-0941.jpg]]
+- Removed zero-caller helpers from the code:
+  - =org-astro--insert-keyword-at-end-of-block=
+  - =org-astro--update-image-path-in-file=
+  - both duplicate =org-astro--collect-raw-images-from-tree-region= definitions
+  - the dead image-suggestions write-path helpers
+- Kept the live raw-image wrapping path and the interactive image-suggestion
+  parse/apply commands.
+- Updated
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/docs/design-architecture.org][design-architecture.org]]
+  and
+  [[file+emacs:/Users/jay/Dropbox/github/ox-astro/docs/concept-map.org][concept-map.org]]
+  so they no longer reference the deleted raw-image-region helper.
+
+** Verification
+- =rg -n "org-astro--(insert-keyword-at-end-of-block|update-image-path-in-file|collect-raw-images-from-tree-region|generate-image-paths-comment-block|insert-or-replace-suggestions-block|upsert-image-paths-comment)" *.el docs/design-architecture.org docs/concept-map.org test README.org CHANGE-LOG.org=
+  returns no matches.
+- Local copies of the untracked artifacts still exist and are ignored.
+- =emacs --batch -Q -L . --eval "(progn (require 'ox-astro) (princ \"loaded ox-astro\n\"))"=
+- =mkdir -p tmp-test && TMPDIR=/Users/jay/Dropbox/github/ox-astro/tmp-test/ emacs --batch -Q -L . -l ert -l test/conversation-export-test.el -l test/date-title-and-subtree-test.el -l test/image-pipeline-test.el -l test/theme-reorder-test.el --eval "(ert-run-tests-batch t)"; status=$?; rm -rf tmp-test; exit $status=
+- Result: =30/30= tests passed.
+- =git diff --check=
+
 * 2026-07-07 Fix verified regex escaping findings from Claude Fable review
 
 ** Summary
