@@ -272,8 +272,14 @@ For images within the body content:
 Alternative keyword: ~#+IMAGE-PROMPT:~ (alias for ~IMAGE-CAPTION~)
 
 *** Display Behavior
-- *On page*: Credit appears as small gray text below the image (exact text you provide)
-- *In lightbox*: Both credit (bold) and caption (italic) appear at the bottom (no automatic prefix)
+- *On page*: Credit — and only credit — renders visibly, as a ~<figcaption>~ below the
+  image (exact text you provide). ~IMAGE-CAPTION~ / ~IMAGE-PROMPT~ never appears on the
+  page.
+- *In lightbox*: Both credit (bold) and caption (italic) appear at the bottom (no
+  automatic prefix). ~IMAGE-CAPTION~ is *only* ever visible here, after the reader
+  clicks the image.
+- Easy to confuse: if you want text under the image, use ~IMAGE-CREDIT~, not
+  ~IMAGE-CAPTION~ — the keyword names do not match where the text shows up.
 
 *** Generated Output
 Body images with credit/caption produce a figure wrapper:
