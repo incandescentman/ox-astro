@@ -1,21 +1,21 @@
 *.elc
-ox-astro-debug.log
+/ox-astro-debug.log
 
 # Local scratch/export artifacts
-2025-09-23.org
-20250827235900-massimo_dutti.org
-test.org
-test-theme.org
-test-subtree.org
-test-slug-generation.org
-test-date-title.org
-example-post.org
-linkpeek-test.org
-image-exports.org
-lrmediawiki-for-wikiportraits.mdx
-debug.log
-diagnosis.md
+/2025-09-23.org
+/20250827235900-massimo_dutti.org
+/test.org
+/test-theme.org
+/test-subtree.org
+/test-slug-generation.org
+/test-date-title.org
+/example-post.org
+/linkpeek-test.org
+/image-exports.org
+/lrmediawiki-for-wikiportraits.mdx
+/debug.log
+/diagnosis.md
 
 # Large local reference/test artifacts
-llms-full-astro-documentation.txt
-debug/assets/images/posts/QR1-0941.jpg
+/llms-full-astro-documentation.txt
+/debug/assets/images/posts/QR1-0941.jpg
