@@ -249,14 +249,32 @@ generated and added to the Org source file."
           (org-astro--with-export-sanitization
         (save-restriction
           (let* ((was-narrowed (buffer-narrowed-p))
-                 (narrow-start (when was-narrowed (point-min)))
-                 (narrow-end (when was-narrowed (point-max)))
-                 (effective-subtreep (or subtreep was-narrowed))
+                 (narrow-start (when was-narrowed
+                                 (copy-marker (point-min))))
+                 (narrow-end (when was-narrowed
+                               (copy-marker (point-max) t)))
+                 ;; A restriction already identifies the export subtree.  Passing
+                 ;; SUBTREEP as well drops its root heading a second time.
+                 (effective-subtreep (and subtreep (not was-narrowed)))
+                 (org-astro--narrowed-root-level
+                  (when was-narrowed
+                    (org-element-map (org-element-parse-buffer) 'headline
+                      (lambda (headline)
+                        (org-element-property :level headline))
+                      nil 'first-match)))
                  ;; Always derive export metadata from the start of the narrowed
                  ;; region so we export the intended subtree regardless of point.
                  (info (save-excursion
                          (when narrow-start (goto-char narrow-start))
                          (org-export-get-environment 'astro effective-subtreep)))
+                 (org-astro--legacy-export-active
+                  (or was-narrowed
+                      (let ((destination
+                             (or (plist-get info :destination-folder)
+                                 (plist-get info :astro-posts-folder))))
+                        (and (stringp destination)
+                             (file-name-absolute-p
+                              (string-trim destination))))))
                  (buffer-modified-p nil))
           ;; DEBUG: Check buffer at very start (console-gated)
           (when org-astro-debug-console

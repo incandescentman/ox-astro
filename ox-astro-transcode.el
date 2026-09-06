@@ -430,8 +430,49 @@ Otherwise, output as a plain fenced code block."
         (let* ((info-copy (copy-sequence info))
                (_ (plist-put info-copy :with-smart-quotes nil))
                (title (org-astro--safe-export (org-element-property :title heading) info-copy))
-               (level (+ (org-element-property :level heading)
-                         (or (plist-get info :headline-offset) 0)))
+               (raw-level (org-element-property :level heading))
+               ;; THEME/MODEL starts a new conversation section even when the
+               ;; source heading is accidentally nested below earlier output.
+               (conversation-root
+                (let ((node heading)
+                      found)
+                  (while (and node (not found))
+                    (when (and (eq (org-element-type node) 'headline)
+                               (string-equal
+                                (downcase (or (org-element-property :raw-value node) ""))
+                                "claude")
+                               ;; A skipped child level identifies the legacy
+                               ;; conversation reset used by older posts.
+                               (let* ((root-level (org-element-property :level node))
+                                      (child-level
+                                       (org-element-map (org-element-contents node)
+                                           'headline
+                                         (lambda (child)
+                                           (org-element-property :level child))
+                                         nil 'first-match)))
+                                 (and child-level
+                                      (> child-level (1+ root-level)))))
+                      (let* ((section (car (org-element-contents node)))
+                             (children (and section
+                                            (eq (org-element-type section) 'section)
+                                            (org-element-contents section))))
+                        (when (cl-some
+                               (lambda (child)
+                                 (and (eq (org-element-type child) 'keyword)
+                                      (member (org-element-property :key child)
+                                              '("THEME" "MODEL"))))
+                               children)
+                          (setq found node))))
+                    (setq node (org-element-property :parent node)))
+                  found))
+               (level (if conversation-root
+                          (1+ (- raw-level
+                                 (org-element-property :level conversation-root)))
+                        (+ raw-level
+                           (if org-astro--narrowed-root-level
+                               (- 1 org-astro--narrowed-root-level)
+                             0)
+                           (or (plist-get info :headline-offset) 0))))
                (level (min (max level 1) 6))
                (header (concat (make-string level ?#) " " title))
                (theme-prefix (org-astro--theme-prefix-for-heading heading info))

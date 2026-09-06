@@ -166,6 +166,12 @@ indicator/value pairs.  Returns the updated plist."
 (defvar org-astro--current-body-images-imports nil
   "Global storage for body image imports to persist across export phases.")
 
+(defvar org-astro--narrowed-root-level nil
+  "Original Org level of the root heading in a narrowed export.")
+
+(defvar org-astro--legacy-export-active nil
+  "Non-nil when preserving output conventions of legacy post exports.")
+
 (defvar org-astro--id-path-map nil
   "Hash table mapping org-roam IDs to export metadata for the current run.")
 
@@ -1514,8 +1520,77 @@ If the generated name starts with a number, it is prefixed with \"img\"."
         (setq clean (concat (substring clean 0 297) "...")))
       (string-trim clean))))
 
+(defun org-astro--element-has-ancestor-type-p (element types)
+  "Return non-nil when ELEMENT has an ancestor whose type is in TYPES."
+  (let ((parent (org-element-parent element))
+        found)
+    (while (and parent (not found))
+      (when (memq (org-element-type parent) types)
+        (setq found t))
+      (setq parent (org-element-parent parent)))
+    found))
+
+(defun org-astro--non-link-text (data)
+  "Return the plain text in DATA that is not inside a link."
+  (mapconcat
+   (lambda (node)
+     (cond
+      ((stringp node) node)
+      ((eq (org-element-type node) 'link) "")
+      (t (org-astro--non-link-text (org-element-contents node)))))
+   data
+   ""))
+
+(defun org-astro--image-only-paragraph-p (paragraph)
+  "Return non-nil when PARAGRAPH contains only an image reference."
+  (let* ((begin (org-element-property :begin paragraph))
+         (end (org-element-property :end paragraph))
+         (raw (and begin end
+                   (string-trim
+                    (buffer-substring-no-properties begin end)))))
+    (and raw
+         (or (string-match-p "\\`!?\\[\\[.*\\.\\(?:png\\|jpe?g\\|gif\\|svg\\|webp\\|avif\\)\\(?:[?#][^]]*\\)?\\]\\(?:\\[[^]]*\\]\\)?\\]\\'" raw)
+             (string-match-p "\\`!\\[[^]]*\\](.*\\.\\(?:png\\|jpe?g\\|gif\\|svg\\|webp\\|avif\\)\\(?:[?#][^)]*\\)?)\\'" raw)
+             (string-match-p "\\`<img\\(?:[[:space:]][^>]*\\)?/?>\\'" raw)
+             (string-match-p "\\`/?[^[:space:]]+\\.\\(?:png\\|jpe?g\\|gif\\|svg\\|webp\\|avif\\)\\'" raw)))))
+
+(defun org-astro--real-prose-paragraph-p (paragraph)
+  "Return non-nil when PARAGRAPH contains prose suitable for an excerpt."
+  (and (not (org-astro--element-has-ancestor-type-p paragraph '(drawer property-drawer)))
+       (not (org-astro--image-only-paragraph-p paragraph))
+       (let* ((contents (org-element-contents paragraph))
+              (has-link (org-element-map paragraph 'link #'identity nil 'first-match))
+              (non-link-text (org-astro--non-link-text contents)))
+         (not (and has-link
+                   (not (string-match-p "[[:alnum:]]" non-link-text)))))))
+
+(defun org-astro--truncate-excerpt-at-word (text &optional limit)
+  "Truncate TEXT at a word boundary near LIMIT, adding an ellipsis.
+LIMIT defaults to 160 characters."
+  (let ((limit (or limit 160)))
+    (if (<= (length text) limit)
+        text
+      (let ((prefix (substring text 0 (1- limit))))
+        (when (string-match "\\`\\(.*\\)[[:space:]]+[^[:space:]]*\\'" prefix)
+          (setq prefix (match-string 1 prefix)))
+        (concat (string-trim-right prefix) "…")))))
+
+(defun org-astro--fallback-excerpt (tree info)
+  "Return an excerpt from the first real prose paragraph in TREE."
+  (let ((paragraph (org-element-map tree 'paragraph
+                     (lambda (candidate)
+                       (when (org-astro--real-prose-paragraph-p candidate)
+                         candidate))
+                     nil 'first-match)))
+    (when paragraph
+      (let* ((raw (org-astro--safe-export (org-element-contents paragraph) info))
+             (clean (replace-regexp-in-string "[*_/]" "" raw))
+             (excerpt (org-astro--sanitize-excerpt clean)))
+        (when (and excerpt (not (string-blank-p excerpt)))
+          (org-astro--truncate-excerpt-at-word excerpt))))))
+
 (defun org-astro--get-excerpt (tree info)
-  "Return an excerpt string from TREE/INFO, possibly empty but never nil.
+  "Return an authored or prose-derived excerpt from TREE/INFO.
 Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
   (let* ((kw-excerpt (org-element-map tree 'keyword
                         (lambda (k)
@@ -1527,8 +1602,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
                            (lambda (k)
                              (when (string= (org-element-property :key k) "DESCRIPTION")
                                k))
-                           nil 'first-match))
-         (first-paragraph (org-element-map tree 'paragraph 'identity nil 'first-match)))
+                           nil 'first-match)))
     (or
      (org-astro--sanitize-excerpt
       (when kw-excerpt
@@ -1538,18 +1612,7 @@ Treats SUBHED/DESCRIPTION as fallbacks when EXCERPT is not present."
       (when kw-description
         (let ((v (org-element-property :value kw-description)))
           (string-trim (replace-regexp-in-string "[*_/]" "" v)))))
-     (org-astro--sanitize-excerpt
-      (when first-paragraph
-        (let* ((raw (org-astro--safe-export (org-element-contents first-paragraph) info))
-               (clean (replace-regexp-in-string "[*_/]" "" raw))
-               ;; Remove image tags like ![img](path) and <img...> tags
-               (no-images (replace-regexp-in-string "!\\[.*?\\]([^)]*)" "" clean))
-               (no-html-images (replace-regexp-in-string "<img[^>]*>" "" no-images))
-               (one (replace-regexp-in-string "\n" " " no-html-images)))
-          (if (string-match "^\\(.\\{1,300\\}?[.?!]\\)" one)
-              (org-trim (match-string 1 one))
-            (truncate-string-to-width (org-trim one) 300 nil nil "…")))))
-     "")))
+     (org-astro--fallback-excerpt tree info))))
 
 
 (defun org-astro--get-publish-date (info)

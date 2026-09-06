@@ -136,7 +136,32 @@ languages listed in `org-astro--silent-babel-languages'."
 When an ordered list contains literal dash bullets (Org treats them as
 ordered siblings), downgrade those entries to nested unordered bullets so
 the MDX output preserves the intended hierarchy."
-  (let* ((parent (org-element-property :parent item))
+  (let* ((tag-data (org-element-property :tag item))
+         (tag-text (and tag-data
+                        (string-trim (org-element-interpret-data tag-data))))
+         (tree (plist-get info :parse-tree))
+         (first-heading-pos (and tree
+                                 (org-element-map tree 'headline
+                                   (lambda (headline)
+                                     (org-element-property :begin headline))
+                                   nil 'first-match)))
+         (parent (org-element-property :parent item))
+         (roam-preamble-p
+          (or (and first-heading-pos
+                   (< (org-element-property :begin item) first-heading-pos))
+              (eq (org-element-property :mode parent) 'top-comment)
+              (let ((section (org-element-property :parent parent)))
+                (eq (org-element-property :mode section) 'first-section))))
+         (roam-links-preamble
+          (and (string-equal tag-text "Links")
+               roam-preamble-p))
+         (roam-source-preamble
+          (and (string-equal tag-text "Source")
+               roam-preamble-p
+               (not (string-blank-p (or contents "")))))
+         (empty-source-p
+          (and (string-equal tag-text "Source")
+               (string-blank-p (or contents ""))))
          (parent-type (org-element-property :type parent))
          (raw-bullet (org-element-property :bullet item))
          (struct (org-element-property :structure item))
@@ -152,21 +177,25 @@ the MDX output preserves the intended hierarchy."
          (indent-prefix (if (and unordered-marker (not (eq parent-type 'unordered)))
                            "    "
                          "")))
-    (concat indent-prefix
-            bullet
-            (make-string (max 1 (- 4 (length bullet))) ? )
-            (pcase (org-element-property :checkbox item)
-              (`on "[X] ")
-              (`trans "[-] ")
-              (`off "[ ] "))
-            (let ((tag (org-element-property :tag item)))
-              (and tag (format "**%s:** " (org-export-data tag info))))
-            (and contents
-                 (let* ((indented (replace-regexp-in-string
-                                   "^"
-                                   (concat indent-prefix "    ")
-                                   contents)))
-                   (org-trim indented))))))
+    (cond
+     (roam-source-preamble (org-trim contents))
+     ((or roam-links-preamble empty-source-p) nil)
+     (t
+      (concat indent-prefix
+              bullet
+              (make-string (max 1 (- 4 (length bullet))) ? )
+              (pcase (org-element-property :checkbox item)
+                (`on "[X] ")
+                (`trans "[-] ")
+                (`off "[ ] "))
+              (let ((tag (org-element-property :tag item)))
+                (and tag (format "**%s:** " (org-export-data tag info))))
+              (and contents
+                   (let* ((indented (replace-regexp-in-string
+                                     "^"
+                                     (concat indent-prefix "    ")
+                                     contents)))
+                     (org-trim indented))))))))
 
 (defun org-astro-property-drawer (_property-drawer _contents _info)
   "Transcode a PROPERTY-DRAWER element.
@@ -661,7 +690,8 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
          (render-imports
           (when render-imports
             (let ((filtered render-imports))
-              (when (listp filtered)
+              (when (and (listp filtered)
+                         (not org-astro--legacy-export-active))
                 (let ((keep-vars used-image-vars))
                   (when keep-vars
                     (setq filtered
@@ -678,6 +708,21 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                            (lambda (line)
                              (string-match "^import[[:space:]]*{[[:space:]]*Image[[:space:]]*} from 'astro:assets'" line))
                            filtered)))))
+              (when org-astro--legacy-export-active
+                (setq filtered
+                      (append
+                       (cl-remove-if-not
+                        (lambda (line)
+                          (string-match-p
+                           "^import[[:space:]]*{[[:space:]]*Image[[:space:]]*}"
+                           line))
+                        filtered)
+                       (cl-remove-if
+                        (lambda (line)
+                          (string-match-p
+                           "^import[[:space:]]*{[[:space:]]*Image[[:space:]]*}"
+                           line))
+                        filtered))))
               (when (and (string-match-p "<Image[[:space:]]" body)
                          (not (cl-some (lambda (line)
                                          (string-match "^import[[:space:]]*{[[:space:]]*Image[[:space:]]*} from 'astro:assets'" line))
@@ -688,6 +733,10 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
               filtered)))
          (render-imports-string (when render-imports
                                   (mapconcat #'identity render-imports "\n")))
+         ;; Legacy exports expose the layout hero binding in their prolog.
+         (hero-import (when (and org-astro--legacy-export-active hero-path)
+                        (format "import hero from '%s';"
+                                (cdr (assoc 'image front-matter-data)))))
          ;; 2. Manual imports from #+ASTRO_IMPORTS
          (manual-imports (plist-get info :astro-imports))
          ;; 3. LinkPeek component import (if raw URLs are used - check body for raw URL patterns)
@@ -702,7 +751,7 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                                  "import ImageGallery from '@jaydixit/astro-utils/components/ImageGallery.astro';"))
          ;; 5. Combine all imports, filtering out nil/empty values
          (all-imports (mapconcat #'identity
-                                 (delq nil (list render-imports-string linkpeek-import image-gallery-import manual-imports))
+                                 (delq nil (list hero-import render-imports-string linkpeek-import image-gallery-import manual-imports))
                                  "\n")))
     (when (and model-banner (not (string-blank-p model-banner)))
       (let ((theme-prefix-re "\\`{\\/\\* theme: [^*]+ \\*\\/}[[:space:]]*"))
@@ -733,25 +782,6 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
     ;; Normalize self-closing tags so MDX doesn't expect separate closing tags.
     (let ((case-fold-search t))
       (setq s (replace-regexp-in-string "<br\\s*/?>" "<br />" s)))
-    ;; Strip org-roam template boilerplate (Links/Source lines)
-    ;; Matches: "    -   **Links:**" or "-  **Source:**" (colon inside or outside bold)
-    (setq s (replace-regexp-in-string
-             "^[ \t]*-[ \t]+\\*\\*\\(Links\\|Source\\):?\\*\\*[ \t]*:?[ \t]*\n?"
-             "" s))
-    ;; Also strip standalone "Links:" or "Source:" lines
-    (setq s (replace-regexp-in-string
-             "^[ \t]*\\(Links\\|Source\\):[ \t]*\n?"
-             "" s t))
-    ;; Strip converted org-roam Links definition output that can appear as a
-    ;; plain markdown link line before the first heading, e.g.:
-    ;; [📄 Note A](file:///.../note-a.md), [📄 Note B](file:///.../note-b.md)
-    (let* ((first-heading-pos (string-match "^#+[ \t]+" s))
-           (prefix (if first-heading-pos (substring s 0 first-heading-pos) s))
-           (suffix (if first-heading-pos (substring s first-heading-pos) "")))
-      (setq prefix (replace-regexp-in-string
-                    "^[ \t]*\\(?:\\[[^]\n]+\\](file:///[^)\n]+\\.md)\\(?:,[ \t]*\\[[^]\n]+\\](file:///[^)\n]+\\.md)\\)*\\)[ \t]*\n?"
-                    "" prefix t))
-      (setq s (concat prefix suffix)))
     ;; Drop orphan property drawers and ID lines that aren't parsed as drawers
     (setq s (replace-regexp-in-string
              "^:PROPERTIES:\n\\(?:[^\n]*\n\\)*?:END:\n?"
@@ -776,13 +806,17 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                            (plist-get record :jsx)))
                      match)))
                s t t)))
-    ;; Indented blocks to blockquotes (but skip JSX components, lists, and code fences)
+    ;; Legacy absolute-destination and narrowed exports treated indented list
+    ;; continuations as blockquotes.  Preserve that output contract without
+    ;; changing newer nickname-based whole-file exports.
     (let ((lines (split-string s "\n"))
           (in-jsx-component nil)
           (in-front-matter nil)
           (in-code-fence nil)
           (current-fence nil)
-          (in-list-block nil))
+          (in-list-block nil)
+          (legacy-indented-blockquotes
+           org-astro--legacy-export-active))
       (setq lines
             (mapcar
              (lambda (line)
@@ -824,9 +858,11 @@ This runs FIRST, before all other processing, to simulate manual bracket additio
                   ((and (or in-jsx-component in-front-matter)
                         (string-prefix-p "    " line))
                    line)
-                  ;; Skip indentation conversion for fenced code or list continuations
+                  ;; Skip code and modern list-continuation indentation.
                   ((and (string-prefix-p "    " line)
-                        (or in-code-fence in-list-block))
+                        (or in-code-fence
+                            (and in-list-block
+                                 (not legacy-indented-blockquotes))))
                    line)
                   ;; Convert regular indented lines to blockquotes
                   ((string-prefix-p "    " line)
